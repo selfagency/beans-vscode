@@ -78,12 +78,18 @@ The extension uses GitHub Actions for continuous integration and deployment:
 **Required secrets** (configure in repository Settings → Secrets and variables → Actions):
 
 - **`VSCE_PAT`**: VS Code Marketplace Personal Access Token
+
   - Create at [Visual Studio Marketplace Publisher Management](https://marketplace.visualstudio.com/manage/publishers)
-  - Required to publish extensions to the VS Code Marketplace
+  - Click "Create new Personal Access Token" in Azure DevOps
+  - Required scope: **Marketplace (Publish)** or **Marketplace (Manage)**
+  - Set expiration to 90 days or longer
+  - Associate the token with your publisher account
 
 - **`OVSX_PAT`**: Open VSX Personal Access Token
   - Create at [Open VSX Registry](https://open-vsx.org/user-settings/tokens)
-  - Required to publish extensions to Open VSX
+  - Sign in and navigate to User Settings → Access Tokens
+  - Click "Generate a new access token"
+  - Required permission: **Publish** extensions
 
 **Note**: `GITHUB_TOKEN` is automatically provided by GitHub Actions and doesn't need manual configuration.
 
