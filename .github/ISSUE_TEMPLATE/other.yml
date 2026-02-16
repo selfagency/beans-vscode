@@ -1,7 +1,7 @@
 name: Other Issue
 description: Report something that doesn't fit bug or feature categories
-title: ""
-labels: ["question"]
+title: ''
+labels: ['question']
 body:
   - type: markdown
     attributes:

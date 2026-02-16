@@ -757,12 +757,42 @@ pnpm test -- --run bench
 
 ### Planned Improvements
 
+- [x] **Remote compatibility testing** - Automated Docker and Dev Container tests
 - [ ] E2E tests with Playwright for full user workflows
 - [ ] Visual regression testing for webviews
 - [ ] Performance benchmarks in CI
 - [ ] Mutation testing for test quality
 - [ ] Snapshot testing for tree view rendering
-- [ ] Integration tests for remote scenarios
+
+### Remote Development Testing
+
+The extension includes automated remote compatibility testing:
+
+**CI Workflow**: `.github/workflows/remote-test.yml`
+
+- Tests in multiple Docker images (Alpine, Debian, DevContainers)
+- Tests with different Node.js versions (20, 22)
+- Validates Beans CLI installation in containers
+- Tests all core bean operations in containerized environment
+- Dev Container build and functionality testing
+
+**Local Testing**: `scripts/test-remote.sh`
+
+```bash
+# Run remote compatibility tests locally
+./scripts/test-remote.sh
+```
+
+This script:
+
+- Builds a Docker test environment
+- Installs beans CLI in the container
+- Tests all core operations (create, update, query, relationships)
+- Validates GraphQL queries and search
+- Tests parent-child and blocking relationships
+- Verifies file structure and data persistence
+
+See [Remote Compatibility Testing Guide](./remote-compatibility-testing.md) for manual testing procedures in SSH, WSL, Dev Containers, and Codespaces.
 
 ### Testing Remote Scenarios
 

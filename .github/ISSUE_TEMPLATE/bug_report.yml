@@ -1,7 +1,7 @@
 name: Bug Report
 description: Report a bug or issue with the Beans VS Code extension
-title: "[Bug]: "
-labels: ["bug"]
+title: '[Bug]: '
+labels: ['bug']
 body:
   - type: markdown
     attributes:

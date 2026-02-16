@@ -1,7 +1,7 @@
 name: Feature Request
 description: Suggest a new feature or enhancement for the Beans VS Code extension
-title: "[Feature]: "
-labels: ["feature"]
+title: '[Feature]: '
+labels: ['feature']
 body:
   - type: markdown
     attributes:

@@ -30,9 +30,9 @@ jobs:
               repo: context.repo.repo,
               username: context.actor
             });
-            
+
             const hasPermission = ['admin', 'write'].includes(permission.permission);
-            
+
             if (!hasPermission) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
@@ -43,7 +43,7 @@ jobs:
               core.setFailed('User does not have permission');
               return;
             }
-            
+
             core.setOutput('has-permission', 'true');
 
       - name: Checkout repository
@@ -87,12 +87,12 @@ jobs:
           script: |
             const { execSync } = require('child_process');
             const fs = require('fs');
-            
+
             // Determine bean type from labels
             const labels = context.payload.issue.labels.map(l => l.name);
             let beanType = 'task';
             let priority = 'normal';
-            
+
             if (labels.includes('bug')) {
               beanType = 'bug';
               priority = 'high';
@@ -102,29 +102,29 @@ jobs:
               beanType = 'task';
               priority = 'low';
             }
-            
+
             // Override priority if critical label exists
             if (labels.includes('critical')) {
               priority = 'critical';
             }
-            
+
             const issueNumber = process.env.ISSUE_NUMBER;
             const title = process.env.ISSUE_TITLE;
             const body = process.env.ISSUE_BODY || '';
             const url = process.env.ISSUE_URL;
             const author = process.env.ISSUE_AUTHOR;
-            
+
             // Create description with link to original issue
             const description = `${body}\n\n---\n\n**Original Issue:** ${url}\n**Reported by:** @${author}\n**GitHub Issue:** #${issueNumber}`;
-            
+
             // Escape strings for shell
             const escapeShell = (str) => {
               return str.replace(/'/g, "'\\''");
             };
-            
+
             // Create the bean
             const cmd = `beans create --json '${escapeShell(title)}' -t ${beanType} -p ${priority} -s todo -d '${escapeShell(description)}'`;
-            
+
             let beanId;
             try {
               const output = execSync(cmd, { encoding: 'utf-8' });
@@ -135,7 +135,7 @@ jobs:
               console.error('Failed to create bean:', error.message);
               throw error;
             }
-            
+
             core.setOutput('bean-id', beanId);
             return beanId;
 
@@ -148,7 +148,7 @@ jobs:
           git commit -m "feat: create bean from issue #${{ github.event.issue.number }}
 
           Created ${{ steps.create-bean.outputs.bean-id }} from accepted issue.
-          
+
           Original issue: ${{ github.event.issue.html_url }}"
           git push
 
@@ -158,7 +158,7 @@ jobs:
         with:
           script: |
             const beanId = '${{ steps.create-bean.outputs.bean-id }}';
-            
+
             const message = [
               `✅ Accepted! Created bean \`${beanId}\` from this issue.`,
               '',
@@ -169,14 +169,14 @@ jobs:
               '',
               `Or in VS Code: Open Beans sidebar → Find \`${beanId}\``
             ].join('\n');
-            
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
               body: message
             });
-            
+
             // Update issue with bean label
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
