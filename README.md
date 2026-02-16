@@ -55,6 +55,97 @@ If AI features are turned off, the extension removes this generated skill file.
 - `beans.mcp.enabled`: enable or disable MCP provider publishing.
 - `beans.logging.level`: extension log level.
 
+## Remote Development
+
+This extension fully supports VS Code Remote Development scenarios and runs in the remote extension host (`"extensionKind": ["workspace"]`).
+
+### Supported Remote Environments
+
+- **SSH**: Connect to remote machines via SSH
+- **WSL**: Windows Subsystem for Linux
+- **Dev Containers**: Docker-based development environments
+- **GitHub Codespaces**: Cloud-based development environments
+
+### Remote Requirements
+
+**Critical**: The `beans` CLI must be installed on the remote machine, not your local machine.
+
+```bash
+# Install beans on the remote machine
+# SSH/WSL/Container/Codespace
+curl -fsSL https://raw.githubusercontent.com/h-arry-smith/beans/main/install.sh | sh
+
+# Or use your preferred package manager on the remote
+```
+
+### How Remote Operation Works
+
+1. The extension runs entirely on the remote host
+2. `beans.cliPath` resolves on the remote filesystem (defaults to `beans` in remote PATH)
+3. Workspace folder paths (`workspaceFolder.uri.fsPath`) point to remote filesystem
+4. MCP server process spawns on remote using remote Node.js (`process.execPath`)
+5. All file operations use remote filesystem via VS Code's Uri APIs
+
+### Verifying Remote Setup
+
+```bash
+# In VS Code integrated terminal (automatically connected to remote)
+beans --version  # Should show installed version
+which beans      # Should show path on remote machine
+```
+
+### Troubleshooting Remote Scenarios
+
+#### Error: "Beans CLI not found"
+
+**Problem**: Extension can't find `beans` executable on remote machine.
+
+**Solutions**:
+
+1. Install beans CLI on the remote machine (not local)
+2. Configure `beans.cliPath` setting to absolute path on remote: `/home/user/.local/bin/beans`
+3. Ensure beans CLI is in remote machine's PATH: `echo $PATH`
+4. Reload VS Code window after installing beans: `Cmd/Ctrl+Shift+P` → "Developer: Reload Window"
+
+#### MCP Tools Not Available
+
+**Problem**: Copilot can't find Beans MCP tools in remote environment.
+
+**Solutions**:
+
+1. Verify extension is installed and activated: Check "Beans" output channel
+2. Ensure `beans.ai.enabled` is true in workspace settings
+3. Run command: "Beans: MCP: Refresh Server Definitions"
+4. Check MCP server info: "Beans: MCP: Show Server Info"
+5. View logs: "Beans: MCP: Open Logs"
+
+#### Workspace Not Initialized
+
+**Problem**: Extension shows "_Initialize Beans in Workspace_" prompt.
+
+**Solution**: Run `beans init` in the remote terminal or via command palette: "Beans: Initialize Beans in Workspace"
+
+### Devcontainer Configuration
+
+To pre-install beans CLI in devcontainers, add to `.devcontainer/devcontainer.json`:
+
+```json
+{
+  "postCreateCommand": "curl -fsSL https://raw.githubusercontent.com/h-arry-smith/beans/main/install.sh | sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "selfagency.beans-vscode"
+      ]
+    }
+  }
+}
+```
+
+### GitHub Codespaces
+
+Beans CLI can be installed automatically using a `.devcontainer` configuration or manually in the Codespace terminal.
+
 ## CI/CD
 
 The extension uses GitHub Actions for continuous integration and deployment:
