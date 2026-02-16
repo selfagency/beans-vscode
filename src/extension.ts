@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { BeansCommands } from './beans/commands';
 import { BeansOutput } from './beans/logging';
 import { BeansCLINotFoundError } from './beans/model';
 import { BeansService } from './beans/service';
@@ -13,6 +14,11 @@ import {
 
 let beansService: BeansService | undefined;
 let logger: BeansOutput;
+let activeProvider: ActiveBeansProvider | undefined;
+let completedProvider: CompletedBeansProvider | undefined;
+let draftProvider: DraftBeansProvider | undefined;
+let scrappedProvider: ScrappedBeansProvider | undefined;
+let archivedProvider: ArchivedBeansProvider | undefined;
 
 /**
  * Extension activation entry point
@@ -54,7 +60,62 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     // Register commands
-    registerCommands(context, beansService);
+    const beansCommands = new BeansCommands(beansService, context);
+    beansCommands.registerAll();
+
+    // Register beans.init command (special case - needed before initialization)
+    context.subscriptions.push(
+      vscode.commands.registerCommand('beans.init', async () => {
+        if (!beansService) {
+          vscode.window.showErrorMessage('Beans service not initialized');
+          return;
+        }
+
+        try {
+          await beansService.init();
+          await vscode.commands.executeCommand('setContext', 'beans.initialized', true);
+          
+          // Register tree views after successful initialization
+          registerTreeViews(context, beansService);
+          
+          vscode.window.showInformationMessage('Beans initialized successfully!');
+          logger.info('Beans initialized via command');
+        } catch (error) {
+          const message = `Failed to initialize Beans: ${(error as Error).message}`;
+          logger.error(message, error as Error);
+          vscode.window.showErrorMessage(message);
+        }
+      })
+    );
+
+    // Register global refresh command that refreshes all providers
+    context.subscriptions.push(
+      vscode.commands.registerCommand('beans.refreshAll', () => {
+        logger.info('Refreshing all tree views');
+        activeProvider?.refresh();
+        completedProvider?.refresh();
+        draftProvider?.refresh();
+        scrappedProvider?.refresh();
+        archivedProvider?.refresh();
+      })
+    );
+
+    // Register beans.openConfig command
+    context.subscriptions.push(
+      vscode.commands.registerCommand('beans.openConfig', async () => {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder) {
+          return;
+        }
+        const configPath = vscode.Uri.joinPath(workspaceFolder.uri, '.beans.yml');
+        try {
+          const doc = await vscode.workspace.openTextDocument(configPath);
+          await vscode.window.showTextDocument(doc);
+        } catch (error) {
+          vscode.window.showErrorMessage('Could not open .beans.yml: ' + (error as Error).message);
+        }
+      })
+    );
 
     // Watch for configuration changes
     context.subscriptions.push(
@@ -140,12 +201,12 @@ function registerTreeViews(context: vscode.ExtensionContext, service: BeansServi
   // Create drag and drop controller
   const dragAndDropController = new BeansDragAndDropController(service);
 
-  // Create providers
-  const activeProvider = new ActiveBeansProvider(service);
-  const completedProvider = new CompletedBeansProvider(service);
-  const draftProvider = new DraftBeansProvider(service);
-  const scrappedProvider = new ScrappedBeansProvider(service);
-  const archivedProvider = new ArchivedBeansProvider(service);
+  // Create providers and store in module variables for refresh
+  activeProvider = new ActiveBeansProvider(service);
+  completedProvider = new CompletedBeansProvider(service);
+  draftProvider = new DraftBeansProvider(service);
+  scrappedProvider = new ScrappedBeansProvider(service);
+  archivedProvider = new ArchivedBeansProvider(service);
 
   // Register tree views with drag and drop support
   const activeTreeView = vscode.window.createTreeView('beans.active', {
@@ -182,54 +243,6 @@ function registerTreeViews(context: vscode.ExtensionContext, service: BeansServi
   context.subscriptions.push(activeTreeView, completedTreeView, draftTreeView, scrappedTreeView, archivedTreeView);
 
   logger.info('Tree views registered with drag-and-drop support');
-}
-
-/**
- * Register extension commands
- */
-function registerCommands(context: vscode.ExtensionContext, service: BeansService): void {
-  // Init command
-  context.subscriptions.push(
-    vscode.commands.registerCommand('beans.init', async () => {
-      try {
-        await service.init();
-        await vscode.commands.executeCommand('setContext', 'beans.initialized', true);
-        vscode.window.showInformationMessage('Beans initialized successfully!');
-        logger.info('Beans initialized via command');
-      } catch (error) {
-        const message = `Failed to initialize Beans: ${(error as Error).message}`;
-        logger.error(message, error as Error);
-        vscode.window.showErrorMessage(message);
-      }
-    })
-  );
-
-  // Refresh command (placeholder for tree refresh)
-  context.subscriptions.push(
-    vscode.commands.registerCommand('beans.refresh', () => {
-      logger.info('Refresh command triggered');
-      vscode.window.showInformationMessage('Beans refresh triggered');
-    })
-  );
-
-  // Open config command
-  context.subscriptions.push(
-    vscode.commands.registerCommand('beans.openConfig', async () => {
-      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-      if (!workspaceFolder) {
-        return;
-      }
-      const configPath = vscode.Uri.joinPath(workspaceFolder.uri, '.beans.yml');
-      try {
-        const doc = await vscode.workspace.openTextDocument(configPath);
-        await vscode.window.showTextDocument(doc);
-      } catch (error) {
-        vscode.window.showErrorMessage('Could not open .beans.yml: ' + (error as Error).message);
-      }
-    })
-  );
-
-  logger.info('Commands registered');
 }
 
 /**

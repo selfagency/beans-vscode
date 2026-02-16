@@ -8,6 +8,12 @@ export interface Bean {
   /** Short code (e.g., 'abc1') */
   code: string;
 
+  /** URL-friendly slug */
+  slug: string;
+
+  /** Relative path to bean markdown file */
+  path: string;
+
   /** Bean title */
   title: string;
 
