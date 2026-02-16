@@ -206,7 +206,8 @@ class BeansCliBackend {
   }
 
   async readOutputLog(options?: { lines?: number }): Promise<{ path: string; content: string; linesReturned: number }> {
-    const outputPath = process.env.BEANS_VSCODE_OUTPUT_LOG || join(this.workspaceRoot, '.beans', '.vscode', 'beans-output.log');
+    const outputPath =
+      process.env.BEANS_VSCODE_OUTPUT_LOG || join(this.workspaceRoot, '.beans', '.vscode', 'beans-output.log');
     const content = await readFile(outputPath, 'utf8');
 
     const allLines = content.split(/\r?\n/).filter((line) => line.length > 0);
@@ -815,7 +816,9 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
     async ({ writeToWorkspaceInstructions }: { writeToWorkspaceInstructions: boolean }) => {
       const primeOutput = await backend.prime();
       const generatedInstructions = buildBeansCopilotInstructions(primeOutput);
-      const instructionsPath = writeToWorkspaceInstructions ? await backend.writeInstructions(generatedInstructions) : null;
+      const instructionsPath = writeToWorkspaceInstructions
+        ? await backend.writeInstructions(generatedInstructions)
+        : null;
 
       return makeTextAndStructured({
         primeOutput,

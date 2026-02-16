@@ -5,7 +5,9 @@ const MAX_BEANS_IN_CONTEXT = 40;
 export function buildBeansChatSystemPrompt(command: string | undefined, beans: Bean[]): string {
   const scopedBeans = beans.slice(0, MAX_BEANS_IN_CONTEXT);
   const beanLines = scopedBeans.map((bean) => {
-    return `- ${bean.id} | ${bean.title} | status=${bean.status} | type=${bean.type} | priority=${bean.priority ?? 'normal'}`;
+    return `- ${bean.id} | ${bean.title} | status=${bean.status} | type=${bean.type} | priority=${
+      bean.priority ?? 'normal'
+    }`;
   });
 
   return [

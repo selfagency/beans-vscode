@@ -9,10 +9,7 @@ const CHAT_PARTICIPANT_ID = 'beans.chat';
 export class BeansChatIntegration {
   private readonly logger = BeansOutput.getInstance();
 
-  constructor(
-    private readonly context: vscode.ExtensionContext,
-    private readonly service: BeansService
-  ) {}
+  constructor(private readonly context: vscode.ExtensionContext, private readonly service: BeansService) {}
 
   register(): void {
     if (!vscode.chat?.createChatParticipant) {
@@ -134,8 +131,7 @@ export class BeansChatIntegration {
         return statusDiff;
       }
 
-      const priorityDiff =
-        (priorityRank[a.priority ?? 'normal'] ?? 99) - (priorityRank[b.priority ?? 'normal'] ?? 99);
+      const priorityDiff = (priorityRank[a.priority ?? 'normal'] ?? 99) - (priorityRank[b.priority ?? 'normal'] ?? 99);
       if (priorityDiff !== 0) {
         return priorityDiff;
       }
@@ -154,7 +150,9 @@ export class BeansChatIntegration {
       stream.markdown(`- \`${bean.id}\` — **${bean.title}** (${bean.status}, ${bean.priority ?? 'normal'})\n`);
     }
 
-    stream.markdown('\nUse Beans commands to update one, for example: set status, set priority, or edit blocking relationships.');
+    stream.markdown(
+      '\nUse Beans commands to update one, for example: set status, set priority, or edit blocking relationships.'
+    );
   }
 
   private async handleSearch(prompt: string, stream: vscode.ChatResponseStream): Promise<void> {
@@ -195,8 +193,7 @@ export class BeansChatIntegration {
         return statusDiff;
       }
 
-      const priorityDiff =
-        (priorityRank[a.priority ?? 'normal'] ?? 99) - (priorityRank[b.priority ?? 'normal'] ?? 99);
+      const priorityDiff = (priorityRank[a.priority ?? 'normal'] ?? 99) - (priorityRank[b.priority ?? 'normal'] ?? 99);
       if (priorityDiff !== 0) {
         return priorityDiff;
       }
@@ -293,10 +290,7 @@ export class BeansChatIntegration {
     const systemPrompt = buildBeansChatSystemPrompt(request.command, beans);
 
     const response = await request.model.sendRequest(
-      [
-        vscode.LanguageModelChatMessage.User(systemPrompt),
-        vscode.LanguageModelChatMessage.User(request.prompt)
-      ],
+      [vscode.LanguageModelChatMessage.User(systemPrompt), vscode.LanguageModelChatMessage.User(request.prompt)],
       {},
       token
     );

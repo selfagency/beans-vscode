@@ -1,7 +1,7 @@
+import { describe, expect, it } from 'vitest';
 import * as vscode from 'vscode';
 import type { Bean } from '../../../beans/model';
 import { BeanTreeItem } from '../../../beans/tree/BeanTreeItem';
-import { describe, expect, it } from 'vitest';
 
 /**
  * Helper to create a minimal Bean for testing.

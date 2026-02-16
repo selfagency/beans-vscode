@@ -1,5 +1,5 @@
-import { parseCliArgs, sortBeans } from '../../../beans/mcp/BeansMcpServer';
 import { describe, expect, it } from 'vitest';
+import { parseCliArgs, sortBeans } from '../../../beans/mcp/BeansMcpServer';
 
 describe('BeansMcpServer helpers', () => {
   it('parseCliArgs uses defaults when args are missing', () => {

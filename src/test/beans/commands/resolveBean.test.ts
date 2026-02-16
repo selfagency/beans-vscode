@@ -1,5 +1,5 @@
-import type { Bean } from '../../../beans/model';
 import { describe, expect, it } from 'vitest';
+import type { Bean } from '../../../beans/model';
 
 /**
  * Test the duck-typing logic used by BeansCommands.resolveBean().

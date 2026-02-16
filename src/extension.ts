@@ -1,5 +1,5 @@
-import * as vscode from 'vscode';
 import * as path from 'node:path';
+import * as vscode from 'vscode';
 import { BeansChatIntegration } from './beans/chat';
 import { BeansCommands } from './beans/commands';
 import {
@@ -296,7 +296,11 @@ async function promptForInitialization(
   }
 }
 
-async function ensureCopilotAiArtifacts(service: BeansService, workspaceRoot: string, aiEnabled: boolean): Promise<void> {
+async function ensureCopilotAiArtifacts(
+  service: BeansService,
+  workspaceRoot: string,
+  aiEnabled: boolean
+): Promise<void> {
   try {
     if (!aiEnabled) {
       await removeBeansCopilotSkill(workspaceRoot);

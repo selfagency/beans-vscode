@@ -12,7 +12,10 @@ export class TreeItem {
   iconPath?: unknown;
   command?: { command: string; title: string; arguments?: unknown[] };
 
-  constructor(label?: string, public readonly collapsibleState: TreeItemCollapsibleState = TreeItemCollapsibleState.None) {
+  constructor(
+    label?: string,
+    public readonly collapsibleState: TreeItemCollapsibleState = TreeItemCollapsibleState.None
+  ) {
     this.label = label;
   }
 }
@@ -22,10 +25,7 @@ export class ThemeColor {
 }
 
 export class ThemeIcon {
-  constructor(
-    public readonly id: string,
-    public readonly color?: ThemeColor
-  ) {}
+  constructor(public readonly id: string, public readonly color?: ThemeColor) {}
 }
 
 export class MarkdownString {
