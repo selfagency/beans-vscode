@@ -74,9 +74,9 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
     // Perform re-parent
     try {
       await this.reparentBean(draggedBean, targetBean);
-      vscode.window.showInformationMessage(
-        `${draggedBean.code} re-parented to ${targetBean ? targetBean.code : 'root'}`
-      );
+      const draggedName = draggedBean.title || draggedBean.code || draggedBean.id;
+      const targetName = targetBean ? targetBean.title : 'root';
+      vscode.window.showInformationMessage(`${draggedName} re-parented to ${targetName}`);
     } catch (error) {
       const message = `Failed to re-parent bean: ${(error as Error).message}`;
       logger.error(message, error as Error);
@@ -141,9 +141,10 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
    * Show confirmation dialog for re-parenting
    */
   private async confirmReparent(draggedBean: Bean, targetBean: Bean | undefined): Promise<boolean> {
+    const draggedName = draggedBean.title || draggedBean.code || draggedBean.id;
     const targetName = targetBean ? targetBean.title : 'root (no parent)';
     const result = await vscode.window.showInformationMessage(
-      `Re-parent ${draggedBean.code} to ${targetName}?`,
+      `Re-parent ${draggedName} to ${targetName}?`,
       { modal: true },
       'Yes',
       'No'
@@ -160,6 +161,8 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
       parent: newParent?.id
     });
 
-    logger.info(`Bean ${bean.code} re-parented to ${newParent ? newParent.code : 'root'}`);
+    const beanName = bean.title || bean.code || bean.id;
+    const parentName = newParent ? newParent.title || newParent.code || newParent.id : 'root';
+    logger.info(`Bean ${beanName} re-parented to ${parentName}`);
   }
 }

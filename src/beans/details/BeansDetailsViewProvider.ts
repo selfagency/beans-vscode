@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
 import { Bean } from '../model';
+import { BeansService } from '../service';
 
 /**
  * Webview view provider for displaying bean details in the sidebar
@@ -9,9 +10,10 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'beans.details';
   private _view?: vscode.WebviewView;
   private _currentBean?: Bean;
+  private _parentBean?: Bean;
   private readonly logger = BeansOutput.getInstance();
 
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(private readonly extensionUri: vscode.Uri, private readonly service: BeansService) {}
 
   /**
    * Resolve the webview view
@@ -23,10 +25,27 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   ): void {
     this._view = webviewView;
 
+    // Include codicons dist folder so the webview can load the font
+    const codiconsUri = vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist');
+
     webviewView.webview.options = {
       enableScripts: true,
-      localResourceRoots: [this.extensionUri]
+      localResourceRoots: [this.extensionUri, codiconsUri]
     };
+
+    // Handle messages from webview
+    webviewView.webview.onDidReceiveMessage(async (message) => {
+      switch (message.command) {
+        case 'updateBean':
+          await this.handleBeanUpdate(message.updates);
+          break;
+        case 'editBean':
+          if (this._currentBean) {
+            await vscode.commands.executeCommand('beans.edit', this._currentBean);
+          }
+          break;
+      }
+    });
 
     // Update content when view becomes visible
     webviewView.onDidChangeVisibility(() => {
@@ -46,12 +65,59 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
-   * Show bean details in the view
+   * Handle bean update from webview
    */
-  public showBean(bean: Bean): void {
-    this._currentBean = bean;
-    if (this._view) {
-      this.updateView(bean);
+  private async handleBeanUpdate(updates: any): Promise<void> {
+    if (!this._currentBean) {
+      return;
+    }
+
+    try {
+      const updatedBean = await this.service.updateBean(this._currentBean.id, updates);
+      this._currentBean = updatedBean;
+      this.updateView(updatedBean);
+
+      // Refresh tree views
+      await vscode.commands.executeCommand('beans.refreshAll');
+
+      vscode.window.showInformationMessage('Bean updated successfully');
+    } catch (error) {
+      this.logger.error('Failed to update bean', error as Error);
+      vscode.window.showErrorMessage(`Failed to update bean: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Show bean details in the view
+   * Fetches full bean data including body field
+   */
+  public async showBean(bean: Bean): Promise<void> {
+    try {
+      // Fetch full bean data including body field
+      const fullBean = await this.service.showBean(bean.id);
+      this._currentBean = fullBean;
+
+      // Resolve parent bean for display (code + title)
+      this._parentBean = undefined;
+      if (fullBean.parent) {
+        try {
+          this._parentBean = await this.service.showBean(fullBean.parent);
+        } catch {
+          // Parent may not be resolvable; ignore
+        }
+      }
+
+      if (this._view) {
+        this.updateView(fullBean);
+      }
+    } catch (error) {
+      this.logger.error('Failed to fetch bean details', error as Error);
+      // Fall back to using the provided bean (without body)
+      this._currentBean = bean;
+      this._parentBean = undefined;
+      if (this._view) {
+        this.updateView(bean);
+      }
     }
   }
 
@@ -73,7 +139,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
-    this._view.webview.html = this.getBeanHtml(bean);
+    this._view.webview.html = this.getBeanHtml(bean, this._view.webview);
     this.logger.debug(`Updated details view for bean ${bean.code}`);
   }
 
@@ -112,23 +178,16 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   /**
    * Generate HTML for bean details
    */
-  private getBeanHtml(bean: Bean): string {
-    const statusColor = this.getStatusColor(bean.status);
-    const priorityBadge = bean.priority ? this.renderBadge(bean.priority, 'priority') : '';
+  private getBeanHtml(bean: Bean, webview: vscode.Webview): string {
     const tagsBadges = bean.tags?.map((tag) => this.renderBadge(tag, 'tag')).join('') || '';
+    const iconName = this.getIconName(bean);
 
-    // Render relationships
-    const parentSection = bean.parent
-      ? `
-      <div class="section">
-        <h3>Parent</h3>
-        <div class="badge-container">
-          ${this.renderBadge(bean.parent, 'relationship')}
-        </div>
-      </div>
-    `
-      : '';
+    // Generate codicon CSS URI for the webview
+    const codiconCssUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
+    );
 
+    // Render relationships (blocking / blocked-by only; parent moved to header)
     const blockingSection =
       bean.blocking && bean.blocking.length > 0
         ? `
@@ -154,7 +213,25 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
         : '';
 
     // Render body with basic markdown
-    const bodyHtml = this.renderMarkdown(bean.body);
+    const bodyHtml = bean.body
+      ? this.renderMarkdown(bean.body)
+      : '<p style="color: var(--vscode-descriptionForeground);">No description</p>';
+
+    const createdDate = new Date(bean.createdAt).toLocaleDateString();
+    const updatedDate = new Date(bean.updatedAt).toLocaleDateString();
+
+    // Parent line: show parent code + title (truncated) if available
+    const parentLine = this._parentBean
+      ? `<div class="parent-line" title="${this.escapeHtml(
+          this._parentBean.id
+        )}"><span class="parent-code">${this.escapeHtml(this._parentBean.code)}</span> ${this.escapeHtml(
+          this._parentBean.title
+        )}</div>`
+      : bean.parent
+      ? `<div class="parent-line" title="${this.escapeHtml(bean.parent)}"><span class="parent-code">${this.escapeHtml(
+          bean.parent.split('-').pop() || ''
+        )}</span> ${this.escapeHtml(bean.parent)}</div>`
+      : '';
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -162,6 +239,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bean Details</title>
+  <link href="${codiconCssUri}" rel="stylesheet" />
   <style>
     body {
       padding: 0;
@@ -171,28 +249,114 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       font-size: var(--vscode-font-size);
       line-height: 1.6;
     }
-    .header {
-      padding: 16px;
+    .toolbar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 6px 12px;
       border-bottom: 1px solid var(--vscode-panel-border);
       background: var(--vscode-sideBar-background);
     }
-    .title {
-      font-size: 18px;
-      font-weight: 600;
-      margin: 0 0 8px 0;
+    .icon-button {
+      background: transparent;
+      border: none;
+      cursor: pointer;
       color: var(--vscode-foreground);
+      opacity: 0.7;
+      padding: 4px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
-    .code {
-      font-size: 13px;
+    .icon-button:hover {
+      opacity: 1;
+      background: var(--vscode-toolbar-hoverBackground);
+    }
+    .icon-button:focus-visible {
+      outline: 1px solid var(--vscode-focusBorder);
+      outline-offset: -1px;
+    }
+    .header {
+      padding: 12px 16px 16px;
+      border-bottom: 1px solid var(--vscode-panel-border);
+      background: var(--vscode-sideBar-background);
+    }
+    .title-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .title-icon {
+      font-size: 16px;
+      opacity: 0.8;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .title {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0;
+      color: var(--vscode-foreground);
+      line-height: 1.3;
+    }
+    .bean-id {
+      font-size: 12px;
       font-family: var(--vscode-editor-font-family);
       color: var(--vscode-descriptionForeground);
-      margin: 0 0 12px 0;
+      margin-bottom: 4px;
+    }
+    .bean-id .code-badge {
+      font-weight: 600;
+      background: var(--vscode-badge-background);
+      color: var(--vscode-badge-foreground);
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    .parent-line {
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      margin-bottom: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .parent-line .parent-code {
+      font-weight: 600;
+      font-family: var(--vscode-editor-font-family);
+      margin-right: 4px;
     }
     .metadata {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
       margin-bottom: 8px;
+    }
+    .metadata-row {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .metadata-label {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground);
+      min-width: 60px;
+    }
+    select {
+      background: var(--vscode-dropdown-background);
+      color: var(--vscode-dropdown-foreground);
+      border: 1px solid var(--vscode-dropdown-border);
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 2px;
+      cursor: pointer;
+      min-width: 150px;
+    }
+    select:focus {
+      outline: 1px solid var(--vscode-focusBorder);
     }
     .badge {
       display: inline-block;
@@ -201,18 +365,6 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       font-size: 12px;
       font-weight: 500;
       white-space: nowrap;
-    }
-    .badge.status {
-      background: ${statusColor};
-      color: var(--vscode-badge-foreground);
-    }
-    .badge.type {
-      background: var(--vscode-badge-background);
-      color: var(--vscode-badge-foreground);
-    }
-    .badge.priority {
-      background: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
     }
     .badge.tag {
       background: var(--vscode-editor-inactiveSelectionBackground);
@@ -294,42 +446,92 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     .timestamp {
       font-size: 11px;
       color: var(--vscode-descriptionForeground);
-      margin-top: 8px;
+      margin-bottom: 12px;
     }
   </style>
 </head>
 <body>
+  <div class="toolbar">
+    <button class="icon-button" onclick="editBean()" title="Edit Bean" aria-label="Edit Bean">
+      <span class="codicon codicon-edit"></span>
+    </button>
+  </div>
   <div class="header">
-    <div class="code">${bean.code}</div>
-    <h1 class="title">${this.escapeHtml(bean.title)}</h1>
-    <div class="metadata">
-      <span class="badge status">${bean.status}</span>
-      <span class="badge type">${bean.type}</span>
-      ${priorityBadge}
+    <div class="bean-id">
+      <span class="code-badge">${this.escapeHtml(bean.id)}</span>
     </div>
-    ${tagsBadges ? `<div class="metadata">${tagsBadges}</div>` : ''}
+    ${parentLine}
+    <div class="title-row">
+      <span class="codicon codicon-${iconName} title-icon"></span>
+      <h1 class="title">${this.escapeHtml(bean.title)}</h1>
+    </div>
+
     <div class="timestamp">
-      Created: ${new Date(bean.createdAt).toLocaleDateString()}<br/>
-      Updated: ${new Date(bean.updatedAt).toLocaleDateString()}
+      Created ${createdDate} &middot; Updated ${updatedDate}
     </div>
+
+    <div class="metadata-row">
+      <span class="metadata-label">Status</span>
+      <select id="status" onchange="updateField('status', this.value)" aria-label="Status">
+        <option value="todo" ${bean.status === 'todo' ? 'selected' : ''}>Todo</option>
+        <option value="in-progress" ${bean.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+        <option value="completed" ${bean.status === 'completed' ? 'selected' : ''}>Completed</option>
+        <option value="draft" ${bean.status === 'draft' ? 'selected' : ''}>Draft</option>
+        <option value="scrapped" ${bean.status === 'scrapped' ? 'selected' : ''}>Scrapped</option>
+      </select>
+    </div>
+
+    <div class="metadata-row">
+      <span class="metadata-label">Type</span>
+      <select id="type" onchange="updateField('type', this.value)" aria-label="Type">
+        <option value="task" ${bean.type === 'task' ? 'selected' : ''}>Task</option>
+        <option value="bug" ${bean.type === 'bug' ? 'selected' : ''}>Bug</option>
+        <option value="feature" ${bean.type === 'feature' ? 'selected' : ''}>Feature</option>
+        <option value="epic" ${bean.type === 'epic' ? 'selected' : ''}>Epic</option>
+        <option value="milestone" ${bean.type === 'milestone' ? 'selected' : ''}>Milestone</option>
+      </select>
+    </div>
+
+    <div class="metadata-row">
+      <span class="metadata-label">Priority</span>
+      <select id="priority" onchange="updateField('priority', this.value)" aria-label="Priority">
+        <option value="" ${!bean.priority ? 'selected' : ''}>None</option>
+        <option value="critical" ${bean.priority === 'critical' ? 'selected' : ''}>Critical</option>
+        <option value="high" ${bean.priority === 'high' ? 'selected' : ''}>High</option>
+        <option value="normal" ${bean.priority === 'normal' ? 'selected' : ''}>Normal</option>
+        <option value="low" ${bean.priority === 'low' ? 'selected' : ''}>Low</option>
+        <option value="deferred" ${bean.priority === 'deferred' ? 'selected' : ''}>Deferred</option>
+      </select>
+    </div>
+
+    ${tagsBadges ? `<div class="metadata">${tagsBadges}</div>` : ''}
   </div>
   <div class="content">
-    ${parentSection}
     ${blockingSection}
     ${blockedBySection}
-    ${
-      bean.body
-        ? `
-      <div class="section">
-        <h3>Description</h3>
-        <div class="body-content">
-          ${bodyHtml}
-        </div>
-      </div>
-    `
-        : '<div class="section"><p style="color: var(--vscode-descriptionForeground);">No description</p></div>'
-    }
+    <div class="body-content">
+      ${bodyHtml}
+    </div>
   </div>
+
+  <script>
+    const vscode = acquireVsCodeApi();
+
+    function updateField(field, value) {
+      const updates = {};
+      updates[field] = value || undefined;
+      vscode.postMessage({
+        command: 'updateBean',
+        updates: updates
+      });
+    }
+
+    function editBean() {
+      vscode.postMessage({
+        command: 'editBean'
+      });
+    }
+  </script>
 </body>
 </html>`;
   }
@@ -339,26 +541,6 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
    */
   private renderBadge(text: string, type: 'status' | 'type' | 'priority' | 'tag' | 'relationship'): string {
     return `<span class="badge ${type}">${this.escapeHtml(text)}</span>`;
-  }
-
-  /**
-   * Get color for status
-   */
-  private getStatusColor(status: string): string {
-    switch (status) {
-      case 'completed':
-        return 'var(--vscode-testing-iconPassed)';
-      case 'in-progress':
-        return 'var(--vscode-testing-iconQueued)';
-      case 'todo':
-        return 'var(--vscode-button-background)';
-      case 'scrapped':
-        return 'var(--vscode-testing-iconFailed)';
-      case 'draft':
-        return 'var(--vscode-button-secondaryBackground)';
-      default:
-        return 'var(--vscode-badge-background)';
-    }
   }
 
   /**
@@ -412,5 +594,43 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  /**
+   * Get icon name for bean based on status and type
+   */
+  private getIconName(bean: Bean): string {
+    switch (bean.status) {
+      case 'completed':
+        return 'issue-closed';
+      case 'in-progress':
+        return this.getTypeIconName(bean.type);
+      case 'scrapped':
+        return 'error';
+      case 'draft':
+        return 'issue-draft';
+      case 'todo':
+      default:
+        return this.getTypeIconName(bean.type);
+    }
+  }
+
+  /**
+   * Get type-specific icon name
+   */
+  private getTypeIconName(type: string): string {
+    switch (type) {
+      case 'milestone':
+        return 'milestone';
+      case 'epic':
+        return 'zap';
+      case 'feature':
+        return 'lightbulb';
+      case 'bug':
+        return 'bug';
+      case 'task':
+      default:
+        return 'issues';
+    }
   }
 }

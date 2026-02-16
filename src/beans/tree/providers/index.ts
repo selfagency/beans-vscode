@@ -3,6 +3,7 @@ import { BeansTreeDataProvider } from '../BeansTreeDataProvider';
 
 /**
  * Tree provider for active beans (todo and in-progress)
+ * Uses hierarchical display since both statuses are in the same set
  */
 export class ActiveBeansProvider extends BeansTreeDataProvider {
   constructor(service: BeansService) {
@@ -12,40 +13,30 @@ export class ActiveBeansProvider extends BeansTreeDataProvider {
 
 /**
  * Tree provider for completed beans
+ * Uses flat list since parent beans may not be completed
  */
 export class CompletedBeansProvider extends BeansTreeDataProvider {
   constructor(service: BeansService) {
-    super(service, ['completed']);
+    super(service, ['completed'], true);
   }
 }
 
 /**
  * Tree provider for draft beans
+ * Uses flat list since parent beans may not be drafts
  */
 export class DraftBeansProvider extends BeansTreeDataProvider {
   constructor(service: BeansService) {
-    super(service, ['draft']);
+    super(service, ['draft'], true);
   }
 }
 
 /**
  * Tree provider for scrapped beans
+ * Uses flat list since parent beans may not be scrapped
  */
 export class ScrappedBeansProvider extends BeansTreeDataProvider {
   constructor(service: BeansService) {
-    super(service, ['scrapped']);
-  }
-}
-
-/**
- * Tree provider for archived beans
- * Note: Beans CLI may not have explicit archive support yet,
- * so this may show old completed/scrapped items or be empty
- */
-export class ArchivedBeansProvider extends BeansTreeDataProvider {
-  constructor(service: BeansService) {
-    // For now, archived view shows all statuses
-    // This can be refined once archive functionality is clarified
-    super(service);
+    super(service, ['scrapped'], true);
   }
 }

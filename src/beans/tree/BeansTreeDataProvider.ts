@@ -28,12 +28,16 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
   >();
   readonly onDidChangeTreeData: vscode.Event<BeanTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
-  private beans: Bean[] = [];
+  protected beans: Bean[] = [];
   private sortMode: SortMode;
   private filterOptions: TreeFilterOptions = {};
   private logger = BeansOutput.getInstance();
 
-  constructor(private readonly service: BeansService, private readonly statusFilter?: BeanStatus[]) {
+  constructor(
+    private readonly service: BeansService,
+    private readonly statusFilter?: BeanStatus[],
+    private readonly flatList: boolean = false
+  ) {
     // Get sort mode from configuration
     const config = vscode.workspace.getConfiguration('beans');
     this.sortMode = config.get<SortMode>('defaultSortMode', 'status-priority-type-title');
@@ -118,6 +122,9 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
 
       this.beans = await this.service.listBeans(options);
 
+      // Apply subclass post-fetch filter (e.g., archived beans path filtering)
+      this.beans = this.postFetchFilter(this.beans);
+
       // Apply tag filter (client-side since CLI might not support it)
       if (this.filterOptions.tagFilter && this.filterOptions.tagFilter.length > 0) {
         this.beans = this.beans.filter((bean) => this.filterOptions.tagFilter!.some((tag) => bean.tags.includes(tag)));
@@ -132,11 +139,27 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
   }
 
   /**
+   * Post-fetch filter hook for subclasses to override.
+   * Default implementation is pass-through.
+   */
+  protected postFetchFilter(beans: Bean[]): Bean[] {
+    return beans;
+  }
+
+  /**
    * Build hierarchical tree from flat bean list
+   * When flatList is true, show all beans at root level (for status-filtered views
+   * where parents may have a different status and wouldn't appear)
    */
   private buildTree(): BeanTreeItem[] {
-    // Find root beans (no parent)
-    const rootBeans = this.beans.filter((bean) => !bean.parent);
+    if (this.flatList) {
+      // Flat list mode: show all beans at root level, no hierarchy
+      return this.sortBeans(this.beans).map((bean) => this.createTreeItem(bean));
+    }
+
+    // Hierarchical mode: only beans whose parent is also in the set (or no parent) at root
+    const beanIds = new Set(this.beans.map((b) => b.id));
+    const rootBeans = this.beans.filter((bean) => !bean.parent || !beanIds.has(bean.parent));
 
     // Sort and create tree items
     return this.sortBeans(rootBeans).map((bean) => this.createTreeItem(bean));
@@ -147,11 +170,28 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
    */
   private createTreeItem(bean: Bean): BeanTreeItem {
     const hasChildren = this.beans.some((b) => b.parent === bean.id);
+    const hasInProgressChildren = this.hasInProgressDescendants(bean.id);
     const collapsibleState = hasChildren
       ? vscode.TreeItemCollapsibleState.Collapsed
       : vscode.TreeItemCollapsibleState.None;
 
-    return new BeanTreeItem(bean, collapsibleState, hasChildren);
+    return new BeanTreeItem(bean, collapsibleState, hasChildren, hasInProgressChildren);
+  }
+
+  /**
+   * Check if a bean has any in-progress descendants (recursively)
+   */
+  private hasInProgressDescendants(beanId: string): boolean {
+    const children = this.beans.filter((b) => b.parent === beanId);
+    for (const child of children) {
+      if (child.status === 'in-progress') {
+        return true;
+      }
+      if (this.hasInProgressDescendants(child.id)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -175,17 +215,9 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
   }
 
   /**
-   * Sort by status, then priority, then type, then title (TUI default)
+   * Sort by priority, then alphabetically by title
    */
   private sortByStatusPriorityTypeTitle(beans: Bean[]): Bean[] {
-    const statusOrder: Record<BeanStatus, number> = {
-      'in-progress': 0,
-      todo: 1,
-      draft: 2,
-      completed: 3,
-      scrapped: 4
-    };
-
     const priorityOrder: Record<string, number> = {
       critical: 0,
       high: 1,
@@ -194,22 +226,8 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
       deferred: 4
     };
 
-    const typeOrder: Record<BeanType, number> = {
-      milestone: 0,
-      epic: 1,
-      feature: 2,
-      bug: 3,
-      task: 4
-    };
-
     return beans.sort((a, b) => {
-      // First: status
-      const statusDiff = statusOrder[a.status] - statusOrder[b.status];
-      if (statusDiff !== 0) {
-        return statusDiff;
-      }
-
-      // Second: priority (treat undefined as 'normal')
+      // First: priority (treat undefined as 'normal')
       const aPriority = a.priority || 'normal';
       const bPriority = b.priority || 'normal';
       const priorityDiff = priorityOrder[aPriority] - priorityOrder[bPriority];
@@ -217,13 +235,7 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
         return priorityDiff;
       }
 
-      // Third: type
-      const typeDiff = typeOrder[a.type] - typeOrder[b.type];
-      if (typeDiff !== 0) {
-        return typeDiff;
-      }
-
-      // Fourth: title (alphabetical)
+      // Second: alphabetically by title
       return a.title.localeCompare(b.title);
     });
   }

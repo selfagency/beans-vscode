@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { Bean, BeanStatus, BeanType } from '../model';
+import { Bean } from '../model';
 
 /**
  * Tree item representing a bean in the VS Code tree view
@@ -8,7 +8,8 @@ export class BeanTreeItem extends vscode.TreeItem {
   constructor(
     public readonly bean: Bean,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-    public readonly hasChildren: boolean = false
+    public readonly hasChildren: boolean = false,
+    public readonly hasInProgressChildren: boolean = false
   ) {
     super(bean.title, collapsibleState);
 
@@ -18,35 +19,19 @@ export class BeanTreeItem extends vscode.TreeItem {
     this.contextValue = this.buildContextValue();
     this.iconPath = this.getIcon();
 
-    // Make tree items clickable to view bean
+    // Open bean in details view on click (works even if item is already selected)
     this.command = {
-      command: 'beans.view',
-      title: 'View Bean',
+      command: 'beans.openBean',
+      title: 'Open Bean',
       arguments: [bean]
     };
   }
 
   /**
-   * Build description showing code, type, and status
+   * Build description showing the short code
    */
   private buildDescription(): string {
-    const parts: string[] = [];
-
-    // Add code
-    parts.push(`[${this.bean.code}]`);
-
-    // Add type icon/text
-    parts.push(this.getTypeLabel());
-
-    // Add status
-    parts.push(this.getStatusLabel());
-
-    // Add priority if set and not normal
-    if (this.bean.priority && this.bean.priority !== 'normal') {
-      parts.push(`P:${this.bean.priority}`);
-    }
-
-    return parts.join(' ');
+    return this.bean.code || '';
   }
 
   /**
@@ -128,70 +113,59 @@ export class BeanTreeItem extends vscode.TreeItem {
   }
 
   /**
-   * Get appropriate icon for the bean
+   * Map priority to a pastel-ish ThemeColor for the tree item icon.
+   */
+  private static readonly PRIORITY_COLORS: Record<string, vscode.ThemeColor> = {
+    critical: new vscode.ThemeColor('charts.red'),
+    high: new vscode.ThemeColor('charts.orange'),
+    normal: new vscode.ThemeColor('charts.blue'),
+    low: new vscode.ThemeColor('charts.green'),
+    deferred: new vscode.ThemeColor('charts.purple')
+  };
+
+  /**
+   * Get appropriate icon for the bean.
+   * Icon color is determined by priority (if set) or amber for in-progress status.
    */
   private getIcon(): vscode.ThemeIcon {
-    // Status-based icons
+    // Priority color takes precedence, then in-progress/parent highlight
+    const priorityColor = this.bean.priority ? BeanTreeItem.PRIORITY_COLORS[this.bean.priority] : undefined;
+
+    const shouldHighlight = this.bean.status === 'in-progress' || this.hasInProgressChildren;
+    const color = priorityColor ?? (shouldHighlight ? new vscode.ThemeColor('charts.yellow') : undefined);
+
+    // Status-based icons (priority over type)
     switch (this.bean.status) {
       case 'completed':
-        return new vscode.ThemeIcon('check', new vscode.ThemeColor('charts.green'));
+        return new vscode.ThemeIcon('issue-closed', color);
       case 'in-progress':
-        return new vscode.ThemeIcon('debug-start', new vscode.ThemeColor('charts.blue'));
+        return this.getTypeIcon(color);
       case 'scrapped':
-        return new vscode.ThemeIcon('trash', new vscode.ThemeColor('charts.red'));
+        return new vscode.ThemeIcon('error', color);
       case 'draft':
-        return new vscode.ThemeIcon('file', new vscode.ThemeColor('charts.gray'));
+        return new vscode.ThemeIcon('issue-draft', color);
       case 'todo':
       default:
-        // Use type-based icons for todo items
-        return this.getTypeIcon();
+        return this.getTypeIcon(color);
     }
   }
 
   /**
    * Get type-specific icon
    */
-  private getTypeIcon(): vscode.ThemeIcon {
+  private getTypeIcon(color?: vscode.ThemeColor): vscode.ThemeIcon {
     switch (this.bean.type) {
       case 'milestone':
-        return new vscode.ThemeIcon('milestone');
+        return new vscode.ThemeIcon('milestone', color);
       case 'epic':
-        return new vscode.ThemeIcon('folder');
+        return new vscode.ThemeIcon('zap', color);
       case 'feature':
-        return new vscode.ThemeIcon('lightbulb');
+        return new vscode.ThemeIcon('lightbulb', color);
       case 'bug':
-        return new vscode.ThemeIcon('bug', new vscode.ThemeColor('charts.red'));
+        return new vscode.ThemeIcon('bug', color);
       case 'task':
       default:
-        return new vscode.ThemeIcon('checklist');
+        return new vscode.ThemeIcon('issues', color);
     }
-  }
-
-  /**
-   * Get readable type label
-   */
-  private getTypeLabel(): string {
-    const typeLabels: Record<BeanType, string> = {
-      milestone: '🎯',
-      epic: '📁',
-      feature: '✨',
-      bug: '🐛',
-      task: '☑️'
-    };
-    return typeLabels[this.bean.type] || this.bean.type;
-  }
-
-  /**
-   * Get readable status label
-   */
-  private getStatusLabel(): string {
-    const statusLabels: Record<BeanStatus, string> = {
-      todo: '📋',
-      'in-progress': '🔄',
-      completed: '✅',
-      scrapped: '🗑️',
-      draft: '📝'
-    };
-    return statusLabels[this.bean.status] || this.bean.status;
   }
 }

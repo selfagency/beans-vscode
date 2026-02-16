@@ -9,6 +9,29 @@ import { BeansFilterManager } from '../tree';
 const logger = BeansOutput.getInstance();
 
 /**
+ * Format a raw value (e.g., 'in-progress') to a human-readable label (e.g., 'In Progress')
+ */
+function formatLabel(value: string): string {
+  return value
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
+ * Create QuickPickItems from raw values with human-readable labels.
+ * Returns the selected raw value or undefined if cancelled.
+ */
+async function pickFromValues(values: string[], options: vscode.QuickPickOptions): Promise<string | undefined> {
+  const items: vscode.QuickPickItem[] = values.map((v) => ({
+    label: formatLabel(v),
+    description: v
+  }));
+  const picked = await vscode.window.showQuickPick(items, options);
+  return picked?.description;
+}
+
+/**
  * Core commands for Beans extension matching TUI parity
  */
 export class BeansCommands {
@@ -54,6 +77,7 @@ export class BeansCommands {
       vscode.commands.executeCommand('beans.refreshAll');
     });
     this.registerCommand('beans.filter', this.filter.bind(this));
+    this.registerCommand('beans.search', this.search.bind(this));
     this.registerCommand('beans.sort', this.sort.bind(this));
 
     // Configuration
@@ -199,8 +223,8 @@ export class BeansCommands {
       const config = await this.service.getConfig();
       const statuses = config.statuses || ['todo', 'in-progress', 'completed', 'scrapped', 'draft'];
 
-      const status = await vscode.window.showQuickPick(statuses, {
-        placeHolder: `Current: ${bean.status}`,
+      const status = await pickFromValues(statuses, {
+        placeHolder: `Current: ${formatLabel(bean.status)}`,
         title: `Set Status for ${bean.code}`
       });
 
@@ -209,7 +233,7 @@ export class BeansCommands {
       }
 
       await this.service.updateBean(bean.id, { status: status as any });
-      vscode.window.showInformationMessage(`Updated ${bean.code} status to ${status}`);
+      vscode.window.showInformationMessage(`Updated ${bean.code} status to ${formatLabel(status)}`);
       logger.info(`Updated bean ${bean.code} status to ${status}`);
 
       // Refresh trees
@@ -235,7 +259,7 @@ export class BeansCommands {
       const statuses = config.statuses || ['todo', 'in-progress', 'completed', 'scrapped', 'draft'];
       const nonClosedStatuses = statuses.filter((s) => s !== 'completed' && s !== 'scrapped');
 
-      const newStatus = await vscode.window.showQuickPick(nonClosedStatuses, {
+      const newStatus = await pickFromValues(nonClosedStatuses, {
         placeHolder: 'Select new status',
         title: `Reopen ${bean.code}`
       });
@@ -245,7 +269,7 @@ export class BeansCommands {
       }
 
       await this.service.updateBean(bean.id, { status: newStatus as any });
-      vscode.window.showInformationMessage(`Reopened ${bean.code} as ${newStatus}`);
+      vscode.window.showInformationMessage(`Reopened ${bean.code} as ${formatLabel(newStatus)}`);
       logger.info(`Reopened bean ${bean.code} from completed to ${newStatus}`);
 
       // Refresh trees
@@ -271,7 +295,7 @@ export class BeansCommands {
       const statuses = config.statuses || ['todo', 'in-progress', 'completed', 'scrapped', 'draft'];
       const nonClosedStatuses = statuses.filter((s) => s !== 'completed' && s !== 'scrapped');
 
-      const newStatus = await vscode.window.showQuickPick(nonClosedStatuses, {
+      const newStatus = await pickFromValues(nonClosedStatuses, {
         placeHolder: 'Select new status',
         title: `Reopen ${bean.code}`
       });
@@ -281,7 +305,7 @@ export class BeansCommands {
       }
 
       await this.service.updateBean(bean.id, { status: newStatus as any });
-      vscode.window.showInformationMessage(`Reopened ${bean.code} as ${newStatus}`);
+      vscode.window.showInformationMessage(`Reopened ${bean.code} as ${formatLabel(newStatus)}`);
       logger.info(`Reopened bean ${bean.code} from scrapped to ${newStatus}`);
 
       // Refresh trees
@@ -308,8 +332,8 @@ export class BeansCommands {
       const config = await this.service.getConfig();
       const types = config.types || ['milestone', 'epic', 'feature', 'bug', 'task'];
 
-      const type = await vscode.window.showQuickPick(types, {
-        placeHolder: `Current: ${bean.type}`,
+      const type = await pickFromValues(types, {
+        placeHolder: `Current: ${formatLabel(bean.type)}`,
         title: `Set Type for ${bean.code}`
       });
 
@@ -318,7 +342,7 @@ export class BeansCommands {
       }
 
       await this.service.updateBean(bean.id, { type: type as any });
-      vscode.window.showInformationMessage(`Updated ${bean.code} type to ${type}`);
+      vscode.window.showInformationMessage(`Updated ${bean.code} type to ${formatLabel(type)}`);
       logger.info(`Updated bean ${bean.code} type to ${type}`);
 
       // Refresh trees
@@ -345,8 +369,8 @@ export class BeansCommands {
       const config = await this.service.getConfig();
       const priorities = config.priorities || ['critical', 'high', 'normal', 'low', 'deferred'];
 
-      const priority = await vscode.window.showQuickPick(priorities, {
-        placeHolder: bean.priority ? `Current: ${bean.priority}` : 'No priority set',
+      const priority = await pickFromValues(priorities, {
+        placeHolder: bean.priority ? `Current: ${formatLabel(bean.priority)}` : 'No priority set',
         title: `Set Priority for ${bean.code}`
       });
 
@@ -355,7 +379,7 @@ export class BeansCommands {
       }
 
       await this.service.updateBean(bean.id, { priority: priority as any });
-      vscode.window.showInformationMessage(`Updated ${bean.code} priority to ${priority}`);
+      vscode.window.showInformationMessage(`Updated ${bean.code} priority to ${formatLabel(priority)}`);
       logger.info(`Updated bean ${bean.code} priority to ${priority}`);
 
       // Refresh trees
@@ -747,6 +771,55 @@ export class BeansCommands {
       }
     } catch (error) {
       const message = `Failed to apply filter: ${(error as Error).message}`;
+      logger.error(message, error as Error);
+      vscode.window.showErrorMessage(message);
+    }
+  }
+
+  /**
+   * Search beans across all panes
+   */
+  private async search(): Promise<void> {
+    try {
+      const searchText = await vscode.window.showInputBox({
+        prompt: 'Search beans by title or body',
+        placeHolder: 'Enter search text',
+        title: 'Search All Beans'
+      });
+
+      if (searchText === undefined) {
+        return; // User cancelled
+      }
+
+      // Apply search filter to all view panes
+      const viewIds = ['beans.active', 'beans.draft', 'beans.completed', 'beans.scrapped', 'beans.archived'];
+
+      if (!searchText) {
+        // Clear search from all panes if empty
+        viewIds.forEach((viewId) => {
+          const currentFilter = this.filterManager.getFilter(viewId);
+          if (currentFilter) {
+            const updatedFilter = { ...currentFilter };
+            delete updatedFilter.text;
+            this.filterManager.setFilter(viewId, updatedFilter);
+          }
+        });
+        vscode.window.showInformationMessage('Search cleared from all panes');
+      } else {
+        // Apply search to all panes
+        viewIds.forEach((viewId) => {
+          const currentFilter = this.filterManager.getFilter(viewId) || {};
+          this.filterManager.setFilter(viewId, {
+            ...currentFilter,
+            text: searchText
+          });
+        });
+        vscode.window.showInformationMessage(`Searching all panes for: "${searchText}"`);
+      }
+
+      logger.info(`Search applied across all panes: ${searchText || '(cleared)'}`);
+    } catch (error) {
+      const message = `Failed to search: ${(error as Error).message}`;
       logger.error(message, error as Error);
       vscode.window.showErrorMessage(message);
     }

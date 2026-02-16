@@ -151,22 +151,29 @@ export class BeansService {
 
     const result = await this.execute<Bean[]>(args);
     const beans = result || [];
-    
+
     // Normalize bean data to ensure arrays are always arrays
     return beans.map((bean) => this.normalizeBean(bean));
   }
 
   /**
-   * Normalize bean data from CLI to ensure required fields exist
+   * Normalize bean data from CLI to ensure required fields exist.
+   * CLI outputs snake_case (created_at, updated_at, blocked_by, parent_id, blocking_ids, blocked_by_ids).
+   * We map to camelCase model fields and derive the short 'code' from the ID.
    */
   private normalizeBean(bean: any): Bean {
+    // Derive short code from ID: last segment after final hyphen
+    const code = bean.code || (bean.id ? bean.id.split('-').pop() : '');
+
     return {
       ...bean,
+      code,
       tags: bean.tags || [],
-      blocking: bean.blocking || [],
-      blockedBy: bean.blockedBy || [],
-      createdAt: bean.createdAt ? new Date(bean.createdAt) : new Date(),
-      updatedAt: bean.updatedAt ? new Date(bean.updatedAt) : new Date()
+      blocking: bean.blocking || bean.blockingIds || bean.blocking_ids || [],
+      blockedBy: bean.blockedBy || bean.blockedByIds || bean.blocked_by_ids || [],
+      parent: bean.parent || bean.parentId || bean.parent_id || undefined,
+      createdAt: new Date(bean.createdAt || bean.created_at || Date.now()),
+      updatedAt: new Date(bean.updatedAt || bean.updated_at || Date.now())
     };
   }
 

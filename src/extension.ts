@@ -3,13 +3,12 @@ import { BeansCommands } from './beans/commands';
 import { BeansConfigManager } from './beans/config';
 import { BeansDetailsViewProvider } from './beans/details';
 import { BeansOutput } from './beans/logging';
-import { BeansCLINotFoundError } from './beans/model';
+import { Bean, BeansCLINotFoundError } from './beans/model';
 import { BeansPreviewProvider } from './beans/preview';
 import { BeansService } from './beans/service';
 import { BeansDragAndDropController, BeansFilterManager } from './beans/tree';
 import {
   ActiveBeansProvider,
-  ArchivedBeansProvider,
   CompletedBeansProvider,
   DraftBeansProvider,
   ScrappedBeansProvider
@@ -21,7 +20,6 @@ let activeProvider: ActiveBeansProvider | undefined;
 let completedProvider: CompletedBeansProvider | undefined;
 let draftProvider: DraftBeansProvider | undefined;
 let scrappedProvider: ScrappedBeansProvider | undefined;
-let archivedProvider: ArchivedBeansProvider | undefined;
 let filterManager: BeansFilterManager | undefined;
 let detailsProvider: BeansDetailsViewProvider | undefined;
 let initPromptDismissed = false; // Track if user dismissed init prompt in this session
@@ -68,7 +66,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('beans-preview', previewProvider));
 
     // Register details webview provider (needed before tree views)
-    detailsProvider = new BeansDetailsViewProvider(context.extensionUri);
+    detailsProvider = new BeansDetailsViewProvider(context.extensionUri, beansService);
     context.subscriptions.push(
       vscode.window.registerWebviewViewProvider(BeansDetailsViewProvider.viewType, detailsProvider)
     );
@@ -138,7 +136,6 @@ export async function activate(context: vscode.ExtensionContext) {
         completedProvider?.refresh();
         draftProvider?.refresh();
         scrappedProvider?.refresh();
-        archivedProvider?.refresh();
       })
     );
 
@@ -246,7 +243,6 @@ function registerTreeViews(
   completedProvider = new CompletedBeansProvider(service);
   draftProvider = new DraftBeansProvider(service);
   scrappedProvider = new ScrappedBeansProvider(service);
-  archivedProvider = new ArchivedBeansProvider(service);
 
   // Subscribe to filter changes
   context.subscriptions.push(
@@ -275,9 +271,18 @@ function registerTreeViews(
         case 'beans.scrapped':
           scrappedProvider?.setFilter(filterOptions);
           break;
-        case 'beans.archived':
-          archivedProvider?.setFilter(filterOptions);
-          break;
+      }
+    })
+  );
+
+  // Register openBean command so clicking a tree item always opens details
+  // (VS Code onDidChangeSelection doesn't fire when clicking an already-selected item)
+  context.subscriptions.push(
+    vscode.commands.registerCommand('beans.openBean', (bean: Bean) => {
+      if (bean) {
+        details.showBean(bean).catch((error) => {
+          logger.error('Failed to show bean details', error as Error);
+        });
       }
     })
   );
@@ -307,19 +312,15 @@ function registerTreeViews(
     dragAndDropController
   });
 
-  const archivedTreeView = vscode.window.createTreeView('beans.archived', {
-    treeDataProvider: archivedProvider,
-    showCollapseAll: true,
-    dragAndDropController
-  });
-
   // Subscribe to selection changes to show details
   context.subscriptions.push(
     activeTreeView.onDidChangeSelection((e) => {
       if (e.selection.length > 0) {
         const bean = e.selection[0].bean;
         if (bean) {
-          details.showBean(bean);
+          details.showBean(bean).catch((error) => {
+            logger.error('Failed to show bean details', error as Error);
+          });
         }
       }
     }),
@@ -327,7 +328,9 @@ function registerTreeViews(
       if (e.selection.length > 0) {
         const bean = e.selection[0].bean;
         if (bean) {
-          details.showBean(bean);
+          details.showBean(bean).catch((error) => {
+            logger.error('Failed to show bean details', error as Error);
+          });
         }
       }
     }),
@@ -335,7 +338,9 @@ function registerTreeViews(
       if (e.selection.length > 0) {
         const bean = e.selection[0].bean;
         if (bean) {
-          details.showBean(bean);
+          details.showBean(bean).catch((error) => {
+            logger.error('Failed to show bean details', error as Error);
+          });
         }
       }
     }),
@@ -343,22 +348,16 @@ function registerTreeViews(
       if (e.selection.length > 0) {
         const bean = e.selection[0].bean;
         if (bean) {
-          details.showBean(bean);
-        }
-      }
-    }),
-    archivedTreeView.onDidChangeSelection((e) => {
-      if (e.selection.length > 0) {
-        const bean = e.selection[0].bean;
-        if (bean) {
-          details.showBean(bean);
+          details.showBean(bean).catch((error) => {
+            logger.error('Failed to show bean details', error as Error);
+          });
         }
       }
     })
   );
 
   // Add disposables
-  context.subscriptions.push(activeTreeView, completedTreeView, draftTreeView, scrappedTreeView, archivedTreeView);
+  context.subscriptions.push(activeTreeView, completedTreeView, draftTreeView, scrappedTreeView);
 
   logger.info('Tree views registered with drag-and-drop support and details view integration');
 }
