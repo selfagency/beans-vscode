@@ -505,6 +505,6 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@vscode/codicons": "^0.0.44",
-    "zod": "^3.23.8"
+    "zod": "^4.3.6"
   }
 }
