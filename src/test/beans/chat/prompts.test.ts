@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildBeansChatSystemPrompt } from '../../../beans/chat';
+import { buildBeansChatSystemPrompt } from '../../../beans/chat/prompts';
 
 describe('buildBeansChatSystemPrompt', () => {
   it('includes beans-only scope guardrails and command context', () => {
