@@ -2,7 +2,8 @@
   "name": "beans-vscode",
   "displayName": "Beans",
   "description": "Unofficial Beans issue tracker support for VS Code with Copilot integration",
-  "version": "0.0.1",
+  "icon": "assets/icon.png",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.109.0"
   },

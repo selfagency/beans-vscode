@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { BeansCommands } from './beans/commands';
 import { BeansOutput } from './beans/logging';
 import { BeansCLINotFoundError } from './beans/model';
+import { BeansPreviewProvider } from './beans/preview';
 import { BeansService } from './beans/service';
 import { BeansDragAndDropController } from './beans/tree';
 import {
@@ -59,8 +60,12 @@ export async function activate(context: vscode.ExtensionContext) {
       registerTreeViews(context, beansService);
     }
 
+    // Register preview provider
+    const previewProvider = new BeansPreviewProvider(beansService);
+    context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('beans-preview', previewProvider));
+
     // Register commands
-    const beansCommands = new BeansCommands(beansService, context);
+    const beansCommands = new BeansCommands(beansService, context, previewProvider);
     beansCommands.registerAll();
 
     // Register beans.init command (special case - needed before initialization)
@@ -74,10 +79,10 @@ export async function activate(context: vscode.ExtensionContext) {
         try {
           await beansService.init();
           await vscode.commands.executeCommand('setContext', 'beans.initialized', true);
-          
+
           // Register tree views after successful initialization
           registerTreeViews(context, beansService);
-          
+
           vscode.window.showInformationMessage('Beans initialized successfully!');
           logger.info('Beans initialized via command');
         } catch (error) {

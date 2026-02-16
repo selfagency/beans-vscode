@@ -719,12 +719,12 @@ export function deactivate() {
 
 8a. **View display mode support**
 
-   - Add `beans.view.displayMode` setting to toggle between:
-     - `separate-panes` (default): 5 independent collapsible panes (Active, Completed, Draft, Scrapped, Archived)
-     - `single-pane`: Single unified tree with filter controls and status badges
-   - Conditionally register tree views based on display mode setting
-   - Provide clear reload prompt when user changes display mode
-   - Maintain sort/filter state across mode changes where applicable
+- Add `beans.view.displayMode` setting to toggle between:
+  - `separate-panes` (default): 5 independent collapsible panes (Active, Completed, Draft, Scrapped, Archived)
+  - `single-pane`: Single unified tree with filter controls and status badges
+- Conditionally register tree views based on display mode setting
+- Provide clear reload prompt when user changes display mode
+- Maintain sort/filter state across mode changes where applicable
 
 9. **Filtering system**
 
