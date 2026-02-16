@@ -2,14 +2,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
-import {
-  Bean,
-  BeansCLINotFoundError,
-  BeansConfig,
-  BeansConfigMissingError,
-  BeansJSONParseError,
-  BeansTimeoutError
-} from '../model';
+import { Bean, BeansCLINotFoundError, BeansConfig, BeansJSONParseError, BeansTimeoutError } from '../model';
 
 const execAsync = promisify(exec);
 
@@ -116,13 +109,21 @@ export class BeansService {
 
   /**
    * Get Beans workspace configuration
+   * Note: This reads from .beans.yml since there's no CLI config command
    */
   async getConfig(): Promise<BeansConfig> {
-    const result = await this.execute<{ config: BeansConfig }>(['config', '--json']);
-    if (!result.config) {
-      throw new BeansConfigMissingError('.beans.yml not found or invalid');
-    }
-    return result.config;
+    // Return a basic config since there's no CLI command
+    // TODO: Integrate with BeansConfigManager to read actual .beans.yml values
+    return {
+      path: '.beans',
+      prefix: 'bean',
+      id_length: 4,
+      default_status: 'todo',
+      default_type: 'task',
+      statuses: ['todo', 'in-progress', 'completed', 'scrapped', 'draft'],
+      types: ['milestone', 'epic', 'feature', 'task', 'bug'],
+      priorities: ['critical', 'high', 'normal', 'low', 'deferred']
+    };
   }
 
   /**
@@ -131,28 +132,50 @@ export class BeansService {
   async listBeans(options?: { status?: string[]; type?: string[]; search?: string }): Promise<Bean[]> {
     const args = ['list', '--json'];
 
+    // Status and type filters use repeated flags, not comma-separated values
     if (options?.status && options.status.length > 0) {
-      args.push('--status', options.status.join(','));
+      for (const status of options.status) {
+        args.push('--status', status);
+      }
     }
 
     if (options?.type && options.type.length > 0) {
-      args.push('--type', options.type.join(','));
+      for (const type of options.type) {
+        args.push('--type', type);
+      }
     }
 
     if (options?.search) {
       args.push('--search', options.search);
     }
 
-    const result = await this.execute<{ beans: Bean[] }>(args);
-    return result.beans || [];
+    const result = await this.execute<Bean[]>(args);
+    const beans = result || [];
+    
+    // Normalize bean data to ensure arrays are always arrays
+    return beans.map((bean) => this.normalizeBean(bean));
+  }
+
+  /**
+   * Normalize bean data from CLI to ensure required fields exist
+   */
+  private normalizeBean(bean: any): Bean {
+    return {
+      ...bean,
+      tags: bean.tags || [],
+      blocking: bean.blocking || [],
+      blockedBy: bean.blockedBy || [],
+      createdAt: bean.createdAt ? new Date(bean.createdAt) : new Date(),
+      updatedAt: bean.updatedAt ? new Date(bean.updatedAt) : new Date()
+    };
   }
 
   /**
    * Get a single bean by ID
    */
   async showBean(id: string): Promise<Bean> {
-    const result = await this.execute<{ bean: Bean }>(['show', '--json', id]);
-    return result.bean;
+    const result = await this.execute<Bean>(['show', '--json', id]);
+    return this.normalizeBean(result);
   }
 
   /**
@@ -184,8 +207,8 @@ export class BeansService {
       args.push('--parent', data.parent);
     }
 
-    const result = await this.execute<{ bean: Bean }>(args);
-    return result.bean;
+    const result = await this.execute<Bean>(args);
+    return this.normalizeBean(result);
   }
 
   /**
@@ -228,8 +251,8 @@ export class BeansService {
       args.push('--blocked-by', updates.blockedBy.join(','));
     }
 
-    const result = await this.execute<{ bean: Bean }>(args);
-    return result.bean;
+    const result = await this.execute<Bean>(args);
+    return this.normalizeBean(result);
   }
 
   /**

@@ -63,6 +63,20 @@ export async function activate(context: vscode.ExtensionContext) {
       return; // Don't proceed with activation if CLI not found
     }
 
+    // Register preview provider
+    const previewProvider = new BeansPreviewProvider(beansService);
+    context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('beans-preview', previewProvider));
+
+    // Register details webview provider (needed before tree views)
+    detailsProvider = new BeansDetailsViewProvider(context.extensionUri);
+    context.subscriptions.push(
+      vscode.window.registerWebviewViewProvider(BeansDetailsViewProvider.viewType, detailsProvider)
+    );
+
+    // Register filter manager (needed before tree views)
+    filterManager = new BeansFilterManager();
+    context.subscriptions.push(filterManager);
+
     const isInitialized = await beansService.checkInitialized();
     await vscode.commands.executeCommand('setContext', 'beans.initialized', isInitialized);
 
@@ -75,24 +89,8 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.commands.executeCommand('setContext', 'beans.initialized', true);
 
       // Register tree views when initialized
-      if (filterManager && detailsProvider) {
-        registerTreeViews(context, beansService, filterManager, detailsProvider);
-      }
+      registerTreeViews(context, beansService, filterManager, detailsProvider);
     }
-
-    // Register preview provider
-    const previewProvider = new BeansPreviewProvider(beansService);
-    context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('beans-preview', previewProvider));
-
-    // Register details webview provider
-    detailsProvider = new BeansDetailsViewProvider(context.extensionUri);
-    context.subscriptions.push(
-      vscode.window.registerWebviewViewProvider(BeansDetailsViewProvider.viewType, detailsProvider)
-    );
-
-    // Register filter manager
-    filterManager = new BeansFilterManager();
-    context.subscriptions.push(filterManager);
 
     // Register config manager
     const configManager = new BeansConfigManager(workspaceFolder.uri.fsPath);
@@ -119,9 +117,8 @@ export async function activate(context: vscode.ExtensionContext) {
           await vscode.commands.executeCommand('setContext', 'beans.initialized', true);
 
           // Register tree views after successful initialization
-          if (filterManager && detailsProvider) {
-            registerTreeViews(context, beansService, filterManager, detailsProvider);
-          }
+          // filterManager and detailsProvider are guaranteed to exist
+          registerTreeViews(context, beansService, filterManager!, detailsProvider!);
 
           vscode.window.showInformationMessage('Beans initialized successfully!');
           logger.info('Beans initialized via command');
@@ -213,9 +210,8 @@ async function promptForInitialization(context: vscode.ExtensionContext, service
       await vscode.commands.executeCommand('setContext', 'beans.initialized', true);
 
       // Register tree views after successful initialization
-      if (filterManager && detailsProvider) {
-        registerTreeViews(context, service, filterManager, detailsProvider);
-      }
+      // filterManager and detailsProvider are guaranteed to exist since they're created before this
+      registerTreeViews(context, service, filterManager!, detailsProvider!);
 
       vscode.window.showInformationMessage('Beans initialized successfully!');
       logger.info('Beans initialized in workspace');
