@@ -151,6 +151,13 @@
     "views": {
       "beans": [
         {
+          "type": "webview",
+          "id": "beans.details",
+          "name": "Details",
+          "when": "beans.initialized",
+          "visibility": "visible"
+        },
+        {
           "icon": "$(issue-opened)",
           "id": "beans.active",
           "name": "Active",

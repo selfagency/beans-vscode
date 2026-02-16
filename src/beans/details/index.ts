@@ -1,0 +1,1 @@
+export { BeansDetailsViewProvider } from './BeansDetailsViewProvider';

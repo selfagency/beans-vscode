@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
+import { BeansConfigManager } from '../config';
 import { BeansOutput } from '../logging';
 import { Bean } from '../model';
 import { BeansPreviewProvider } from '../preview';
 import { BeansService } from '../service';
 import { BeansFilterManager } from '../tree';
-import { BeansConfigManager } from '../config';
 
 const logger = BeansOutput.getInstance();
 

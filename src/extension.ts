@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { BeansCommands } from './beans/commands';
 import { BeansConfigManager } from './beans/config';
+import { BeansDetailsViewProvider } from './beans/details';
 import { BeansOutput } from './beans/logging';
 import { BeansCLINotFoundError } from './beans/model';
 import { BeansPreviewProvider } from './beans/preview';
@@ -22,6 +23,7 @@ let draftProvider: DraftBeansProvider | undefined;
 let scrappedProvider: ScrappedBeansProvider | undefined;
 let archivedProvider: ArchivedBeansProvider | undefined;
 let filterManager: BeansFilterManager | undefined;
+let detailsProvider: BeansDetailsViewProvider | undefined;
 let initPromptDismissed = false; // Track if user dismissed init prompt in this session
 
 /**
@@ -73,14 +75,20 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.commands.executeCommand('setContext', 'beans.initialized', true);
 
       // Register tree views when initialized
-      if (filterManager) {
-        registerTreeViews(context, beansService, filterManager);
+      if (filterManager && detailsProvider) {
+        registerTreeViews(context, beansService, filterManager, detailsProvider);
       }
     }
 
     // Register preview provider
     const previewProvider = new BeansPreviewProvider(beansService);
     context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('beans-preview', previewProvider));
+
+    // Register details webview provider
+    detailsProvider = new BeansDetailsViewProvider(context.extensionUri);
+    context.subscriptions.push(
+      vscode.window.registerWebviewViewProvider(BeansDetailsViewProvider.viewType, detailsProvider)
+    );
 
     // Register filter manager
     filterManager = new BeansFilterManager();
@@ -111,8 +119,8 @@ export async function activate(context: vscode.ExtensionContext) {
           await vscode.commands.executeCommand('setContext', 'beans.initialized', true);
 
           // Register tree views after successful initialization
-          if (filterManager) {
-            registerTreeViews(context, beansService, filterManager);
+          if (filterManager && detailsProvider) {
+            registerTreeViews(context, beansService, filterManager, detailsProvider);
           }
 
           vscode.window.showInformationMessage('Beans initialized successfully!');
@@ -222,8 +230,8 @@ async function promptForInitialization(context: vscode.ExtensionContext, service
       await vscode.commands.executeCommand('setContext', 'beans.initialized', true);
 
       // Register tree views after successful initialization
-      if (filterManager) {
-        registerTreeViews(context, service, filterManager);
+      if (filterManager && detailsProvider) {
+        registerTreeViews(context, service, filterManager, detailsProvider);
       }
 
       vscode.window.showInformationMessage('Beans initialized successfully!');
@@ -245,7 +253,12 @@ async function promptForInitialization(context: vscode.ExtensionContext, service
 /**
  * Register tree views for all bean panes
  */
-function registerTreeViews(context: vscode.ExtensionContext, service: BeansService, manager: BeansFilterManager): void {
+function registerTreeViews(
+  context: vscode.ExtensionContext,
+  service: BeansService,
+  manager: BeansFilterManager,
+  details: BeansDetailsViewProvider
+): void {
   // Create drag and drop controller
   const dragAndDropController = new BeansDragAndDropController(service);
 
@@ -321,10 +334,54 @@ function registerTreeViews(context: vscode.ExtensionContext, service: BeansServi
     dragAndDropController
   });
 
+  // Subscribe to selection changes to show details
+  context.subscriptions.push(
+    activeTreeView.onDidChangeSelection((e) => {
+      if (e.selection.length > 0) {
+        const bean = e.selection[0].bean;
+        if (bean) {
+          details.showBean(bean);
+        }
+      }
+    }),
+    completedTreeView.onDidChangeSelection((e) => {
+      if (e.selection.length > 0) {
+        const bean = e.selection[0].bean;
+        if (bean) {
+          details.showBean(bean);
+        }
+      }
+    }),
+    draftTreeView.onDidChangeSelection((e) => {
+      if (e.selection.length > 0) {
+        const bean = e.selection[0].bean;
+        if (bean) {
+          details.showBean(bean);
+        }
+      }
+    }),
+    scrappedTreeView.onDidChangeSelection((e) => {
+      if (e.selection.length > 0) {
+        const bean = e.selection[0].bean;
+        if (bean) {
+          details.showBean(bean);
+        }
+      }
+    }),
+    archivedTreeView.onDidChangeSelection((e) => {
+      if (e.selection.length > 0) {
+        const bean = e.selection[0].bean;
+        if (bean) {
+          details.showBean(bean);
+        }
+      }
+    })
+  );
+
   // Add disposables
   context.subscriptions.push(activeTreeView, completedTreeView, draftTreeView, scrappedTreeView, archivedTreeView);
 
-  logger.info('Tree views registered with drag-and-drop support');
+  logger.info('Tree views registered with drag-and-drop support and details view integration');
 }
 
 /**

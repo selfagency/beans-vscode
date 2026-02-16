@@ -1,10 +1,11 @@
 ---
 # beans-vscode-xtnx
 title: Advanced Features & Relationships
-status: todo
+status: completed
 type: epic
+priority: normal
 created_at: 2026-02-16T04:04:06Z
-updated_at: 2026-02-16T04:04:06Z
+updated_at: 2026-02-16T05:08:35Z
 parent: beans-vscode-3y36
 ---
 
