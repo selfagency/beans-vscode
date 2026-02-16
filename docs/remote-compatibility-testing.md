@@ -15,11 +15,13 @@ This document provides step-by-step instructions for testing the Beans VS Code e
 #### Setup
 
 1. Connect to a remote server via SSH:
+
    - Open VS Code
    - Press `F1` → "Remote-SSH: Connect to Host..."
    - Select or add an SSH host
 
 2. Install beans CLI on the remote server:
+
    ```bash
    curl -fsSL https://raw.githubusercontent.com/h-arry-smith/beans/main/install.sh | sh
    # OR use package manager
@@ -55,15 +57,18 @@ This document provides step-by-step instructions for testing the Beans VS Code e
 #### Setup
 
 1. Install WSL on Windows:
+
    ```powershell
    wsl --install
    ```
 
 2. Open folder in WSL:
+
    - `F1` → "WSL: Connect to WSL"
    - Or click "Open Folder" → select WSL path
 
 3. Install beans CLI in WSL:
+
    ```bash
    curl -fsSL https://raw.githubusercontent.com/h-arry-smith/beans/main/install.sh | sh
    ```
@@ -94,6 +99,7 @@ This document provides step-by-step instructions for testing the Beans VS Code e
 #### Setup
 
 1. Create test `.devcontainer/devcontainer.json`:
+
    ```json
    {
      "name": "Beans Test Container",
@@ -101,9 +107,7 @@ This document provides step-by-step instructions for testing the Beans VS Code e
      "postCreateCommand": "curl -fsSL https://raw.githubusercontent.com/h-arry-smith/beans/main/install.sh | sh && beans init",
      "customizations": {
        "vscode": {
-         "extensions": [
-           "selfagency.beans-vscode"
-         ],
+         "extensions": ["selfagency.beans-vscode"],
          "settings": {
            "beans.ai.enabled": true
          }
@@ -237,13 +241,13 @@ echo $VSCODE_IPC_HOOK_CLI      # Should show remote socket path
 
 ### Common Remote Issues
 
-| Issue | Symptom | Solution |
-|-------|---------|----------|
-| CLI not in PATH | "Beans CLI not found" | Add beans to PATH or configure `beans.cliPath` |
-| Extension runs locally | Features don't work | Check `extensionKind` in package.json |
-| MCP server fails | Tools not available | Check MCP logs, verify Node.js on remote |
-| File operations fail | Errors saving beans | Check workspace folder permissions |
-| Slow performance | Commands timeout | Check remote machine resources, network latency |
+| Issue                  | Symptom               | Solution                                        |
+| ---------------------- | --------------------- | ----------------------------------------------- |
+| CLI not in PATH        | "Beans CLI not found" | Add beans to PATH or configure `beans.cliPath`  |
+| Extension runs locally | Features don't work   | Check `extensionKind` in package.json           |
+| MCP server fails       | Tools not available   | Check MCP logs, verify Node.js on remote        |
+| File operations fail   | Errors saving beans   | Check workspace folder permissions              |
+| Slow performance       | Commands timeout      | Check remote machine resources, network latency |
 
 ---
 

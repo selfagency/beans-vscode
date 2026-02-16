@@ -134,9 +134,7 @@ To pre-install beans CLI in devcontainers, add to `.devcontainer/devcontainer.js
   "postCreateCommand": "curl -fsSL https://raw.githubusercontent.com/h-arry-smith/beans/main/install.sh | sh",
   "customizations": {
     "vscode": {
-      "extensions": [
-        "selfagency.beans-vscode"
-      ]
+      "extensions": ["selfagency.beans-vscode"]
     }
   }
 }
