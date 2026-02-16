@@ -40,7 +40,7 @@ jobs:
       - name: Package extension
         run: |
           pnpm install -g @vscode/vsce
-          vsce package
+          vsce package --no-dependencies
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
