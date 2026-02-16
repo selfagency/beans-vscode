@@ -339,33 +339,7 @@
           "description": "Logging verbosity for Beans extension output channel."
         }
       }
-    },
-    "keybindings": [
-      {
-        "command": "beans.refresh",
-        "key": "ctrl+shift+r",
-        "mac": "cmd+shift+r",
-        "when": "beans.initialized"
-      },
-      {
-        "command": "beans.create",
-        "key": "ctrl+shift+n",
-        "mac": "cmd+shift+n",
-        "when": "beans.initialized"
-      },
-      {
-        "command": "beans.filter",
-        "key": "ctrl+shift+f",
-        "mac": "cmd+shift+f",
-        "when": "beans.initialized && activeViewlet == 'workbench.view.extension.beans'"
-      },
-      {
-        "command": "beans.showOutput",
-        "key": "ctrl+shift+o",
-        "mac": "cmd+shift+o",
-        "when": "beans.initialized"
-      }
-    ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",
