@@ -4,15 +4,12 @@
 
 set -e
 
-# Pin Beans version for reproducibility
-BEANS_VERSION="v0.13.2"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 IMAGE_NAME="beans-vscode-remote-test"
 CONTAINER_NAME="beans-test-$(date +%s)"
 
-# Allow overrides via environment variables
+# Pin versions for reproducible tests (allow override via environment)
 BEANS_VERSION="${BEANS_VERSION:-v0.13.2}"
 
 # Dynamically fetch latest Go version if not already set
