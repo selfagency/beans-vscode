@@ -166,7 +166,9 @@ export async function activate(context: vscode.ExtensionContext) {
           registerTreeViews(context, beansService, filterManager!, detailsProvider!);
 
           const aiEnabledNow = vscode.workspace.getConfiguration('beans').get<boolean>('ai.enabled', true);
-          await ensureCopilotAiArtifacts(beansService, workspaceFolder.uri.fsPath, aiEnabledNow);
+          if (await shouldGenerateCopilotInstructionsOnInit(aiEnabledNow)) {
+            await ensureCopilotAiArtifacts(beansService, workspaceFolder.uri.fsPath, aiEnabledNow);
+          }
 
           vscode.window.showInformationMessage('Beans initialized successfully!');
           logger.info('Beans initialized via command');
@@ -278,7 +280,9 @@ async function promptForInitialization(
       registerTreeViews(context, service, filterManager!, detailsProvider!);
 
       const aiEnabledNow = vscode.workspace.getConfiguration('beans').get<boolean>('ai.enabled', true);
-      await ensureCopilotAiArtifacts(service, workspaceRoot, aiEnabledNow);
+      if (await shouldGenerateCopilotInstructionsOnInit(aiEnabledNow)) {
+        await ensureCopilotAiArtifacts(service, workspaceRoot, aiEnabledNow);
+      }
 
       vscode.window.showInformationMessage('Beans initialized successfully!');
       logger.info('Beans initialized in workspace');
@@ -294,6 +298,20 @@ async function promptForInitialization(
     initPromptDismissed = true;
     logger.info('User dismissed initialization prompt');
   }
+}
+
+async function shouldGenerateCopilotInstructionsOnInit(aiEnabled: boolean): Promise<boolean> {
+  if (!aiEnabled) {
+    return false;
+  }
+
+  const selection = await vscode.window.showInformationMessage(
+    'Generate the Copilot instructions file for this workspace now? (Also refreshes the Beans Copilot skill file.)',
+    'Generate',
+    'Skip'
+  );
+
+  return selection === 'Generate';
 }
 
 async function ensureCopilotAiArtifacts(
