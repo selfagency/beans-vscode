@@ -37,18 +37,24 @@ if ! command -v vsce &> /dev/null; then
   echo "Installing @vscode/vsce..."
   pnpm install -g @vscode/vsce
 fi
-vsce package --out beans-vscode-test.vsix
+vsce package --no-dependencies --out beans-vscode-test.vsix
 
 echo ""
 echo "Step 3: Creating test Dockerfile..."
 cat > Dockerfile.remote-test << 'EOF'
 FROM mcr.microsoft.com/devcontainers/typescript-node:22
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y curl jq git && rm -rf /var/lib/apt/lists/*
+# Install Go from official source (distro packages are often too old)
+RUN apt-get update && apt-get install -y curl jq git wget && \
+    wget -q https://go.dev/dl/go1.23.5.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.23.5.linux-amd64.tar.gz && \
+    rm go1.23.5.linux-amd64.tar.gz && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}"
 
 # Install beans CLI
-RUN curl -fsSL https://raw.githubusercontent.com/hmans/beans/main/install.sh | sh
+RUN go install github.com/hmans/beans@latest
 
 # Verify beans installed
 RUN beans version
