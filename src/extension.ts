@@ -45,6 +45,9 @@ export async function activate(context: vscode.ExtensionContext) {
   // Check if extension should only enable for initialized workspaces
   const config = vscode.workspace.getConfiguration('beans');
   const enableOnlyIfInitialized = config.get<boolean>('enableOnlyIfInitialized', false);
+  const aiEnabled = config.get<boolean>('ai.enabled', true);
+
+  await vscode.commands.executeCommand('setContext', 'beans.aiEnabled', aiEnabled);
 
   if (enableOnlyIfInitialized) {
     // Check for .beans.yml in workspace
@@ -63,9 +66,13 @@ export async function activate(context: vscode.ExtensionContext) {
     beansService = new BeansService(workspaceFolder.uri.fsPath);
     const configuredCliPath = vscode.workspace.getConfiguration('beans').get<string>('cliPath', 'beans');
 
-    // Register MCP integration provider and related troubleshooting commands.
-    mcpIntegration = new BeansMcpIntegration(context, workspaceFolder.uri.fsPath, configuredCliPath);
-    mcpIntegration.register();
+    // Register MCP integration provider and related troubleshooting commands only when AI features are enabled.
+    if (aiEnabled) {
+      mcpIntegration = new BeansMcpIntegration(context, workspaceFolder.uri.fsPath, configuredCliPath);
+      mcpIntegration.register();
+    } else {
+      logger.info('AI integrations are disabled via beans.ai.enabled=false');
+    }
 
     // Check if beans CLI is available
     const cliAvailable = await beansService.checkCLIAvailable();

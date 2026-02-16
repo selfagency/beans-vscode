@@ -1,5 +1,5 @@
-import * as assert from 'assert';
 import type { Bean } from '../../../beans/model';
+import { describe, expect, it } from 'vitest';
 
 /**
  * Test the duck-typing logic used by BeansCommands.resolveBean().
@@ -47,16 +47,16 @@ function makeBean(overrides: Partial<Bean> = {}): Bean {
   } as Bean;
 }
 
-suite('resolveBean (duck-typing)', () => {
-  test('returns undefined for undefined arg', () => {
-    assert.strictEqual(resolveBean(undefined), undefined);
+describe('resolveBean (duck-typing)', () => {
+  it('returns undefined for undefined arg', () => {
+    expect(resolveBean(undefined)).toBeUndefined();
   });
 
-  test('returns undefined for null arg', () => {
-    assert.strictEqual(resolveBean(null), undefined);
+  it('returns undefined for null arg', () => {
+    expect(resolveBean(null)).toBeUndefined();
   });
 
-  test('extracts bean from tree-item-like object', () => {
+  it('extracts bean from tree-item-like object', () => {
     const bean = makeBean({ id: 'bean-123', title: 'Tree Item Bean' });
     // Simulate a BeanTreeItem object (has .bean, .label, etc.)
     const treeItem = {
@@ -66,33 +66,33 @@ suite('resolveBean (duck-typing)', () => {
       command: { command: 'beans.openBean', title: 'Open', arguments: [bean] }
     };
     const result = resolveBean(treeItem);
-    assert.strictEqual(result, bean);
-    assert.strictEqual(result?.id, 'bean-123');
+    expect(result).toBe(bean);
+    expect(result?.id).toBe('bean-123');
   });
 
-  test('returns plain Bean directly', () => {
+  it('returns plain Bean directly', () => {
     const bean = makeBean({ id: 'bean-456', title: 'Direct Bean' });
     const result = resolveBean(bean);
-    assert.strictEqual(result, bean);
-    assert.strictEqual(result?.id, 'bean-456');
+    expect(result).toBe(bean);
+    expect(result?.id).toBe('bean-456');
   });
 
-  test('returns undefined for object without id string', () => {
+  it('returns undefined for object without id string', () => {
     const weird = { label: 'Not a bean', description: 'something' };
-    assert.strictEqual(resolveBean(weird), undefined);
+    expect(resolveBean(weird)).toBeUndefined();
   });
 
-  test('returns undefined for object with numeric id (not a bean)', () => {
+  it('returns undefined for object with numeric id (not a bean)', () => {
     const weird = { id: 42, status: 'active' };
-    assert.strictEqual(resolveBean(weird), undefined);
+    expect(resolveBean(weird)).toBeUndefined();
   });
 
-  test('handles nested bean with all expected properties', () => {
+  it('handles nested bean with all expected properties', () => {
     const bean = makeBean({ id: 'nested-1', status: 'in-progress', type: 'bug' });
     const treeItem = { bean, iconPath: { id: 'bug' } };
     const result = resolveBean(treeItem);
-    assert.strictEqual(result?.id, 'nested-1');
-    assert.strictEqual(result?.status, 'in-progress');
-    assert.strictEqual(result?.type, 'bug');
+    expect(result?.id).toBe('nested-1');
+    expect(result?.status).toBe('in-progress');
+    expect(result?.type).toBe('bug');
   });
 });

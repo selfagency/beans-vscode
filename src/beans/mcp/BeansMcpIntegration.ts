@@ -64,6 +64,11 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
   }
 
   provideMcpServerDefinitions(): vscode.ProviderResult<vscode.McpStdioServerDefinition[]> {
+    const aiEnabled = vscode.workspace.getConfiguration('beans').get<boolean>('ai.enabled', true);
+    if (!aiEnabled) {
+      return [];
+    }
+
     const mcpEnabled = vscode.workspace.getConfiguration('beans').get<boolean>('mcp.enabled', true);
     if (!mcpEnabled) {
       return [];

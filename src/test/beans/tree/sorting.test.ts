@@ -1,5 +1,5 @@
-import * as assert from 'assert';
 import type { Bean } from '../../../beans/model';
+import { describe, expect, it } from 'vitest';
 
 /**
  * Unit tests for the sort logic used by BeansTreeDataProvider.
@@ -76,40 +76,40 @@ function sortByStatusPriorityTypeTitle(beans: Bean[]): Bean[] {
   });
 }
 
-suite('Sort: status-priority-type-title', () => {
-  test('in-progress comes before todo', () => {
+describe('Sort: status-priority-type-title', () => {
+  it('in-progress comes before todo', () => {
     const beans = [
       makeBean({ id: '1', status: 'todo', title: 'Alpha' }),
       makeBean({ id: '2', status: 'in-progress', title: 'Beta' })
     ];
     const sorted = sortByStatusPriorityTypeTitle(beans);
-    assert.strictEqual(sorted[0].status, 'in-progress');
-    assert.strictEqual(sorted[1].status, 'todo');
+    expect(sorted[0].status).toBe('in-progress');
+    expect(sorted[1].status).toBe('todo');
   });
 
-  test('todo comes before completed', () => {
+  it('todo comes before completed', () => {
     const beans = [
       makeBean({ id: '1', status: 'completed', title: 'A' }),
       makeBean({ id: '2', status: 'todo', title: 'B' })
     ];
     const sorted = sortByStatusPriorityTypeTitle(beans);
-    assert.strictEqual(sorted[0].status, 'todo');
-    assert.strictEqual(sorted[1].status, 'completed');
+    expect(sorted[0].status).toBe('todo');
+    expect(sorted[1].status).toBe('completed');
   });
 
-  test('critical before high before normal', () => {
+  it('critical before high before normal', () => {
     const beans = [
       makeBean({ id: '1', priority: 'normal', title: 'C' }),
       makeBean({ id: '2', priority: 'critical', title: 'A' }),
       makeBean({ id: '3', priority: 'high', title: 'B' })
     ];
     const sorted = sortByStatusPriorityTypeTitle(beans);
-    assert.strictEqual(sorted[0].priority, 'critical');
-    assert.strictEqual(sorted[1].priority, 'high');
-    assert.strictEqual(sorted[2].priority, 'normal');
+    expect(sorted[0].priority).toBe('critical');
+    expect(sorted[1].priority).toBe('high');
+    expect(sorted[2].priority).toBe('normal');
   });
 
-  test('milestone before epic before bug before task', () => {
+  it('milestone before epic before bug before task', () => {
     const beans = [
       makeBean({ id: '1', type: 'task', title: 'D' }),
       makeBean({ id: '2', type: 'milestone', title: 'A' }),
@@ -117,25 +117,25 @@ suite('Sort: status-priority-type-title', () => {
       makeBean({ id: '4', type: 'epic', title: 'B' })
     ];
     const sorted = sortByStatusPriorityTypeTitle(beans);
-    assert.strictEqual(sorted[0].type, 'milestone');
-    assert.strictEqual(sorted[1].type, 'epic');
-    assert.strictEqual(sorted[2].type, 'bug');
-    assert.strictEqual(sorted[3].type, 'task');
+    expect(sorted[0].type).toBe('milestone');
+    expect(sorted[1].type).toBe('epic');
+    expect(sorted[2].type).toBe('bug');
+    expect(sorted[3].type).toBe('task');
   });
 
-  test('alphabetical by title within same status/priority/type', () => {
+  it('alphabetical by title within same status/priority/type', () => {
     const beans = [
       makeBean({ id: '1', title: 'Zulu' }),
       makeBean({ id: '2', title: 'Alpha' }),
       makeBean({ id: '3', title: 'Mike' })
     ];
     const sorted = sortByStatusPriorityTypeTitle(beans);
-    assert.strictEqual(sorted[0].title, 'Alpha');
-    assert.strictEqual(sorted[1].title, 'Mike');
-    assert.strictEqual(sorted[2].title, 'Zulu');
+    expect(sorted[0].title).toBe('Alpha');
+    expect(sorted[1].title).toBe('Mike');
+    expect(sorted[2].title).toBe('Zulu');
   });
 
-  test('full sort order: status > priority > type > title', () => {
+  it('full sort order: status > priority > type > title', () => {
     const beans = [
       makeBean({ id: '1', status: 'todo', priority: 'low', type: 'task', title: 'Z' }),
       makeBean({ id: '2', status: 'in-progress', priority: 'low', type: 'task', title: 'Y' }),
@@ -143,19 +143,19 @@ suite('Sort: status-priority-type-title', () => {
       makeBean({ id: '4', status: 'todo', priority: 'critical', type: 'milestone', title: 'W' })
     ];
     const sorted = sortByStatusPriorityTypeTitle(beans);
-    assert.strictEqual(sorted[0].id, '2'); // in-progress first
-    assert.strictEqual(sorted[1].id, '4'); // todo + critical + milestone
-    assert.strictEqual(sorted[2].id, '3'); // todo + critical + task
-    assert.strictEqual(sorted[3].id, '1'); // todo + low + task
+    expect(sorted[0].id).toBe('2'); // in-progress first
+    expect(sorted[1].id).toBe('4'); // todo + critical + milestone
+    expect(sorted[2].id).toBe('3'); // todo + critical + task
+    expect(sorted[3].id).toBe('1'); // todo + low + task
   });
 
-  test('undefined priority treated as normal', () => {
+  it('undefined priority treated as normal', () => {
     const beans = [
       makeBean({ id: '1', priority: undefined, title: 'No Priority' }),
       makeBean({ id: '2', priority: 'high', title: 'High Priority' })
     ];
     const sorted = sortByStatusPriorityTypeTitle(beans);
-    assert.strictEqual(sorted[0].id, '2'); // high comes before normal
-    assert.strictEqual(sorted[1].id, '1');
+    expect(sorted[0].id).toBe('2'); // high comes before normal
+    expect(sorted[1].id).toBe('1');
   });
 });

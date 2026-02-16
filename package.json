@@ -419,10 +419,15 @@
           "default": "info",
           "description": "Logging verbosity for Beans extension output channel."
         },
+        "beans.ai.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Master switch for AI features (MCP server provider and chat participant integrations)."
+        },
         "beans.mcp.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Enable dynamic MCP server definition provider for Beans commands."
+          "description": "Enable dynamic MCP server definition provider for Beans commands (effective only when beans.ai.enabled is true)."
         }
       }
     }
@@ -439,7 +444,9 @@
     "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "vscode-test"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
@@ -451,7 +458,8 @@
     "eslint": "^9.39.2",
     "npm-run-all": "^4.1.5",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.54.0"
+    "typescript-eslint": "^8.54.0",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.1",

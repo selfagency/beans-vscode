@@ -1,7 +1,7 @@
-import * as assert from 'assert';
 import * as vscode from 'vscode';
 import type { Bean } from '../../../beans/model';
 import { BeanTreeItem } from '../../../beans/tree/BeanTreeItem';
+import { describe, expect, it } from 'vitest';
 
 /**
  * Helper to create a minimal Bean for testing.
@@ -26,169 +26,169 @@ function makeBean(overrides: Partial<Bean> = {}): Bean {
   } as Bean;
 }
 
-suite('BeanTreeItem', () => {
-  suite('label', () => {
-    test('shows hourglass prefix only for in-progress items', () => {
+describe('BeanTreeItem', () => {
+  describe('label', () => {
+    it('shows hourglass prefix only for in-progress items', () => {
       const bean = makeBean({ status: 'in-progress', title: 'Active Task' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.strictEqual(item.label, '⏳ Active Task');
+      expect(item.label).toBe('⏳ Active Task');
     });
 
-    test('shows plain title for todo items (no emoji)', () => {
+    it('shows plain title for todo items (no emoji)', () => {
       const bean = makeBean({ status: 'todo', title: 'Planned Work' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.strictEqual(item.label, 'Planned Work');
+      expect(item.label).toBe('Planned Work');
     });
 
-    test('shows plain title for completed items (no emoji)', () => {
+    it('shows plain title for completed items (no emoji)', () => {
       const bean = makeBean({ status: 'completed', title: 'Done Work' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.strictEqual(item.label, 'Done Work');
+      expect(item.label).toBe('Done Work');
     });
 
-    test('shows plain title for draft items (no emoji)', () => {
+    it('shows plain title for draft items (no emoji)', () => {
       const bean = makeBean({ status: 'draft', title: 'Draft Idea' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.strictEqual(item.label, 'Draft Idea');
+      expect(item.label).toBe('Draft Idea');
     });
 
-    test('shows plain title for scrapped items (no emoji)', () => {
+    it('shows plain title for scrapped items (no emoji)', () => {
       const bean = makeBean({ status: 'scrapped', title: 'Scrapped Idea' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.strictEqual(item.label, 'Scrapped Idea');
+      expect(item.label).toBe('Scrapped Idea');
     });
   });
 
-  suite('description', () => {
-    test('shows bare code without parentheses', () => {
+  describe('description', () => {
+    it('shows bare code without parentheses', () => {
       const bean = makeBean({ code: 'xyz9' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.strictEqual(item.description, 'xyz9');
+      expect(item.description).toBe('xyz9');
     });
 
-    test('shows empty string when code is empty', () => {
+    it('shows empty string when code is empty', () => {
       const bean = makeBean({ code: '' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.strictEqual(item.description, '');
+      expect(item.description).toBe('');
     });
   });
 
-  suite('tooltip', () => {
-    test('contains title and code', () => {
+  describe('tooltip', () => {
+    it('contains title and code', () => {
       const bean = makeBean({ title: 'My Bean', code: 'mb1' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
       const tooltip = item.tooltip as vscode.MarkdownString;
-      assert.ok(tooltip.value.includes('My Bean'));
-      assert.ok(tooltip.value.includes('mb1'));
+      expect(tooltip.value.includes('My Bean')).toBe(true);
+      expect(tooltip.value.includes('mb1')).toBe(true);
     });
 
-    test('contains emoji status label', () => {
+    it('contains emoji status label', () => {
       const bean = makeBean({ status: 'in-progress' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
       const tooltip = item.tooltip as vscode.MarkdownString;
-      assert.ok(tooltip.value.includes('⏳ In Progress'));
+      expect(tooltip.value.includes('⏳ In Progress')).toBe(true);
     });
 
-    test('contains emoji type label', () => {
+    it('contains emoji type label', () => {
       const bean = makeBean({ type: 'bug' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
       const tooltip = item.tooltip as vscode.MarkdownString;
-      assert.ok(tooltip.value.includes('🐛 Bug'));
+      expect(tooltip.value.includes('🐛 Bug')).toBe(true);
     });
 
-    test('contains emoji priority label when set', () => {
+    it('contains emoji priority label when set', () => {
       const bean = makeBean({ priority: 'critical' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
       const tooltip = item.tooltip as vscode.MarkdownString;
-      assert.ok(tooltip.value.includes('🔴 Critical'));
+      expect(tooltip.value.includes('🔴 Critical')).toBe(true);
     });
 
-    test('omits priority row when not set', () => {
+    it('omits priority row when not set', () => {
       const bean = makeBean({ priority: undefined });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
       const tooltip = item.tooltip as vscode.MarkdownString;
-      assert.ok(!tooltip.value.includes('Priority'));
+      expect(tooltip.value.includes('Priority')).toBe(false);
     });
 
-    test('contains parent when set', () => {
+    it('contains parent when set', () => {
       const bean = makeBean({ parent: 'parent-abc' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
       const tooltip = item.tooltip as vscode.MarkdownString;
-      assert.ok(tooltip.value.includes('parent-abc'));
+      expect(tooltip.value.includes('parent-abc')).toBe(true);
     });
   });
 
-  suite('contextValue', () => {
-    test('includes status and type', () => {
+  describe('contextValue', () => {
+    it('includes status and type', () => {
       const bean = makeBean({ status: 'todo', type: 'bug' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.ok(item.contextValue?.includes('todo'));
-      assert.ok(item.contextValue?.includes('bug'));
+      expect(item.contextValue?.includes('todo')).toBe(true);
+      expect(item.contextValue?.includes('bug')).toBe(true);
     });
 
-    test('includes hasParent when parent is set', () => {
+    it('includes hasParent when parent is set', () => {
       const bean = makeBean({ parent: 'parent-123' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.ok(item.contextValue?.includes('hasParent'));
+      expect(item.contextValue?.includes('hasParent')).toBe(true);
     });
 
-    test('marks scrapped as deletable', () => {
+    it('marks scrapped as deletable', () => {
       const bean = makeBean({ status: 'scrapped' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.ok(item.contextValue?.includes('deletable'));
+      expect(item.contextValue?.includes('deletable')).toBe(true);
     });
 
-    test('marks draft as deletable', () => {
+    it('marks draft as deletable', () => {
       const bean = makeBean({ status: 'draft' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.ok(item.contextValue?.includes('deletable'));
+      expect(item.contextValue?.includes('deletable')).toBe(true);
     });
 
-    test('does not mark todo as deletable', () => {
+    it('does not mark todo as deletable', () => {
       const bean = makeBean({ status: 'todo' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.ok(!item.contextValue?.includes('deletable'));
+      expect(item.contextValue?.includes('deletable')).toBe(false);
     });
   });
 
-  suite('icon', () => {
-    test('uses issue-closed for completed status', () => {
+  describe('icon', () => {
+    it('uses issue-closed for completed status', () => {
       const bean = makeBean({ status: 'completed' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.strictEqual((item.iconPath as vscode.ThemeIcon).id, 'issue-closed');
+      expect((item.iconPath as vscode.ThemeIcon).id).toBe('issue-closed');
     });
 
-    test('uses issue-draft for draft status', () => {
+    it('uses issue-draft for draft status', () => {
       const bean = makeBean({ status: 'draft' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.strictEqual((item.iconPath as vscode.ThemeIcon).id, 'issue-draft');
+      expect((item.iconPath as vscode.ThemeIcon).id).toBe('issue-draft');
     });
 
-    test('uses error for scrapped status', () => {
+    it('uses error for scrapped status', () => {
       const bean = makeBean({ status: 'scrapped' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.strictEqual((item.iconPath as vscode.ThemeIcon).id, 'error');
+      expect((item.iconPath as vscode.ThemeIcon).id).toBe('error');
     });
 
-    test('uses bug icon for in-progress bug', () => {
+    it('uses bug icon for in-progress bug', () => {
       const bean = makeBean({ status: 'in-progress', type: 'bug' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.strictEqual((item.iconPath as vscode.ThemeIcon).id, 'bug');
+      expect((item.iconPath as vscode.ThemeIcon).id).toBe('bug');
     });
 
-    test('uses milestone icon for todo milestone', () => {
+    it('uses milestone icon for todo milestone', () => {
       const bean = makeBean({ status: 'todo', type: 'milestone' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.strictEqual((item.iconPath as vscode.ThemeIcon).id, 'milestone');
+      expect((item.iconPath as vscode.ThemeIcon).id).toBe('milestone');
     });
   });
 
-  suite('command', () => {
-    test('sets openBean command with bean argument', () => {
+  describe('command', () => {
+    it('sets openBean command with bean argument', () => {
       const bean = makeBean();
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      assert.strictEqual(item.command?.command, 'beans.openBean');
-      assert.strictEqual(item.command?.arguments?.[0], bean);
+      expect(item.command?.command).toBe('beans.openBean');
+      expect(item.command?.arguments?.[0]).toBe(bean);
     });
   });
 });
