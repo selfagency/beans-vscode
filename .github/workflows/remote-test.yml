@@ -64,10 +64,11 @@ jobs:
                 rm go1.23.5.linux-amd64.tar.gz; \
               fi
 
-          ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}"
+          ENV PATH="/usr/local/go/bin:${PATH}"
 
-          # Install beans CLI
-          RUN go install github.com/hmans/beans@latest
+          # Install beans CLI to /usr/local/bin for universal access
+          # Pinned to a specific commit for reproducibility
+          RUN GOBIN=/usr/local/bin go install github.com/hmans/beans@v0.11.0
 
           # Verify beans installed
           RUN beans version
@@ -181,7 +182,7 @@ jobs:
                 "version": "latest"
               }
             },
-            "postCreateCommand": "go install github.com/hmans/beans@latest && beans init",
+            "postCreateCommand": "GOBIN=/usr/local/bin go install github.com/hmans/beans@v0.11.0 && beans init",
             "customizations": {
               "vscode": {
                 "settings": {
