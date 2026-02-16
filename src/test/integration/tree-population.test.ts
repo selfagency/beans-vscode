@@ -64,7 +64,7 @@ describe('Tree Population', () => {
   it('should populate tree with active beans', async () => {
     const mockBeans: Bean[] = [
       makeMockBean({ id: 'bean-1', title: 'Bean 1', status: 'todo' }),
-      makeMockBean({ id: 'bean-2', title: 'Bean 2', status: 'in-progress' })
+      makeMockBean({ id: 'bean-2', title: 'Second Task', status: 'todo' })
     ];
 
     vi.spyOn(mockService, 'listBeans').mockResolvedValue(mockBeans);
@@ -200,13 +200,16 @@ describe('Tree Population', () => {
       .mockResolvedValueOnce([activeChild]);
 
     const draftProvider = new DraftBeansProvider(mockService);
-    const items = await draftProvider.getChildren();
+    const rootItems = await draftProvider.getChildren();
 
-    // Should show both draft parent and active child
-    expect(items.length).toBeGreaterThanOrEqual(1);
-    const ids = items.map(item => item.bean.id);
-    expect(ids).toContain('draft-parent');
-    expect(ids).toContain('active-child');
+    // Should show draft parent at root level
+    expect(rootItems).toHaveLength(1);
+    expect(rootItems[0].bean.id).toBe('draft-parent');
+
+    // Active child should be nested under the draft parent
+    const childItems = await draftProvider.getChildren(rootItems[0]);
+    expect(childItems).toHaveLength(1);
+    expect(childItems[0].bean.id).toBe('active-child');
   });
 
   it('should refresh tree on demand', async () => {

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { activate } from '../../extension';
+import { BeansService } from '../../beans/service/BeansService';
 
 /**
  * Integration tests for extension activation flow
@@ -11,6 +12,9 @@ describe('Extension Activation', () => {
   let mockWorkspaceFolder: vscode.WorkspaceFolder;
 
   beforeEach(() => {
+    // Mock BeansService CLI availability check
+    vi.spyOn(BeansService.prototype, 'checkCLIAvailable').mockResolvedValue(true);
+    vi.spyOn(BeansService.prototype, 'checkInitialized').mockResolvedValue(true);
     // Mock extension context
     mockContext = {
       subscriptions: [],
