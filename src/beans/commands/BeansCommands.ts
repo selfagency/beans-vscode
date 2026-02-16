@@ -123,11 +123,38 @@ export class BeansCommands {
   }
 
   /**
+   * Resolve a command argument to a Bean, with async fallback for
+   * webview context menu arguments that only carry a beanId.
+   *
+   * VS Code's webview/context menu passes the `data-vscode-context`
+   * object as the command argument.  Our search results set
+   * `{ webviewSection, beanId }`, so we fetch the full Bean from
+   * the CLI when we see that shape.
+   */
+  private async resolveBeanAsync(arg?: any): Promise<Bean | undefined> {
+    const bean = this.resolveBean(arg);
+    if (bean) {
+      return bean;
+    }
+
+    // Webview context: has beanId but not the full Bean shape
+    if (arg && typeof arg.beanId === 'string') {
+      try {
+        return await this.service.showBean(arg.beanId);
+      } catch {
+        return undefined;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
    * View bean in markdown preview
    */
   private async viewBean(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
-      let bean = this.resolveBean(arg);
+      let bean = await this.resolveBeanAsync(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to view');
         if (!bean) {
@@ -212,7 +239,7 @@ export class BeansCommands {
    */
   private async editBean(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
-      let bean = this.resolveBean(arg);
+      let bean = await this.resolveBeanAsync(arg);
       if (!bean) {
         // Fallback to the bean currently shown in the details pane (e.g. view/title button)
         bean = this.detailsProvider?.currentBean;
@@ -247,7 +274,7 @@ export class BeansCommands {
    */
   private async setStatus(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
-      let bean = this.resolveBean(arg);
+      let bean = await this.resolveBeanAsync(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to update status');
         if (!bean) {
@@ -357,7 +384,7 @@ export class BeansCommands {
    */
   private async setType(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
-      let bean = this.resolveBean(arg);
+      let bean = await this.resolveBeanAsync(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to update type');
         if (!bean) {
@@ -395,7 +422,7 @@ export class BeansCommands {
    */
   private async setPriority(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
-      let bean = this.resolveBean(arg);
+      let bean = await this.resolveBeanAsync(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to update priority');
         if (!bean) {
@@ -457,7 +484,7 @@ export class BeansCommands {
    */
   private async setParent(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
-      let bean = this.resolveBean(arg);
+      let bean = await this.resolveBeanAsync(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to set parent');
         if (!bean) {
@@ -554,7 +581,7 @@ export class BeansCommands {
    */
   private async removeParent(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
-      let bean = this.resolveBean(arg);
+      let bean = await this.resolveBeanAsync(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to remove parent');
         if (!bean) {
@@ -596,7 +623,7 @@ export class BeansCommands {
    */
   private async editBlocking(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
-      let bean = this.resolveBean(arg);
+      let bean = await this.resolveBeanAsync(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to edit blocking');
         if (!bean) {
@@ -803,7 +830,7 @@ export class BeansCommands {
    */
   private async copyId(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
-      let bean = this.resolveBean(arg);
+      let bean = await this.resolveBeanAsync(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to copy ID');
         if (!bean) {
@@ -826,7 +853,7 @@ export class BeansCommands {
    */
   private async deleteBean(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
-      let bean = this.resolveBean(arg);
+      let bean = await this.resolveBeanAsync(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to delete', ['scrapped', 'draft']);
         if (!bean) {

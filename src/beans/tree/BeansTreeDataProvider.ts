@@ -7,7 +7,7 @@ import { BeanTreeItem } from './BeanTreeItem';
 /**
  * Sort mode for bean tree
  */
-export type SortMode = 'status-priority-type-title' | 'updated' | 'created' | 'id';
+export type SortMode = 'status-priority-type-title' | 'priority-status-type-title' | 'updated' | 'created' | 'id';
 
 /**
  * Filter options for bean tree
@@ -217,6 +217,8 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
     switch (this.sortMode) {
       case 'status-priority-type-title':
         return this.sortByStatusPriorityTypeTitle(sorted);
+      case 'priority-status-type-title':
+        return this.sortByPriorityStatusTypeTitle(sorted);
       case 'updated':
         return sorted.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
       case 'created':
@@ -270,6 +272,62 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
       const priorityDiff = priorityOrder[aPriority] - priorityOrder[bPriority];
       if (priorityDiff !== 0) {
         return priorityDiff;
+      }
+
+      // 3. Type
+      const typeDiff = (typeOrder[a.type] ?? 99) - (typeOrder[b.type] ?? 99);
+      if (typeDiff !== 0) {
+        return typeDiff;
+      }
+
+      // 4. Title alphabetically
+      return a.title.localeCompare(b.title);
+    });
+  }
+
+  /**
+   * Sort by priority, then status, then type, then title.
+   * Better for the Active pane where priority matters more than
+   * the in-progress/todo distinction.
+   */
+  private sortByPriorityStatusTypeTitle(beans: Bean[]): Bean[] {
+    const statusOrder: Record<string, number> = {
+      'in-progress': 0,
+      todo: 1,
+      draft: 2,
+      completed: 3,
+      scrapped: 4
+    };
+
+    const priorityOrder: Record<string, number> = {
+      critical: 0,
+      high: 1,
+      normal: 2,
+      low: 3,
+      deferred: 4
+    };
+
+    const typeOrder: Record<string, number> = {
+      milestone: 0,
+      epic: 1,
+      feature: 2,
+      bug: 3,
+      task: 4
+    };
+
+    return beans.sort((a, b) => {
+      // 1. Priority (treat undefined as 'normal')
+      const aPriority = a.priority || 'normal';
+      const bPriority = b.priority || 'normal';
+      const priorityDiff = (priorityOrder[aPriority] ?? 99) - (priorityOrder[bPriority] ?? 99);
+      if (priorityDiff !== 0) {
+        return priorityDiff;
+      }
+
+      // 2. Status
+      const statusDiff = (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99);
+      if (statusDiff !== 0) {
+        return statusDiff;
       }
 
       // 3. Type

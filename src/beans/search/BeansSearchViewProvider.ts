@@ -567,9 +567,15 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
 
       let html = '<div class="results-count">' + beans.length + ' result' + (beans.length !== 1 ? 's' : '') + '</div>';
       for (const b of beans) {
+        const ctx = JSON.stringify({
+          webviewSection: 'searchResult',
+          beanId: b.id,
+          preventDefaultContextMenuItems: true
+        }).replace(/"/g, '&quot;');
         html += '<div class="result-item" tabindex="0" role="button" '
           + 'aria-label="' + escapeAttr(b.title) + '" '
-          + 'data-id="' + escapeAttr(b.id) + '">'
+          + 'data-id="' + escapeAttr(b.id) + '" '
+          + 'data-vscode-context="' + ctx + '">'
           + '<span class="result-emoji">' + (b.statusEmoji || '') + '</span>'
           + '<span class="result-title">' + escapeHtml(b.title) + '</span>'
           + '<span class="result-priority">' + (b.priorityEmoji || '') + '</span>'

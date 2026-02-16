@@ -274,6 +274,53 @@
           "when": "view =~ /^beans\\./ && viewItem =~ /deletable/",
           "group": "5_danger"
         }
+      ],
+      "webview/context": [
+        {
+          "command": "beans.view",
+          "when": "webviewId == 'beans.search' && webviewSection == 'searchResult'",
+          "group": "1_view"
+        },
+        {
+          "command": "beans.edit",
+          "when": "webviewId == 'beans.search' && webviewSection == 'searchResult'",
+          "group": "1_view"
+        },
+        {
+          "command": "beans.setStatus",
+          "when": "webviewId == 'beans.search' && webviewSection == 'searchResult'",
+          "group": "2_modify@1"
+        },
+        {
+          "command": "beans.setType",
+          "when": "webviewId == 'beans.search' && webviewSection == 'searchResult'",
+          "group": "2_modify@2"
+        },
+        {
+          "command": "beans.setPriority",
+          "when": "webviewId == 'beans.search' && webviewSection == 'searchResult'",
+          "group": "2_modify@3"
+        },
+        {
+          "command": "beans.setParent",
+          "when": "webviewId == 'beans.search' && webviewSection == 'searchResult'",
+          "group": "3_relationships@1"
+        },
+        {
+          "command": "beans.editBlocking",
+          "when": "webviewId == 'beans.search' && webviewSection == 'searchResult'",
+          "group": "3_relationships@3"
+        },
+        {
+          "command": "beans.copyId",
+          "when": "webviewId == 'beans.search' && webviewSection == 'searchResult'",
+          "group": "4_util@1"
+        },
+        {
+          "command": "beans.delete",
+          "when": "webviewId == 'beans.search' && webviewSection == 'searchResult'",
+          "group": "5_danger"
+        }
       ]
     },
     "configuration": {
@@ -316,6 +363,7 @@
           "type": "string",
           "enum": [
             "status-priority-type-title",
+            "priority-status-type-title",
             "updated",
             "created",
             "id"
@@ -323,6 +371,7 @@
           "default": "status-priority-type-title",
           "enumDescriptions": [
             "Sort by status, then priority, then type, then title (TUI default)",
+            "Sort by priority, then status, then type, then title (better for active pane)",
             "Sort by last updated time",
             "Sort by creation time",
             "Sort by bean ID/code"

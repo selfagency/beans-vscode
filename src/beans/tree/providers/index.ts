@@ -8,7 +8,7 @@ import { BeansTreeDataProvider } from '../BeansTreeDataProvider';
  */
 export class ActiveBeansProvider extends BeansTreeDataProvider {
   constructor(service: BeansService) {
-    super(service, ['todo', 'in-progress']);
+    super(service, ['todo', 'in-progress'], false, 'priority-status-type-title');
   }
 
   protected override async augmentBeans(beans: Bean[]): Promise<Bean[]> {

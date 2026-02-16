@@ -153,6 +153,19 @@ export async function activate(context: vscode.ExtensionContext) {
       })
     );
 
+    // Watch .beans folder for external changes (CLI, editor, git, etc.)
+    const beansWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(workspaceFolder, '.beans/**')
+    );
+    const debouncedRefresh = debounceRefresh(() => {
+      logger.debug('File change detected in .beans/, refreshing');
+      vscode.commands.executeCommand('beans.refreshAll');
+    }, 500);
+    beansWatcher.onDidCreate(debouncedRefresh);
+    beansWatcher.onDidChange(debouncedRefresh);
+    beansWatcher.onDidDelete(debouncedRefresh);
+    context.subscriptions.push(beansWatcher);
+
     // Watch for configuration changes
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration((e) => {
@@ -374,6 +387,24 @@ function registerTreeViews(
   context.subscriptions.push(activeTreeView, completedTreeView, draftTreeView, scrappedTreeView);
 
   logger.info('Tree views registered with drag-and-drop support and details view integration');
+}
+
+/**
+ * Create a debounced version of a callback.
+ * Collapses rapid successive calls into a single invocation
+ * after the specified delay.
+ */
+function debounceRefresh(callback: () => void, delayMs: number): () => void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return () => {
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(() => {
+      timer = undefined;
+      callback();
+    }, delayMs);
+  };
 }
 
 /**

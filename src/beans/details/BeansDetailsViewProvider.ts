@@ -323,6 +323,14 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       flex-wrap: wrap;
       margin-bottom: 8px;
     }
+    .metadata-section {
+      padding: 12px 16px;
+      border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
     .metadata-row {
       display: flex;
       gap: 20px;
@@ -386,19 +394,20 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     }
     .body-content {
       color: var(--vscode-foreground);
+      font-size: 12px;
     }
     .body-content h1,
     .body-content h2,
     .body-content h3 {
-      margin-top: 16px;
-      margin-bottom: 8px;
+      margin-top: 12px;
+      margin-bottom: 6px;
       font-weight: 600;
     }
-    .body-content h1 { font-size: 18px; }
-    .body-content h2 { font-size: 16px; }
-    .body-content h3 { font-size: 14px; }
+    .body-content h1 { font-size: 13px; }
+    .body-content h2 { font-size: 12.5px; }
+    .body-content h3 { font-size: 12px; }
     .body-content p {
-      margin: 8px 0;
+      margin: 6px 0;
     }
     .body-content ul,
     .body-content ol {
@@ -453,14 +462,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       Created ${createdDate} &middot; Updated ${updatedDate}
     </div>
   </div>
-  <div class="content">
-    <div class="body-content">
-      ${bodyHtml}
-    </div>
-    ${blockingSection}
-    ${blockedBySection}
-  </div>
-  <div class="header" style="padding-top: 24px; border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); margin-top: 8px; display: flex; flex-direction: column; align-items: center;">
+  <div class="metadata-section">
     <div class="metadata-row">
       <span class="metadata-label">Status</span>
       <select id="status" onchange="updateField('status', this.value)" aria-label="Status">
@@ -496,6 +498,13 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     </div>
 
     ${tagsBadges ? `<div class="metadata">${tagsBadges}</div>` : ''}
+  </div>
+  <div class="content">
+    <div class="body-content">
+      ${bodyHtml}
+    </div>
+    ${blockingSection}
+    ${blockedBySection}
   </div>
 
   <script>
