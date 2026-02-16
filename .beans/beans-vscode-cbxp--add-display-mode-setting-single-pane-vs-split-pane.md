@@ -1,11 +1,11 @@
 ---
 # beans-vscode-cbxp
 title: Add display mode setting (single pane vs split panes)
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-02-16T04:22:41Z
-updated_at: 2026-02-16T04:22:41Z
+updated_at: 2026-02-16T05:08:00Z
 parent: beans-vscode-xtnx
 ---
 

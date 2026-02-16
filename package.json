@@ -281,6 +281,19 @@
           "default": false,
           "description": "Only enable the extension if a .beans.yml file is present in the workspace."
         },
+        "beans.view.displayMode": {
+          "type": "string",
+          "enum": [
+            "separate-panes",
+            "single-pane"
+          ],
+          "default": "separate-panes",
+          "enumDescriptions": [
+            "Show beans in separate panes by status (Active, Completed, Draft, Scrapped, Archived)",
+            "Show all beans in a single unified tree with filter controls (coming soon)"
+          ],
+          "description": "Choose how beans are displayed in the sidebar. Requires extension reload to take effect."
+        },
         "beans.autoInit.enabled": {
           "type": "boolean",
           "default": true,
