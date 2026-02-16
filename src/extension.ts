@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { BeansCommands } from './beans/commands';
+import { BeansConfigManager } from './beans/config';
 import { BeansOutput } from './beans/logging';
 import { BeansCLINotFoundError } from './beans/model';
 import { BeansPreviewProvider } from './beans/preview';
@@ -85,8 +86,11 @@ export async function activate(context: vscode.ExtensionContext) {
     filterManager = new BeansFilterManager();
     context.subscriptions.push(filterManager);
 
+    // Register config manager
+    const configManager = new BeansConfigManager(workspaceFolder.uri.fsPath);
+
     // Register commands
-    const beansCommands = new BeansCommands(beansService, context, previewProvider, filterManager);
+    const beansCommands = new BeansCommands(beansService, context, previewProvider, filterManager, configManager);
     beansCommands.registerAll();
     // Register beans.showOutput command (always available)
     context.subscriptions.push(

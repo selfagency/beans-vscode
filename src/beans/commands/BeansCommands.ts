@@ -4,6 +4,7 @@ import { Bean } from '../model';
 import { BeansPreviewProvider } from '../preview';
 import { BeansService } from '../service';
 import { BeansFilterManager } from '../tree';
+import { BeansConfigManager } from '../config';
 
 const logger = BeansOutput.getInstance();
 
@@ -15,7 +16,8 @@ export class BeansCommands {
     private readonly service: BeansService,
     private readonly context: vscode.ExtensionContext,
     private readonly previewProvider: BeansPreviewProvider,
-    private readonly filterManager: BeansFilterManager
+    private readonly filterManager: BeansFilterManager,
+    private readonly configManager: BeansConfigManager
   ) {}
 
   /**
@@ -53,6 +55,9 @@ export class BeansCommands {
     });
     this.registerCommand('beans.filter', this.filter.bind(this));
     this.registerCommand('beans.sort', this.sort.bind(this));
+
+    // Configuration
+    this.registerCommand('beans.openConfig', this.openConfig.bind(this));
 
     logger.info('All Beans commands registered');
   }
@@ -825,5 +830,18 @@ export class BeansCommands {
     });
 
     return selected?.bean;
+  }
+
+  /**
+   * Open .beans.yml configuration file
+   */
+  private async openConfig(): Promise<void> {
+    try {
+      await this.configManager.open();
+    } catch (error) {
+      const message = `Failed to open config: ${(error as Error).message}`;
+      logger.error(message, error as Error);
+      vscode.window.showErrorMessage(message);
+    }
   }
 }

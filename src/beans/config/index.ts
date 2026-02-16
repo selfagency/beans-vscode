@@ -1,0 +1,1 @@
+export { BeansConfigManager } from './BeansConfigManager';
