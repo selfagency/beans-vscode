@@ -3,7 +3,37 @@
 [![CI](https://github.com/selfagency/beans-vscode/actions/workflows/ci.yml/badge.svg)](https://github.com/selfagency/beans-vscode/actions/workflows/ci.yml)
 [![Release](https://github.com/selfagency/beans-vscode/actions/workflows/release.yml/badge.svg)](https://github.com/selfagency/beans-vscode/actions/workflows/release.yml)
 
-Beans support for VS Code, with tree-based issue workflows and MCP integration for Copilot.
+A VS Code extension for [Beans](https://github.com/h-arry-smith/beans), the lightweight file-based issue tracker designed for developer workflows and AI collaboration.
+
+## About Beans
+
+**[Beans](https://github.com/h-arry-smith/beans)** by [Harry Smith](https://github.com/h-arry-smith) is a brilliant file-based issue tracker that stores issues as plain text in your repository's `.beans/` folder. Unlike traditional issue trackers, Beans is:
+
+- **Git-native**: Issues live in your repo, version-controlled alongside your code
+- **Offline-first**: No network required, works anywhere git works
+- **Merge-friendly**: Designed to minimize merge conflicts in team workflows
+- **LLM-optimized**: Plain text format is perfect for AI assistants to read and modify issues
+
+### Why Beans + LLMs = Magic ✨
+
+Beans shines when working with Large Language Models like GitHub Copilot because:
+
+1. **Context-aware**: LLMs can read your entire issue structure to understand project priorities
+2. **Semantic search**: Find related issues naturally using AI-powered search
+3. **Automated planning**: LLMs can create, organize, and break down issues intelligently
+4. **Workflow automation**: AI can update statuses, link dependencies, and manage your backlog
+5. **No API limits**: Everything is local files, no rate limiting or API tokens needed
+
+### This Extension
+
+This extension brings Beans into VS Code with deep GitHub Copilot integration through the Model Context Protocol (MCP). It provides:
+
+- Native VS Code UI with tree views and commands
+- MCP server that exposes Beans operations as tools for any AI chat client
+- Specialized `@beans` chat participant for GitHub Copilot
+- Remote development support (SSH, WSL, Dev Containers, Codespaces)
+
+**Thank you** to Harry Smith and the Beans contributors for creating such an elegant, developer-friendly issue tracker that pairs perfectly with modern AI tools!
 
 ## Features
 
