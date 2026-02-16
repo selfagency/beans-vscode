@@ -55,7 +55,8 @@ jobs:
       - name: Get latest Go version
         id: go-version
         run: |
-          GO_VERSION=$(curl -s https://go.dev/dl/?mode=json | jq -r '.[0].version')
+          # Fetch latest Go version and strip 'go' prefix for URL construction
+          GO_VERSION=$(curl -s https://go.dev/dl/?mode=json | jq -r '.[0].version | sub("^go"; "")')
           if [ -z "$GO_VERSION" ] || [ "$GO_VERSION" = "null" ]; then
             echo "Error: Failed to fetch latest Go version from API"
             exit 1
@@ -76,16 +77,16 @@ jobs:
               else echo "Unsupported architecture: \$ARCH" && exit 1; fi && \\
               if command -v apt-get > /dev/null; then \\
                 apt-get update && apt-get install -y curl jq git wget && \\
-                wget https://go.dev/dl/${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz || \\
+                wget https://go.dev/dl/go${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz || \\
                   (echo "Failed to download Go ${{ steps.go-version.outputs.version }} for \${GOARCH}" && exit 1) && \\
-                tar -C /usr/local -xzf ${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz && \\
-                rm ${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz; \\
+                tar -C /usr/local -xzf go${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz && \\
+                rm go${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz; \\
               elif command -v apk > /dev/null; then \\
                 apk add --no-cache curl jq git bash wget && \\
-                wget https://go.dev/dl/${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz || \\
+                wget https://go.dev/dl/go${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz || \\
                   (echo "Failed to download Go ${{ steps.go-version.outputs.version }} for \${GOARCH}" && exit 1) && \\
-                tar -C /usr/local -xzf ${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz && \\
-                rm ${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz; \\
+                tar -C /usr/local -xzf go${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz && \\
+                rm go${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz; \\
               fi
 
           ENV PATH="/usr/local/go/bin:/root/go/bin:\${PATH}"

@@ -15,7 +15,8 @@ BEANS_VERSION="${BEANS_VERSION:-v0.13.2}"
 # Dynamically fetch latest Go version if not already set
 if [ -z "$GO_VERSION" ]; then
   echo "Fetching latest Go version..."
-  GO_VERSION=$(curl -s https://go.dev/dl/?mode=json | jq -r '.[0].version')
+  # Fetch version and strip 'go' prefix for URL construction
+  GO_VERSION=$(curl -s https://go.dev/dl/?mode=json | jq -r '.[0].version | sub("^go"; "")')
   if [ -z "$GO_VERSION" ] || [ "$GO_VERSION" = "null" ]; then
     echo "Error: Failed to fetch latest Go version from API"
     exit 1
