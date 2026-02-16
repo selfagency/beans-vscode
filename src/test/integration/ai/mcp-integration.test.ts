@@ -6,12 +6,12 @@ describe('MCP Integration', () => {
   let mockContext: vscode.ExtensionContext;
   let mcpIntegration: BeansMcpIntegration;
   let registeredProviders: Map<string, vscode.McpServerDefinitionProvider<vscode.McpStdioServerDefinition>>;
-  let registeredCommands: Map<string, ((...args: any[]) => any)>;
+  let registeredCommands: Map<string, (...args: any[]) => any>;
 
   beforeEach(() => {
     registeredProviders = new Map();
     registeredCommands = new Map();
-    
+
     mockContext = {
       subscriptions: [],
       extensionPath: '/mock/extension/path',
@@ -183,13 +183,7 @@ describe('MCP Integration', () => {
     });
 
     it('should preserve label and version from input definition', () => {
-      const inputDefinition = new vscode.McpStdioServerDefinition(
-        'Custom Label',
-        process.execPath,
-        [],
-        {},
-        '1.2.3'
-      );
+      const inputDefinition = new vscode.McpStdioServerDefinition('Custom Label', process.execPath, [], {}, '1.2.3');
 
       const resolved = mcpIntegration.resolveMcpServerDefinition(inputDefinition) as vscode.McpStdioServerDefinition;
 
@@ -225,9 +219,7 @@ describe('MCP Integration', () => {
     });
 
     it('should show server info when showServerInfo is called', async () => {
-      const showInfoMessageSpy = vi
-        .spyOn(vscode.window, 'showInformationMessage')
-        .mockResolvedValue(undefined as any);
+      const showInfoMessageSpy = vi.spyOn(vscode.window, 'showInformationMessage').mockResolvedValue(undefined as any);
 
       const showServerInfo = registeredCommands.get('beans.mcp.showServerInfo');
       await showServerInfo?.();

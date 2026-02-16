@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { BeansService } from '../../beans/service';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Bean } from '../../beans/model';
+import { BeansService } from '../../beans/service';
 
 /**
  * Integration tests for bean CRUD operations
@@ -37,8 +37,8 @@ describe('Bean Operations', () => {
 
   describe('Create Bean', () => {
     it('should create a bean with required fields', async () => {
-      const newBean = makeMockBean({ 
-        id: 'new-bean', 
+      const newBean = makeMockBean({
+        id: 'new-bean',
         title: 'New Test Bean',
         status: 'todo',
         type: 'task'
@@ -60,8 +60,8 @@ describe('Bean Operations', () => {
     });
 
     it('should create a bean with optional priority', async () => {
-      const newBean = makeMockBean({ 
-        id: 'priority-bean', 
+      const newBean = makeMockBean({
+        id: 'priority-bean',
         title: 'Priority Bean',
         priority: 'high'
       });
@@ -181,45 +181,45 @@ describe('Bean Operations', () => {
 
   describe('Blocking Relationships', () => {
     it('should add blocking relationship', async () => {
-      const blockingBean = makeMockBean({ 
-        id: 'blocker-1', 
-        blocking: ['blocked-1'] 
+      const blockingBean = makeMockBean({
+        id: 'blocker-1',
+        blocking: ['blocked-1']
       });
 
       vi.spyOn(mockService, 'updateBean').mockResolvedValue(blockingBean);
 
-      const result = await mockService.updateBean('blocker-1', { 
-        blocking: ['blocked-1'] 
+      const result = await mockService.updateBean('blocker-1', {
+        blocking: ['blocked-1']
       });
 
       expect(result.blocking).toContain('blocked-1');
     });
 
     it('should add blocked-by relationship', async () => {
-      const blockedBean = makeMockBean({ 
-        id: 'blocked-1', 
-        blockedBy: ['blocker-1'] 
+      const blockedBean = makeMockBean({
+        id: 'blocked-1',
+        blockedBy: ['blocker-1']
       });
 
       vi.spyOn(mockService, 'updateBean').mockResolvedValue(blockedBean);
 
-      const result = await mockService.updateBean('blocked-1', { 
-        blockedBy: ['blocker-1'] 
+      const result = await mockService.updateBean('blocked-1', {
+        blockedBy: ['blocker-1']
       });
 
       expect(result.blockedBy).toContain('blocker-1');
     });
 
     it('should handle multiple blocking relationships', async () => {
-      const blockingBean = makeMockBean({ 
-        id: 'blocker-1', 
-        blocking: ['blocked-1', 'blocked-2', 'blocked-3'] 
+      const blockingBean = makeMockBean({
+        id: 'blocker-1',
+        blocking: ['blocked-1', 'blocked-2', 'blocked-3']
       });
 
       vi.spyOn(mockService, 'updateBean').mockResolvedValue(blockingBean);
 
-      const result = await mockService.updateBean('blocker-1', { 
-        blocking: ['blocked-1', 'blocked-2', 'blocked-3'] 
+      const result = await mockService.updateBean('blocker-1', {
+        blocking: ['blocked-1', 'blocked-2', 'blocked-3']
       });
 
       expect(result.blocking).toHaveLength(3);
@@ -267,20 +267,15 @@ describe('Bean Operations', () => {
     it('should handle update conflict', async () => {
       vi.spyOn(mockService, 'updateBean').mockRejectedValue(new Error('ETag mismatch'));
 
-      await expect(
-        mockService.updateBean('test-1', { status: 'completed' })
-      ).rejects.toThrow('ETag mismatch');
+      await expect(mockService.updateBean('test-1', { status: 'completed' })).rejects.toThrow('ETag mismatch');
     });
 
     it('should handle invalid status transition', async () => {
-      vi.spyOn(mockService, 'updateBean').mockRejectedValue(
-        new Error('Invalid status transition')
-      );
+      vi.spyOn(mockService, 'updateBean').mockRejectedValue(new Error('Invalid status transition'));
 
-      await expect(
-        mockService.updateBean('test-1', { status: 'invalid' as any })
-      ).rejects.toThrow('Invalid status transition');
+      await expect(mockService.updateBean('test-1', { status: 'invalid' as any })).rejects.toThrow(
+        'Invalid status transition'
+      );
     });
   });
 });
-

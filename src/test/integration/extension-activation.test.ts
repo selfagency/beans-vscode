@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
-import { activate } from '../../extension';
 import { BeansService } from '../../beans/service/BeansService';
+import { activate } from '../../extension';
 
 /**
  * Integration tests for extension activation flow
@@ -81,7 +81,7 @@ describe('Extension Activation', () => {
     vi.spyOn(vscode.workspace, 'findFiles').mockResolvedValue([]);
 
     await expect(activate(mockContext)).resolves.toBeUndefined();
-    
+
     // Verify context subscriptions were added
     expect(mockContext.subscriptions.length).toBeGreaterThan(0);
   });
@@ -142,9 +142,7 @@ describe('Extension Activation', () => {
     } as any);
 
     // Mock .beans.yml found
-    vi.spyOn(vscode.workspace, 'findFiles').mockResolvedValue([
-      vscode.Uri.file('/mock/workspace/.beans.yml')
-    ]);
+    vi.spyOn(vscode.workspace, 'findFiles').mockResolvedValue([vscode.Uri.file('/mock/workspace/.beans.yml')]);
 
     await activate(mockContext);
 

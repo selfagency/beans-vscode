@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { BeansCommands } from '../../beans/commands';
 import { BeansConfigManager } from '../../beans/config';
@@ -55,22 +55,17 @@ describe('Command Registration', () => {
     };
 
     // Mock vscode.commands.registerCommand to track registered commands
-    vi.spyOn(vscode.commands, 'registerCommand').mockImplementation(
-      (command: string, callback: Function) => {
-        registeredCommands.set(command, callback);
-        return { dispose: vi.fn() };
-      }
-    );
+    vi.spyOn(vscode.commands, 'registerCommand').mockImplementation((command: string, callback: Function) => {
+      registeredCommands.set(command, callback);
+      return { dispose: vi.fn() };
+    });
 
     // Create mocks
     mockService = new BeansService('/mock/workspace');
     mockPreviewProvider = new BeansPreviewProvider(mockService);
     mockFilterManager = new BeansFilterManager();
     mockConfigManager = new BeansConfigManager('/mock/workspace');
-    mockDetailsProvider = new BeansDetailsViewProvider(
-      vscode.Uri.file('/mock/extension'),
-      mockService
-    );
+    mockDetailsProvider = new BeansDetailsViewProvider(vscode.Uri.file('/mock/extension'), mockService);
 
     // Create commands instance
     commands = new BeansCommands(
@@ -120,7 +115,7 @@ describe('Command Registration', () => {
   it('should register commands with disposables in context', () => {
     const initialCount = mockContext.subscriptions.length;
     commands.registerAll();
-    
+
     // Should have added disposables for each registered command
     expect(mockContext.subscriptions.length).toBeGreaterThan(initialCount);
   });

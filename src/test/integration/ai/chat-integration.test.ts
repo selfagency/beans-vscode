@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { BeansChatIntegration } from '../../../beans/chat/BeansChatIntegration';
-import { BeansService } from '../../../beans/service/BeansService';
 import type { Bean } from '../../../beans/model';
+import { BeansService } from '../../../beans/service/BeansService';
 
 describe('Chat Integration', () => {
   let mockContext: vscode.ExtensionContext;
@@ -246,7 +246,7 @@ describe('Chat Integration', () => {
 
       expect(mockStream.markdown).toHaveBeenCalled();
       // First call should mention critical priority
-      const markdownCalls = mockStream.markdown.mock.calls.map(call => call[0] as string);
+      const markdownCalls = mockStream.markdown.mock.calls.map((call) => call[0] as string);
       const beansSection = markdownCalls.join('');
       expect(beansSection).toContain('bean-3'); // Critical should appear
       expect(beansSection).toContain('critical');

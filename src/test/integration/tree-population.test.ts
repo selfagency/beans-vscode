@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Bean } from '../../beans/model';
 import { BeansService } from '../../beans/service';
 import { ActiveBeansProvider, CompletedBeansProvider, DraftBeansProvider } from '../../beans/tree/providers';
-import { Bean } from '../../beans/model';
 
 /**
  * Integration tests for tree data providers and bean list population
@@ -54,10 +54,10 @@ describe('Tree Population', () => {
 
   it('should return empty array when no beans available', async () => {
     vi.spyOn(mockService, 'listBeans').mockResolvedValue([]);
-    
+
     activeProvider = new ActiveBeansProvider(mockService);
     const items = await activeProvider.getChildren();
-    
+
     expect(items).toEqual([]);
   });
 
@@ -68,10 +68,10 @@ describe('Tree Population', () => {
     ];
 
     vi.spyOn(mockService, 'listBeans').mockResolvedValue(mockBeans);
-    
+
     activeProvider = new ActiveBeansProvider(mockService);
     const items = await activeProvider.getChildren();
-    
+
     expect(items).toHaveLength(2);
     expect(items[0].bean.id).toBe('bean-1');
     expect(items[1].bean.id).toBe('bean-2');
@@ -84,13 +84,13 @@ describe('Tree Population', () => {
     ];
 
     vi.spyOn(mockService, 'listBeans').mockResolvedValue(mockBeans);
-    
+
     activeProvider = new ActiveBeansProvider(mockService);
     const items = await activeProvider.getChildren();
-    
+
     // ActiveBeansProvider should only show todo and in-progress beans
-    const statuses = items.map(item => item.bean.status);
-    expect(statuses.every(s => s === 'todo' || s === 'in-progress')).toBe(true);
+    const statuses = items.map((item) => item.bean.status);
+    expect(statuses.every((s) => s === 'todo' || s === 'in-progress')).toBe(true);
   });
 
   it('should show only completed beans in completed provider', async () => {
@@ -100,40 +100,40 @@ describe('Tree Population', () => {
     ];
 
     vi.spyOn(mockService, 'listBeans').mockResolvedValue(mockBeans);
-    
+
     const completedProvider = new CompletedBeansProvider(mockService);
     const items = await completedProvider.getChildren();
-    
+
     // CompletedBeansProvider should only show completed beans
-    const statuses = items.map(item => item.bean.status);
-    expect(statuses.every(s => s === 'completed')).toBe(true);
+    const statuses = items.map((item) => item.bean.status);
+    expect(statuses.every((s) => s === 'completed')).toBe(true);
   });
 
   it('should handle parent-child relationships in tree', async () => {
-    const parent = makeMockBean({ 
-      id: 'parent-1', 
-      title: 'Parent Epic', 
+    const parent = makeMockBean({
+      id: 'parent-1',
+      title: 'Parent Epic',
       type: 'epic',
       status: 'in-progress'
     });
-    
-    const child = makeMockBean({ 
-      id: 'child-1', 
-      title: 'Child Task', 
+
+    const child = makeMockBean({
+      id: 'child-1',
+      title: 'Child Task',
       type: 'task',
       status: 'todo',
       parent: 'parent-1'
     });
 
     vi.spyOn(mockService, 'listBeans').mockResolvedValue([parent, child]);
-    
+
     activeProvider = new ActiveBeansProvider(mockService);
     const topLevelItems = await activeProvider.getChildren();
-    
+
     // Parent should be at top level
-    const parentItem = topLevelItems.find(item => item.bean.id === 'parent-1');
+    const parentItem = topLevelItems.find((item) => item.bean.id === 'parent-1');
     expect(parentItem).toBeDefined();
-    
+
     // Child should be retrievable under parent
     if (parentItem) {
       const childItems = await activeProvider.getChildren(parentItem);
@@ -195,9 +195,7 @@ describe('Tree Population', () => {
     });
 
     // First call returns draft beans, second call returns other beans for augmentation
-    vi.spyOn(mockService, 'listBeans')
-      .mockResolvedValueOnce([draftParent])
-      .mockResolvedValueOnce([activeChild]);
+    vi.spyOn(mockService, 'listBeans').mockResolvedValueOnce([draftParent]).mockResolvedValueOnce([activeChild]);
 
     const draftProvider = new DraftBeansProvider(mockService);
     const rootItems = await draftProvider.getChildren();
@@ -219,21 +217,22 @@ describe('Tree Population', () => {
       makeMockBean({ id: 'bean-2', title: 'New Bean' })
     ];
 
-    const listBeansSpy = vi.spyOn(mockService, 'listBeans')
+    const listBeansSpy = vi
+      .spyOn(mockService, 'listBeans')
       .mockResolvedValueOnce(initialBeans)
       .mockResolvedValueOnce(initialBeans) // Second call for augmentBeans
       .mockResolvedValueOnce(updatedBeans)
       .mockResolvedValueOnce(updatedBeans); // Second call for augmentBeans
-    
+
     activeProvider = new ActiveBeansProvider(mockService);
-    
+
     // First load
     await activeProvider.getChildren();
-    
+
     // Refresh
     activeProvider.refresh();
     await activeProvider.getChildren();
-    
+
     // Should have called listBeans multiple times (once per getChildren, plus augmentBeans calls)
     expect(listBeansSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
   });
@@ -246,15 +245,13 @@ describe('Tree Population', () => {
     ];
 
     vi.spyOn(mockService, 'listBeans').mockResolvedValue(mockBeans);
-    
+
     activeProvider = new ActiveBeansProvider(mockService);
     activeProvider.setFilter({ typeFilter: ['bug'] });
-    
+
     await activeProvider.getChildren();
-    
+
     // Service should have been called with type filter
-    expect(mockService.listBeans).toHaveBeenCalledWith(
-      expect.objectContaining({ type: ['bug'] })
-    );
+    expect(mockService.listBeans).toHaveBeenCalledWith(expect.objectContaining({ type: ['bug'] }));
   });
 });
