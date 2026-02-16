@@ -145,23 +145,6 @@ export async function activate(context: vscode.ExtensionContext) {
       })
     );
 
-    // Register beans.openConfig command
-    context.subscriptions.push(
-      vscode.commands.registerCommand('beans.openConfig', async () => {
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-        if (!workspaceFolder) {
-          return;
-        }
-        const configPath = vscode.Uri.joinPath(workspaceFolder.uri, '.beans.yml');
-        try {
-          const doc = await vscode.workspace.openTextDocument(configPath);
-          await vscode.window.showTextDocument(doc);
-        } catch (error) {
-          vscode.window.showErrorMessage('Could not open .beans.yml: ' + (error as Error).message);
-        }
-      })
-    );
-
     // Watch for configuration changes
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration((e) => {
