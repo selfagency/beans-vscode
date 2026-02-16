@@ -18,7 +18,9 @@
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
 		"paths": {
-			"@beans/*": ["./src/beans/*"]
+			"@beans/*": [
+				"./src/beans/*"
+			]
 		}
 	},
 	"include": [

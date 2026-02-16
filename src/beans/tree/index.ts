@@ -3,5 +3,6 @@
  * @module beans/tree
  */
 
-export { BeanTreeItem } from './BeanTreeItem';
+export { BeansDragAndDropController } from './BeansDragAndDropController';
 export { BeansTreeDataProvider, SortMode, TreeFilterOptions } from './BeansTreeDataProvider';
+export { BeanTreeItem } from './BeanTreeItem';
