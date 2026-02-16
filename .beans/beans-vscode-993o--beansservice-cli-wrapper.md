@@ -1,10 +1,11 @@
 ---
 # beans-vscode-993o
 title: BeansService CLI wrapper
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-02-16T04:04:16Z
-updated_at: 2026-02-16T04:04:16Z
+updated_at: 2026-02-16T04:09:14Z
 parent: beans-vscode-nszp
 ---
 

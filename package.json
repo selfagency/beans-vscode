@@ -9,15 +9,81 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "extensionKind": [
+    "workspace"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "workspaceContains:.beans",
+    "workspaceContains:.beans.yml"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "beans-vscode.helloWorld",
-        "title": "Hello World"
+        "command": "beans.init",
+        "title": "Initialize Beans in Workspace",
+        "category": "Beans"
+      },
+      {
+        "command": "beans.refresh",
+        "title": "Refresh",
+        "category": "Beans",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "beans.openConfig",
+        "title": "Open Configuration",
+        "category": "Beans"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Beans",
+      "properties": {
+        "beans.cliPath": {
+          "type": "string",
+          "default": "beans",
+          "markdownDescription": "Path to `beans` CLI executable. Defaults to `beans` in PATH."
+        },
+        "beans.autoInit.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show initialization prompt when opening a workspace without Beans."
+        },
+        "beans.defaultSortMode": {
+          "type": "string",
+          "enum": [
+            "status-priority-type-title",
+            "updated",
+            "created",
+            "id"
+          ],
+          "default": "status-priority-type-title",
+          "enumDescriptions": [
+            "Sort by status, then priority, then type, then title (TUI default)",
+            "Sort by last updated time",
+            "Sort by creation time",
+            "Sort by bean ID/code"
+          ]
+        },
+        "beans.hideClosedInQuickPick": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hide completed and scrapped beans from command palette quick picks (except explicit reopen commands)."
+        },
+        "beans.logging.level": {
+          "type": "string",
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ],
+          "default": "info",
+          "description": "Logging verbosity for Beans extension output channel."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",

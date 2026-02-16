@@ -1,10 +1,11 @@
 ---
 # beans-vscode-dch3
 title: Logging infrastructure
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-02-16T04:04:16Z
-updated_at: 2026-02-16T04:04:16Z
+updated_at: 2026-02-16T04:08:21Z
 parent: beans-vscode-nszp
 ---
 
