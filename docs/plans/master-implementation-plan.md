@@ -226,6 +226,21 @@ export class BeansConcurrencyError extends BeansError {
           "enum": ["debug", "info", "warn", "error"],
           "default": "info",
           "description": "Logging verbosity for Beans extension output channel."
+        },
+        "beans.ai.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable AI integration features (MCP server and chat participant). Requires extension reload to take effect."
+        },
+        "beans.view.displayMode": {
+          "type": "string",
+          "enum": ["separate-panes", "single-pane"],
+          "default": "separate-panes",
+          "enumDescriptions": [
+            "Display beans in separate collapsible panes by status (Active, Completed, Draft, Scrapped, Archived)",
+            "Display all beans in a single pane with filter controls"
+          ],
+          "description": "Controls how beans are displayed in the sidebar. Requires extension reload to take effect."
         }
       }
     }
@@ -702,6 +717,15 @@ export function deactivate() {
    - Implement tree drag/drop to re-parent via `TreeDragAndDropController` in `[src/beans/tree/BeansTreeDragDrop.ts](src/beans/tree/BeansTreeDragDrop.ts)`.
    - Add confirmation and rollback-safe refresh behavior on mutation failures.
 
+8a. **View display mode support**
+
+   - Add `beans.view.displayMode` setting to toggle between:
+     - `separate-panes` (default): 5 independent collapsible panes (Active, Completed, Draft, Scrapped, Archived)
+     - `single-pane`: Single unified tree with filter controls and status badges
+   - Conditionally register tree views based on display mode setting
+   - Provide clear reload prompt when user changes display mode
+   - Maintain sort/filter state across mode changes where applicable
+
 9. **Filtering system**
 
    - Implement global/stateful filter model in `[src/beans/filter/BeansFilterState.ts](src/beans/filter/BeansFilterState.ts)`.
@@ -730,6 +754,8 @@ export function deactivate() {
       - Register MCP server definition provider.
       - Return stdio definition for Beans MCP command wrapper (or extension-managed local server command).
       - Add change event handling and resolve-time validation.
+      - **Respect `beans.ai.enabled` setting**: Only register MCP server and chat participant when enabled.
+      - Show informational message on first disable explaining that AI features will be unavailable until re-enabled and extension is reloaded.
     - Add troubleshooting commands: list/config/open logs/reset guidance.
 
 13. **Copilot chat participant + prompt-tsx**
@@ -738,6 +764,7 @@ export function deactivate() {
       - One participant focused on Beans workflow.
       - Slash commands (e.g., summarize status, next work, create/update bean intent).
       - Follow-up provider and structured responses.
+      - **Conditionally register based on `beans.ai.enabled` setting**.
     - Add prompt composition with `[src/ai/chat/prompts/*.tsx](src/ai/chat/prompts)` using prompt-tsx prioritization.
     - Scope tool usage to Beans operations and add guardrails for destructive actions.
 
