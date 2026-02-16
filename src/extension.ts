@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'node:path';
+import { BeansChatIntegration } from './beans/chat';
 import { BeansCommands } from './beans/commands';
 import { BeansConfigManager, buildBeansCopilotInstructions, writeBeansCopilotInstructions } from './beans/config';
 import { BeansDetailsViewProvider } from './beans/details';
@@ -26,6 +27,7 @@ let scrappedProvider: ScrappedBeansProvider | undefined;
 let filterManager: BeansFilterManager | undefined;
 let detailsProvider: BeansDetailsViewProvider | undefined;
 let mcpIntegration: BeansMcpIntegration | undefined;
+let chatIntegration: BeansChatIntegration | undefined;
 let initPromptDismissed = false; // Track if user dismissed init prompt in this session
 
 /**
@@ -70,6 +72,9 @@ export async function activate(context: vscode.ExtensionContext) {
     if (aiEnabled) {
       mcpIntegration = new BeansMcpIntegration(context, workspaceFolder.uri.fsPath, configuredCliPath);
       mcpIntegration.register();
+
+      chatIntegration = new BeansChatIntegration(context, beansService);
+      chatIntegration.register();
     } else {
       logger.info('AI integrations are disabled via beans.ai.enabled=false');
     }
@@ -451,5 +456,6 @@ function debounceRefresh(callback: () => void, delayMs: number): () => void {
 export function deactivate(): void {
   logger?.info('Deactivating Beans extension');
   mcpIntegration = undefined;
+  chatIntegration = undefined;
   logger?.dispose();
 }

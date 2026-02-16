@@ -7,6 +7,7 @@ Beans support for VS Code, with tree-based issue workflows and MCP integration f
 - Sidebar views for active/draft/completed/scrapped beans.
 - Command palette and context-menu flows for common Beans operations.
 - MCP server definition provider that exposes Beans commands as MCP tools.
+- Beans chat participant (`@beans`) with slash commands for summary, next-task suggestions, and search.
 
 ## Requirements
 
@@ -37,6 +38,7 @@ The server exposes tools that mirror extension capabilities, including:
 ## Extension Settings
 
 - `beans.cliPath`: path to Beans CLI.
+- `beans.ai.enabled`: master switch for AI integrations (MCP + chat participant).
 - `beans.mcp.enabled`: enable or disable MCP provider publishing.
 - `beans.logging.level`: extension log level.
 

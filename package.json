@@ -16,7 +16,8 @@
   "activationEvents": [
     "onStartupFinished",
     "workspaceContains:.beans",
-    "workspaceContains:.beans.yml"
+    "workspaceContains:.beans.yml",
+    "onChatParticipant:beans.chat"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -170,6 +171,29 @@
       {
         "id": "beans.mcpServers",
         "label": "Beans MCP Servers"
+      }
+    ],
+    "chatParticipants": [
+      {
+        "id": "beans.chat",
+        "name": "beans",
+        "fullName": "Beans Assistant",
+        "description": "Help with Beans issue workflows in this workspace",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "summary",
+            "description": "Summarize Beans status in this workspace"
+          },
+          {
+            "name": "next",
+            "description": "Suggest the next bean to work on"
+          },
+          {
+            "name": "search",
+            "description": "Search beans by text"
+          }
+        ]
       }
     ],
     "viewsContainers": {
