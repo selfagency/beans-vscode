@@ -81,7 +81,7 @@ jobs:
           RUN go install github.com/hmans/beans@${{ env.BEANS_VERSION }}
 
           # Verify beans installed
-          RUN beans --version
+          RUN beans version
 
           # Set up workspace
           WORKDIR /workspace
@@ -102,7 +102,7 @@ jobs:
             set -e
 
             echo "=== Testing Beans CLI ==="
-            beans --version
+            beans version
 
             echo ""
             echo "=== Initializing Beans workspace ==="
@@ -192,10 +192,7 @@ jobs:
                 "version": "latest"
               }
             },
-            "postCreateCommand": "go install github.com/hmans/beans@${{ env.BEANS_VERSION }} && beans init",
-            "remoteEnv": {
-              "PATH": "${containerEnv:PATH}:/root/go/bin"
-            },
+            "postCreateCommand": "go install github.com/hmans/beans@latest && beans init",
             "customizations": {
               "vscode": {
                 "settings": {
@@ -213,7 +210,7 @@ jobs:
           configFile: .devcontainer-test/devcontainer.json
           runCmd: |
             echo "=== Checking beans installation ==="
-            beans --version
+            beans version
 
             echo ""
             echo "=== Verifying workspace initialized ==="
