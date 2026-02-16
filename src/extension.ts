@@ -5,6 +5,7 @@ import { BeansDetailsViewProvider } from './beans/details';
 import { BeansOutput } from './beans/logging';
 import { Bean, BeansCLINotFoundError } from './beans/model';
 import { BeansPreviewProvider } from './beans/preview';
+import { BeansSearchViewProvider } from './beans/search';
 import { BeansService } from './beans/service';
 import { BeansDragAndDropController, BeansFilterManager } from './beans/tree';
 import {
@@ -71,6 +72,12 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.registerWebviewViewProvider(BeansDetailsViewProvider.viewType, detailsProvider)
     );
 
+    // Register search webview provider
+    const searchProvider = new BeansSearchViewProvider(context.extensionUri, beansService);
+    context.subscriptions.push(
+      vscode.window.registerWebviewViewProvider(BeansSearchViewProvider.viewType, searchProvider)
+    );
+
     // Register filter manager (needed before tree views)
     filterManager = new BeansFilterManager();
     context.subscriptions.push(filterManager);
@@ -94,7 +101,14 @@ export async function activate(context: vscode.ExtensionContext) {
     const configManager = new BeansConfigManager(workspaceFolder.uri.fsPath);
 
     // Register commands
-    const beansCommands = new BeansCommands(beansService, context, previewProvider, filterManager, configManager);
+    const beansCommands = new BeansCommands(
+      beansService,
+      context,
+      previewProvider,
+      filterManager,
+      configManager,
+      detailsProvider
+    );
     beansCommands.registerAll();
     // Register beans.showOutput command (always available)
     context.subscriptions.push(

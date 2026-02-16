@@ -34,13 +34,14 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
   private logger = BeansOutput.getInstance();
 
   constructor(
-    private readonly service: BeansService,
-    private readonly statusFilter?: BeanStatus[],
-    private readonly flatList: boolean = false
+    protected readonly service: BeansService,
+    protected readonly statusFilter?: BeanStatus[],
+    private readonly flatList: boolean = false,
+    defaultSort?: SortMode
   ) {
-    // Get sort mode from configuration
+    // Use provider-specific default, then user config, then fallback
     const config = vscode.workspace.getConfiguration('beans');
-    this.sortMode = config.get<SortMode>('defaultSortMode', 'status-priority-type-title');
+    this.sortMode = defaultSort || config.get<SortMode>('defaultSortMode', 'status-priority-type-title');
   }
 
   /**
@@ -122,6 +123,9 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
 
       this.beans = await this.service.listBeans(options);
 
+      // Allow subclasses to augment the bean set (e.g., add children from other statuses)
+      this.beans = await this.augmentBeans(this.beans);
+
       // Apply subclass post-fetch filter (e.g., archived beans path filtering)
       this.beans = this.postFetchFilter(this.beans);
 
@@ -143,6 +147,16 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
    * Default implementation is pass-through.
    */
   protected postFetchFilter(beans: Bean[]): Bean[] {
+    return beans;
+  }
+
+  /**
+   * Augmentation hook for subclasses to add or remove beans after initial fetch.
+   * Called before postFetchFilter. Use to pull in beans from other statuses
+   * (e.g., children of draft parents) or exclude beans that belong elsewhere.
+   * Default implementation is pass-through.
+   */
+  protected async augmentBeans(beans: Bean[]): Promise<Bean[]> {
     return beans;
   }
 
@@ -210,14 +224,23 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
       case 'id':
         return sorted.sort((a, b) => a.id.localeCompare(b.id));
       default:
+        this.logger.warn(`Unknown sort mode: ${this.sortMode}`);
         return sorted;
     }
   }
 
   /**
-   * Sort by priority, then alphabetically by title
+   * Sort by status, then priority, then type, then title.
    */
   private sortByStatusPriorityTypeTitle(beans: Bean[]): Bean[] {
+    const statusOrder: Record<string, number> = {
+      'in-progress': 0,
+      todo: 1,
+      draft: 2,
+      completed: 3,
+      scrapped: 4
+    };
+
     const priorityOrder: Record<string, number> = {
       critical: 0,
       high: 1,
@@ -226,8 +249,22 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
       deferred: 4
     };
 
+    const typeOrder: Record<string, number> = {
+      milestone: 0,
+      epic: 1,
+      feature: 2,
+      bug: 3,
+      task: 4
+    };
+
     return beans.sort((a, b) => {
-      // First: priority (treat undefined as 'normal')
+      // 1. Status
+      const statusDiff = (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99);
+      if (statusDiff !== 0) {
+        return statusDiff;
+      }
+
+      // 2. Priority (treat undefined as 'normal')
       const aPriority = a.priority || 'normal';
       const bPriority = b.priority || 'normal';
       const priorityDiff = priorityOrder[aPriority] - priorityOrder[bPriority];
@@ -235,7 +272,13 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
         return priorityDiff;
       }
 
-      // Second: alphabetically by title
+      // 3. Type
+      const typeDiff = (typeOrder[a.type] ?? 99) - (typeOrder[b.type] ?? 99);
+      if (typeDiff !== 0) {
+        return typeDiff;
+      }
+
+      // 4. Title alphabetically
       return a.title.localeCompare(b.title);
     });
   }

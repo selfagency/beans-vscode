@@ -13,6 +13,11 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   private _parentBean?: Bean;
   private readonly logger = BeansOutput.getInstance();
 
+  /** The currently displayed bean (used by view/title edit command). */
+  public get currentBean(): Bean | undefined {
+    return this._currentBean;
+  }
+
   constructor(private readonly extensionUri: vscode.Uri, private readonly service: BeansService) {}
 
   /**
@@ -38,11 +43,6 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       switch (message.command) {
         case 'updateBean':
           await this.handleBeanUpdate(message.updates);
-          break;
-        case 'editBean':
-          if (this._currentBean) {
-            await vscode.commands.executeCommand('beans.edit', this._currentBean);
-          }
           break;
       }
     });
@@ -96,6 +96,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       // Fetch full bean data including body field
       const fullBean = await this.service.showBean(bean.id);
       this._currentBean = fullBean;
+      await vscode.commands.executeCommand('setContext', 'beans.hasSelectedBean', true);
 
       // Resolve parent bean for display (code + title)
       this._parentBean = undefined;
@@ -115,6 +116,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       // Fall back to using the provided bean (without body)
       this._currentBean = bean;
       this._parentBean = undefined;
+      await vscode.commands.executeCommand('setContext', 'beans.hasSelectedBean', true);
       if (this._view) {
         this.updateView(bean);
       }
@@ -126,6 +128,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
    */
   public clear(): void {
     this._currentBean = undefined;
+    void vscode.commands.executeCommand('setContext', 'beans.hasSelectedBean', false);
     if (this._view) {
       this._view.webview.html = this.getEmptyHtml();
     }
@@ -220,17 +223,17 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     const createdDate = new Date(bean.createdAt).toLocaleDateString();
     const updatedDate = new Date(bean.updatedAt).toLocaleDateString();
 
-    // Parent line: show parent code + title (truncated) if available
-    const parentLine = this._parentBean
-      ? `<div class="parent-line" title="${this.escapeHtml(
-          this._parentBean.id
-        )}"><span class="parent-code">${this.escapeHtml(this._parentBean.code)}</span> ${this.escapeHtml(
+    // Parent info: show inline with ID badge
+    const parentSpan = this._parentBean
+      ? ` <span class="parent-sep">&middot;</span> <span class="parent-label">Parent</span> <span class="parent-code">${this.escapeHtml(
+          this._parentBean.code
+        )}</span> <span class="parent-title" title="${this.escapeHtml(this._parentBean.title)}">${this.escapeHtml(
           this._parentBean.title
-        )}</div>`
+        )}</span>`
       : bean.parent
-      ? `<div class="parent-line" title="${this.escapeHtml(bean.parent)}"><span class="parent-code">${this.escapeHtml(
+      ? ` <span class="parent-sep">&middot;</span> <span class="parent-label">Parent</span> <span class="parent-code">${this.escapeHtml(
           bean.parent.split('-').pop() || ''
-        )}</span> ${this.escapeHtml(bean.parent)}</div>`
+        )}</span>`
       : '';
 
     return `<!DOCTYPE html>
@@ -249,37 +252,8 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       font-size: var(--vscode-font-size);
       line-height: 1.6;
     }
-    .toolbar {
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      padding: 6px 12px;
-      border-bottom: 1px solid var(--vscode-panel-border);
-      background: var(--vscode-sideBar-background);
-    }
-    .icon-button {
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      color: var(--vscode-foreground);
-      opacity: 0.7;
-      padding: 4px;
-      border-radius: 4px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .icon-button:hover {
-      opacity: 1;
-      background: var(--vscode-toolbar-hoverBackground);
-    }
-    .icon-button:focus-visible {
-      outline: 1px solid var(--vscode-focusBorder);
-      outline-offset: -1px;
-    }
     .header {
       padding: 12px 16px 16px;
-      border-bottom: 1px solid var(--vscode-panel-border);
       background: var(--vscode-sideBar-background);
     }
     .title-row {
@@ -300,12 +274,21 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       margin: 0;
       color: var(--vscode-foreground);
       line-height: 1.3;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
     }
     .bean-id {
-      font-size: 12px;
+      font-size: 11px;
       font-family: var(--vscode-editor-font-family);
       color: var(--vscode-descriptionForeground);
-      margin-bottom: 4px;
+      margin-top: 4px;
+      margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .bean-id .code-badge {
       font-weight: 600;
@@ -315,18 +298,24 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       border-radius: 3px;
       font-size: 11px;
     }
-    .parent-line {
-      font-size: 11px;
-      color: var(--vscode-descriptionForeground);
-      margin-bottom: 10px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    .parent-sep {
+      margin: 0 2px;
+      opacity: 0.5;
     }
-    .parent-line .parent-code {
+    .parent-label {
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-right: 2px;
+      opacity: 0.7;
+      font-size: 10px;
+    }
+    .parent-code {
       font-weight: 600;
       font-family: var(--vscode-editor-font-family);
       margin-right: 4px;
+    }
+    .parent-title {
+      opacity: 0.7;
     }
     .metadata {
       display: flex;
@@ -349,7 +338,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       background: var(--vscode-dropdown-background);
       color: var(--vscode-dropdown-foreground);
       border: 1px solid var(--vscode-dropdown-border);
-      padding: 6px 12px;
+      padding: 6px 8px;
       font-size: 12px;
       border-radius: 2px;
       cursor: pointer;
@@ -377,10 +366,10 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       font-size: 11px;
     }
     .content {
-      padding: 16px;
+      padding: 0 16px 8px;
     }
     .section {
-      margin-bottom: 20px;
+      margin-bottom: 12px;
     }
     .section h3 {
       font-size: 13px;
@@ -446,72 +435,67 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     .timestamp {
       font-size: 11px;
       color: var(--vscode-descriptionForeground);
-      margin-bottom: 12px;
+      margin-bottom: 0;
     }
   </style>
 </head>
 <body>
-  <div class="toolbar">
-    <button class="icon-button" onclick="editBean()" title="Edit Bean" aria-label="Edit Bean">
-      <span class="codicon codicon-edit"></span>
-    </button>
-  </div>
   <div class="header">
-    <div class="bean-id">
-      <span class="code-badge">${this.escapeHtml(bean.id)}</span>
-    </div>
-    ${parentLine}
     <div class="title-row">
       <span class="codicon codicon-${iconName} title-icon"></span>
       <h1 class="title">${this.escapeHtml(bean.title)}</h1>
+    </div>
+    <div class="bean-id">
+      <span class="code-badge">${this.escapeHtml(bean.id)}</span>${parentSpan}
     </div>
 
     <div class="timestamp">
       Created ${createdDate} &middot; Updated ${updatedDate}
     </div>
-
+  </div>
+  <div class="content">
+    <div class="body-content">
+      ${bodyHtml}
+    </div>
+    ${blockingSection}
+    ${blockedBySection}
+  </div>
+  <div class="header" style="padding-top: 24px; border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); margin-top: 8px; display: flex; flex-direction: column; align-items: center;">
     <div class="metadata-row">
       <span class="metadata-label">Status</span>
       <select id="status" onchange="updateField('status', this.value)" aria-label="Status">
-        <option value="todo" ${bean.status === 'todo' ? 'selected' : ''}>Todo</option>
-        <option value="in-progress" ${bean.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
-        <option value="completed" ${bean.status === 'completed' ? 'selected' : ''}>Completed</option>
-        <option value="draft" ${bean.status === 'draft' ? 'selected' : ''}>Draft</option>
-        <option value="scrapped" ${bean.status === 'scrapped' ? 'selected' : ''}>Scrapped</option>
+        <option value="todo" ${bean.status === 'todo' ? 'selected' : ''}>☑️ Todo</option>
+        <option value="in-progress" ${bean.status === 'in-progress' ? 'selected' : ''}>⏳ In Progress</option>
+        <option value="completed" ${bean.status === 'completed' ? 'selected' : ''}>✅ Completed</option>
+        <option value="draft" ${bean.status === 'draft' ? 'selected' : ''}>📝 Draft</option>
+        <option value="scrapped" ${bean.status === 'scrapped' ? 'selected' : ''}>🗑️ Scrapped</option>
       </select>
     </div>
 
     <div class="metadata-row">
       <span class="metadata-label">Type</span>
       <select id="type" onchange="updateField('type', this.value)" aria-label="Type">
-        <option value="task" ${bean.type === 'task' ? 'selected' : ''}>Task</option>
-        <option value="bug" ${bean.type === 'bug' ? 'selected' : ''}>Bug</option>
-        <option value="feature" ${bean.type === 'feature' ? 'selected' : ''}>Feature</option>
-        <option value="epic" ${bean.type === 'epic' ? 'selected' : ''}>Epic</option>
-        <option value="milestone" ${bean.type === 'milestone' ? 'selected' : ''}>Milestone</option>
+        <option value="task" ${bean.type === 'task' ? 'selected' : ''}>🧑‍💻 Task</option>
+        <option value="bug" ${bean.type === 'bug' ? 'selected' : ''}>\uD83D\uDC1B Bug</option>
+        <option value="feature" ${bean.type === 'feature' ? 'selected' : ''}>\uD83D\uDCA1 Feature</option>
+        <option value="epic" ${bean.type === 'epic' ? 'selected' : ''}>\u26A1 Epic</option>
+        <option value="milestone" ${bean.type === 'milestone' ? 'selected' : ''}>\uD83C\uDFC1 Milestone</option>
       </select>
     </div>
 
     <div class="metadata-row">
       <span class="metadata-label">Priority</span>
       <select id="priority" onchange="updateField('priority', this.value)" aria-label="Priority">
-        <option value="" ${!bean.priority ? 'selected' : ''}>None</option>
-        <option value="critical" ${bean.priority === 'critical' ? 'selected' : ''}>Critical</option>
-        <option value="high" ${bean.priority === 'high' ? 'selected' : ''}>High</option>
-        <option value="normal" ${bean.priority === 'normal' ? 'selected' : ''}>Normal</option>
-        <option value="low" ${bean.priority === 'low' ? 'selected' : ''}>Low</option>
-        <option value="deferred" ${bean.priority === 'deferred' ? 'selected' : ''}>Deferred</option>
+        <option value="" ${!bean.priority ? 'selected' : ''}>\u2014 None</option>
+        <option value="critical" ${bean.priority === 'critical' ? 'selected' : ''}>\uD83D\uDD34 Critical</option>
+        <option value="high" ${bean.priority === 'high' ? 'selected' : ''}>\uD83D\uDFE0 High</option>
+        <option value="normal" ${bean.priority === 'normal' ? 'selected' : ''}>\uD83D\uDFE1 Normal</option>
+        <option value="low" ${bean.priority === 'low' ? 'selected' : ''}>\uD83D\uDFE2 Low</option>
+        <option value="deferred" ${bean.priority === 'deferred' ? 'selected' : ''}>\uD83D\uDD35 Deferred</option>
       </select>
     </div>
 
     ${tagsBadges ? `<div class="metadata">${tagsBadges}</div>` : ''}
-  </div>
-  <div class="content">
-    ${blockingSection}
-    ${blockedBySection}
-    <div class="body-content">
-      ${bodyHtml}
-    </div>
   </div>
 
   <script>
@@ -523,12 +507,6 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       vscode.postMessage({
         command: 'updateBean',
         updates: updates
-      });
-    }
-
-    function editBean() {
-      vscode.postMessage({
-        command: 'editBean'
       });
     }
   </script>

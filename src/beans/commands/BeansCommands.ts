@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
 import { BeansConfigManager } from '../config';
+import { BeansDetailsViewProvider } from '../details';
 import { BeansOutput } from '../logging';
 import { Bean } from '../model';
 import { BeansPreviewProvider } from '../preview';
 import { BeansService } from '../service';
-import { BeansFilterManager } from '../tree';
+import { BeansFilterManager, BeanTreeItem } from '../tree';
 
 const logger = BeansOutput.getInstance();
 
@@ -40,7 +41,8 @@ export class BeansCommands {
     private readonly context: vscode.ExtensionContext,
     private readonly previewProvider: BeansPreviewProvider,
     private readonly filterManager: BeansFilterManager,
-    private readonly configManager: BeansConfigManager
+    private readonly configManager: BeansConfigManager,
+    private readonly detailsProvider?: BeansDetailsViewProvider
   ) {}
 
   /**
@@ -95,10 +97,37 @@ export class BeansCommands {
   }
 
   /**
+   * Resolve a command argument to a Bean.
+   *
+   * When invoked from a tree-item context menu VS Code passes the
+   * BeanTreeItem instance, not the inner Bean model.  When invoked
+   * from the command palette the argument is already a Bean (or
+   * undefined).  This helper normalises both cases.
+   *
+   * Uses duck-typing rather than `instanceof` because esbuild
+   * bundling can break prototype-chain checks.
+   */
+  private resolveBean(arg?: any): Bean | undefined {
+    if (!arg) {
+      return undefined;
+    }
+    // BeanTreeItem: has a nested .bean property with an .id string
+    if (arg.bean && typeof arg.bean === 'object' && typeof arg.bean.id === 'string') {
+      return arg.bean as Bean;
+    }
+    // Already a Bean (has .id and .status directly)
+    if (typeof arg.id === 'string' && typeof arg.status === 'string') {
+      return arg as Bean;
+    }
+    return undefined;
+  }
+
+  /**
    * View bean in markdown preview
    */
-  private async viewBean(bean?: Bean): Promise<void> {
+  private async viewBean(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
+      let bean = this.resolveBean(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to view');
         if (!bean) {
@@ -181,8 +210,13 @@ export class BeansCommands {
   /**
    * Edit bean (open in editor)
    */
-  private async editBean(bean?: Bean): Promise<void> {
+  private async editBean(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
+      let bean = this.resolveBean(arg);
+      if (!bean) {
+        // Fallback to the bean currently shown in the details pane (e.g. view/title button)
+        bean = this.detailsProvider?.currentBean;
+      }
       if (!bean) {
         bean = await this.pickBean('Select bean to edit');
         if (!bean) {
@@ -211,8 +245,9 @@ export class BeansCommands {
   /**
    * Set bean status
    */
-  private async setStatus(bean?: Bean): Promise<void> {
+  private async setStatus(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
+      let bean = this.resolveBean(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to update status');
         if (!bean) {
@@ -320,8 +355,9 @@ export class BeansCommands {
   /**
    * Set bean type
    */
-  private async setType(bean?: Bean): Promise<void> {
+  private async setType(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
+      let bean = this.resolveBean(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to update type');
         if (!bean) {
@@ -357,8 +393,9 @@ export class BeansCommands {
   /**
    * Set bean priority
    */
-  private async setPriority(bean?: Bean): Promise<void> {
+  private async setPriority(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
+      let bean = this.resolveBean(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to update priority');
         if (!bean) {
@@ -392,10 +429,35 @@ export class BeansCommands {
   }
 
   /**
-   * Set bean parent
+   * Codicon name for a bean type (used in QuickPick labels).
    */
-  private async setParent(bean?: Bean): Promise<void> {
+  private typeIcon(type: string): string {
+    switch (type) {
+      case 'milestone':
+        return '$(milestone)';
+      case 'epic':
+        return '$(zap)';
+      case 'feature':
+        return '$(lightbulb)';
+      case 'bug':
+        return '$(bug)';
+      case 'task':
+      default:
+        return '$(issues)';
+    }
+  }
+
+  /**
+   * Set bean parent.
+   *
+   * By default shows only milestones and epics (natural parent types).
+   * A toggle button lets the user include all issue types.
+   * Items are sorted by most recently updated, and scrapped/completed
+   * beans are excluded.
+   */
+  private async setParent(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
+      let bean = this.resolveBean(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to set parent');
         if (!bean) {
@@ -403,32 +465,74 @@ export class BeansCommands {
         }
       }
 
-      // Get list of potential parents (exclude self and descendants)
+      // Get all beans, filter out self, descendants, scrapped, completed
       const allBeans = await this.service.listBeans();
-      const potentialParents = allBeans.filter((b) => {
-        // Can't be own parent
-        if (b.id === bean!.id) {
-          return false;
+      const potentialParents = allBeans
+        .filter((b) => {
+          if (b.id === bean!.id) {
+            return false;
+          }
+          if (b.parent === bean!.id) {
+            return false;
+          }
+          if (b.status === 'completed' || b.status === 'scrapped') {
+            return false;
+          }
+          return true;
+        })
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+      const parentOnlyTypes = potentialParents.filter((b) => b.type === 'milestone' || b.type === 'epic');
+
+      interface ParentPickItem extends vscode.QuickPickItem {
+        bean?: Bean;
+      }
+
+      const toItems = (beans: Bean[]): ParentPickItem[] =>
+        beans.map((b) => ({
+          label: `${this.typeIcon(b.type)} ${b.title}`,
+          description: `${b.code} · ${formatLabel(b.status)}${b.priority ? ` · ${formatLabel(b.priority)}` : ''}`,
+          bean: b
+        }));
+
+      const qp = vscode.window.createQuickPick<ParentPickItem>();
+      qp.title = `Set Parent for ${bean.code}`;
+      qp.placeholder = bean.parent ? `Current parent: ${bean.parent}` : 'Select a parent (milestones & epics)';
+      qp.matchOnDescription = true;
+
+      let showAllTypes = false;
+      qp.items = toItems(parentOnlyTypes);
+
+      const toggleButton: vscode.QuickInputButton = {
+        iconPath: new vscode.ThemeIcon('list-unordered'),
+        tooltip: 'Show all issue types'
+      };
+      qp.buttons = [toggleButton];
+
+      qp.onDidTriggerButton(() => {
+        showAllTypes = !showAllTypes;
+        if (showAllTypes) {
+          qp.items = toItems(potentialParents);
+          qp.placeholder = bean!.parent ? `Current parent: ${bean!.parent}` : 'Select a parent (all types)';
+        } else {
+          qp.items = toItems(parentOnlyTypes);
+          qp.placeholder = bean!.parent ? `Current parent: ${bean!.parent}` : 'Select a parent (milestones & epics)';
         }
-        // Can't be a descendant
-        if (b.parent === bean!.id) {
-          return false;
-        }
-        return true;
       });
 
-      const parentItems = potentialParents.map((b) => ({
-        label: `${b.code}: ${b.title}`,
-        description: `${b.type} • ${b.status}`,
-        bean: b
-      }));
-
-      const selected = await vscode.window.showQuickPick(parentItems, {
-        placeHolder: bean.parent ? `Current parent: ${bean.parent}` : 'No parent set',
-        title: `Set Parent for ${bean.code}`
+      const selected = await new Promise<ParentPickItem | undefined>((resolve) => {
+        qp.onDidAccept(() => {
+          resolve(qp.selectedItems[0]);
+          qp.dispose();
+        });
+        qp.onDidHide(() => {
+          resolve(undefined);
+          qp.dispose();
+        });
+        qp.show();
       });
 
-      if (!selected) {
+      if (!selected?.bean) {
         return;
       }
 
@@ -448,8 +552,9 @@ export class BeansCommands {
   /**
    * Remove bean parent
    */
-  private async removeParent(bean?: Bean): Promise<void> {
+  private async removeParent(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
+      let bean = this.resolveBean(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to remove parent');
         if (!bean) {
@@ -489,8 +594,9 @@ export class BeansCommands {
   /**
    * Edit blocking relationships
    */
-  private async editBlocking(bean?: Bean): Promise<void> {
+  private async editBlocking(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
+      let bean = this.resolveBean(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to edit blocking');
         if (!bean) {
@@ -537,21 +643,21 @@ export class BeansCommands {
    */
   private async addBlocking(bean: Bean): Promise<void> {
     const allBeans = await this.service.listBeans();
-    const potentialBlocking = allBeans.filter((b) => {
-      // Can't block self
-      if (b.id === bean.id) {
-        return false;
-      }
-      // Don't show already blocking
-      if (bean.blocking?.includes(b.id)) {
-        return false;
-      }
-      return true;
-    });
+    const potentialBlocking = allBeans
+      .filter((b) => {
+        if (b.id === bean.id) {
+          return false;
+        }
+        if (bean.blocking?.includes(b.id)) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
     const items = potentialBlocking.map((b) => ({
-      label: `${b.code}: ${b.title}`,
-      description: `${b.type} • ${b.status}`,
+      label: `${this.typeIcon(b.type)} ${b.title}`,
+      description: `${b.code} · ${formatLabel(b.type)} · ${formatLabel(b.status)}`,
       bean: b,
       picked: false
     }));
@@ -583,11 +689,13 @@ export class BeansCommands {
     }
 
     const allBeans = await this.service.listBeans();
-    const blockingBeans = allBeans.filter((b) => bean.blocking?.includes(b.id));
+    const blockingBeans = allBeans
+      .filter((b) => bean.blocking?.includes(b.id))
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
     const items = blockingBeans.map((b) => ({
-      label: `${b.code}: ${b.title}`,
-      description: `${b.type} • ${b.status}`,
+      label: `${this.typeIcon(b.type)} ${b.title}`,
+      description: `${b.code} · ${formatLabel(b.type)} · ${formatLabel(b.status)}`,
       bean: b,
       picked: false
     }));
@@ -615,21 +723,21 @@ export class BeansCommands {
    */
   private async addBlockedBy(bean: Bean): Promise<void> {
     const allBeans = await this.service.listBeans();
-    const potentialBlockedBy = allBeans.filter((b) => {
-      // Can't be blocked by self
-      if (b.id === bean.id) {
-        return false;
-      }
-      // Don't show already blocked by
-      if (bean.blockedBy?.includes(b.id)) {
-        return false;
-      }
-      return true;
-    });
+    const potentialBlockedBy = allBeans
+      .filter((b) => {
+        if (b.id === bean.id) {
+          return false;
+        }
+        if (bean.blockedBy?.includes(b.id)) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
     const items = potentialBlockedBy.map((b) => ({
-      label: `${b.code}: ${b.title}`,
-      description: `${b.type} • ${b.status}`,
+      label: `${this.typeIcon(b.type)} ${b.title}`,
+      description: `${b.code} · ${formatLabel(b.type)} · ${formatLabel(b.status)}`,
       bean: b,
       picked: false
     }));
@@ -661,11 +769,13 @@ export class BeansCommands {
     }
 
     const allBeans = await this.service.listBeans();
-    const blockedByBeans = allBeans.filter((b) => bean.blockedBy?.includes(b.id));
+    const blockedByBeans = allBeans
+      .filter((b) => bean.blockedBy?.includes(b.id))
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
     const items = blockedByBeans.map((b) => ({
-      label: `${b.code}: ${b.title}`,
-      description: `${b.type} • ${b.status}`,
+      label: `${this.typeIcon(b.type)} ${b.title}`,
+      description: `${b.code} · ${formatLabel(b.type)} · ${formatLabel(b.status)}`,
       bean: b,
       picked: false
     }));
@@ -691,8 +801,9 @@ export class BeansCommands {
   /**
    * Copy bean ID to clipboard
    */
-  private async copyId(bean?: Bean): Promise<void> {
+  private async copyId(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
+      let bean = this.resolveBean(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to copy ID');
         if (!bean) {
@@ -713,8 +824,9 @@ export class BeansCommands {
   /**
    * Delete bean (only for scrapped and draft)
    */
-  private async deleteBean(bean?: Bean): Promise<void> {
+  private async deleteBean(arg?: Bean | BeanTreeItem): Promise<void> {
     try {
+      let bean = this.resolveBean(arg);
       if (!bean) {
         bean = await this.pickBean('Select bean to delete', ['scrapped', 'draft']);
         if (!bean) {

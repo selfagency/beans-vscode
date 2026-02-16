@@ -13,7 +13,11 @@ export class BeanTreeItem extends vscode.TreeItem {
   ) {
     super(bean.title, collapsibleState);
 
-    this.id = bean.id;
+    // Do NOT set this.id — VS Code uses `id` to reconcile tree items
+    // across refreshes and will preserve old positions instead of
+    // accepting the new order from getChildren().  Leaving id unset
+    // forces VS Code to rebuild from scratch each refresh.
+    this.label = this.buildLabel();
     this.description = this.buildDescription();
     this.tooltip = this.buildTooltip();
     this.contextValue = this.buildContextValue();
@@ -28,49 +32,110 @@ export class BeanTreeItem extends vscode.TreeItem {
   }
 
   /**
-   * Build description showing the short code
+   * Theme color per priority level.
+   */
+  private static readonly PRIORITY_COLORS: Record<string, string> = {
+    critical: 'charts.red',
+    high: 'charts.orange',
+    normal: 'charts.yellow',
+    low: 'charts.green',
+    deferred: 'charts.blue'
+  };
+
+  /**
+   * Display labels for status values (emoji + title case).
+   */
+  private static readonly STATUS_LABELS: Record<string, string> = {
+    todo: '☑️ Todo',
+    'in-progress': '⏳ In Progress',
+    completed: '✅ Completed',
+    draft: '📝 Draft',
+    scrapped: '🗑️ Scrapped'
+  };
+
+  /**
+   * Display labels for type values (emoji + title case).
+   */
+  private static readonly TYPE_LABELS: Record<string, string> = {
+    task: '🧑‍💻 Task',
+    bug: '🐛 Bug',
+    feature: '💡 Feature',
+    epic: '⚡ Epic',
+    milestone: '🏁 Milestone'
+  };
+
+  /**
+   * Display labels for priority values (emoji + title case).
+   */
+  private static readonly PRIORITY_LABELS: Record<string, string> = {
+    critical: '🔴 Critical',
+    high: '🟠 High',
+    normal: '🟡 Normal',
+    low: '🟢 Low',
+    deferred: '🔵 Deferred'
+  };
+
+  /**
+   * Build label — only show ⏳ prefix for in-progress items.
+   */
+  private buildLabel(): string {
+    if (this.bean.status === 'in-progress') {
+      return `⏳ ${this.bean.title}`;
+    }
+    return this.bean.title;
+  }
+
+  /**
+   * Build description — shows the short code after the title.
    */
   private buildDescription(): string {
     return this.bean.code || '';
   }
 
   /**
-   * Build detailed tooltip with full bean information
+   * Build detailed tooltip styled like the details pane, using
+   * full emoji + title-case labels for status, type, and priority.
    */
   private buildTooltip(): vscode.MarkdownString {
     const tooltip = new vscode.MarkdownString();
     tooltip.supportHtml = true;
     tooltip.isTrusted = true;
 
-    tooltip.appendMarkdown(`**${this.bean.title}**\n\n`);
-    tooltip.appendMarkdown(`ID: \`${this.bean.id}\`\n\n`);
-    tooltip.appendMarkdown(`Code: \`${this.bean.code}\`\n\n`);
-    tooltip.appendMarkdown(`Type: ${this.bean.type}\n\n`);
-    tooltip.appendMarkdown(`Status: ${this.bean.status}\n\n`);
+    const statusLabel = BeanTreeItem.STATUS_LABELS[this.bean.status] || this.bean.status;
+    const typeLabel = BeanTreeItem.TYPE_LABELS[this.bean.type] || this.bean.type;
+    const priorityLabel = this.bean.priority
+      ? BeanTreeItem.PRIORITY_LABELS[this.bean.priority] || this.bean.priority
+      : null;
 
-    if (this.bean.priority) {
-      tooltip.appendMarkdown(`Priority: ${this.bean.priority}\n\n`);
+    // Title + code
+    tooltip.appendMarkdown(`**${this.bean.title}**&ensp;\`${this.bean.code}\`\n\n`);
+
+    // Metadata table
+    tooltip.appendMarkdown(`| | |\n|---|---|\n`);
+    tooltip.appendMarkdown(`| **Status** | ${statusLabel} |\n`);
+    tooltip.appendMarkdown(`| **Type** | ${typeLabel} |\n`);
+    if (priorityLabel) {
+      tooltip.appendMarkdown(`| **Priority** | ${priorityLabel} |\n`);
     }
 
+    // Relationships
     if (this.bean.parent) {
-      tooltip.appendMarkdown(`Parent: ${this.bean.parent}\n\n`);
+      tooltip.appendMarkdown(`| **Parent** | \`${this.bean.parent}\` |\n`);
     }
-
     if (this.bean.blocking.length > 0) {
-      tooltip.appendMarkdown(`Blocking: ${this.bean.blocking.length} bean(s)\n\n`);
+      tooltip.appendMarkdown(`| **Blocking** | ${this.bean.blocking.length} bean(s) |\n`);
     }
-
     if (this.bean.blockedBy.length > 0) {
-      tooltip.appendMarkdown(`Blocked by: ${this.bean.blockedBy.length} bean(s)\n\n`);
+      tooltip.appendMarkdown(`| **Blocked by** | ${this.bean.blockedBy.length} bean(s) |\n`);
     }
-
     if (this.bean.tags.length > 0) {
-      tooltip.appendMarkdown(`Tags: ${this.bean.tags.join(', ')}\n\n`);
+      tooltip.appendMarkdown(`| **Tags** | ${this.bean.tags.join(', ')} |\n`);
     }
 
-    tooltip.appendMarkdown(`---\n\n`);
-    tooltip.appendMarkdown(`Created: ${new Date(this.bean.createdAt).toLocaleString()}\n\n`);
-    tooltip.appendMarkdown(`Updated: ${new Date(this.bean.updatedAt).toLocaleString()}\n\n`);
+    // Timestamps
+    tooltip.appendMarkdown(`\n---\n\n`);
+    tooltip.appendMarkdown(`Created: ${new Date(this.bean.createdAt).toLocaleString()}&emsp;`);
+    tooltip.appendMarkdown(`Updated: ${new Date(this.bean.updatedAt).toLocaleString()}\n`);
 
     return tooltip;
   }
@@ -113,26 +178,18 @@ export class BeanTreeItem extends vscode.TreeItem {
   }
 
   /**
-   * Map priority to a pastel-ish ThemeColor for the tree item icon.
-   */
-  private static readonly PRIORITY_COLORS: Record<string, vscode.ThemeColor> = {
-    critical: new vscode.ThemeColor('charts.red'),
-    high: new vscode.ThemeColor('charts.orange'),
-    normal: new vscode.ThemeColor('charts.blue'),
-    low: new vscode.ThemeColor('charts.green'),
-    deferred: new vscode.ThemeColor('charts.purple')
-  };
-
-  /**
    * Get appropriate icon for the bean.
-   * Icon color is determined by priority (if set) or amber for in-progress status.
+   * Icon color reflects priority (red/orange/yellow/green/blue).
+   * In-progress items without a priority fall back to orange.
    */
   private getIcon(): vscode.ThemeIcon {
-    // Priority color takes precedence, then in-progress/parent highlight
-    const priorityColor = this.bean.priority ? BeanTreeItem.PRIORITY_COLORS[this.bean.priority] : undefined;
-
+    const priorityColorId = this.bean.priority ? BeanTreeItem.PRIORITY_COLORS[this.bean.priority] : undefined;
     const shouldHighlight = this.bean.status === 'in-progress' || this.hasInProgressChildren;
-    const color = priorityColor ?? (shouldHighlight ? new vscode.ThemeColor('charts.yellow') : undefined);
+    const color = priorityColorId
+      ? new vscode.ThemeColor(priorityColorId)
+      : shouldHighlight
+      ? new vscode.ThemeColor('charts.orange')
+      : undefined;
 
     // Status-based icons (priority over type)
     switch (this.bean.status) {

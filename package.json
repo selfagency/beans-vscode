@@ -158,6 +158,14 @@
     "views": {
       "beans": [
         {
+          "type": "webview",
+          "id": "beans.search",
+          "name": "Search",
+          "icon": "$(search)",
+          "when": "beans.initialized",
+          "visibility": "visible"
+        },
+        {
           "icon": "$(issue-opened)",
           "id": "beans.active",
           "name": "Active",
@@ -193,34 +201,28 @@
       ]
     },
     "menus": {
-      "viewContainer/title": [
+      "view/title": [
         {
           "command": "beans.create",
-          "when": "viewContainer == beans",
+          "when": "view == beans.active && beans.initialized",
           "group": "navigation@1"
         },
         {
           "command": "beans.refresh",
-          "when": "viewContainer == beans",
+          "when": "view == beans.active && beans.initialized",
           "group": "navigation@2"
         },
         {
           "command": "beans.showOutput",
-          "when": "viewContainer == beans",
+          "when": "view == beans.active && beans.initialized",
           "group": "navigation@3"
         },
         {
-          "command": "beans.search",
-          "when": "viewContainer == beans",
-          "group": "navigation@4"
-        },
-        {
-          "command": "beans.filter",
-          "when": "viewContainer == beans",
-          "group": "navigation@5"
+          "command": "beans.edit",
+          "when": "view == beans.details && beans.hasSelectedBean",
+          "group": "navigation"
         }
       ],
-      "view/title": [],
       "view/item/context": [
         {
           "command": "beans.view",
