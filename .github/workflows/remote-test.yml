@@ -208,6 +208,11 @@ jobs:
                 "version": "latest"
               }
             },
+            "features": {
+              "ghcr.io/devcontainers/features/go:1": {
+                "version": "latest"
+              }
+            },
             "postCreateCommand": "go install github.com/hmans/beans@${{ env.BEANS_VERSION }} && beans init",
             "remoteEnv": {
               "PATH": "\${containerEnv:PATH}:/root/go/bin"
