@@ -3,26 +3,30 @@
 [![CI](https://github.com/selfagency/beans-vscode/actions/workflows/ci.yml/badge.svg)](https://github.com/selfagency/beans-vscode/actions/workflows/ci.yml)
 [![Release](https://github.com/selfagency/beans-vscode/actions/workflows/release.yml/badge.svg)](https://github.com/selfagency/beans-vscode/actions/workflows/release.yml)
 
-A VS Code extension for [Beans](https://github.com/h-arry-smith/beans), the lightweight file-based issue tracker designed for developer workflows and AI collaboration.
+A VS Code extension for [Beans](https://github.com/hmans/beans), the lightweight file-based issue tracker designed for developer workflows and AI collaboration.
 
 ## About Beans
 
-**[Beans](https://github.com/h-arry-smith/beans)** by [Harry Smith](https://github.com/h-arry-smith) is a brilliant file-based issue tracker that stores issues as plain text in your repository's `.beans/` folder. Unlike traditional issue trackers, Beans is:
+**[Beans](https://github.com/hmans/beans)** by [Hendrik Mans](https://github.com/hmans) is a brilliant CLI-based, flat-file issue tracker that stores issues as Markdown files in your repository's `.beans/` folder. Unlike traditional issue trackers, Beans is:
 
 - **Git-native**: Issues live in your repo, version-controlled alongside your code
 - **Offline-first**: No network required, works anywhere git works
 - **Merge-friendly**: Designed to minimize merge conflicts in team workflows
-- **LLM-optimized**: Plain text format is perfect for AI assistants to read and modify issues
+- **LLM-optimized**: Plain text Markdown format is perfect for AI assistants to read and modify issues
+- **GraphQL API**: Built-in query engine for efficient context retrieval
+- **Beautiful TUI**: Interactive terminal interface for browsing and managing beans
+- **Project memory**: Archived beans serve as historical context for agents
 
 ### Why Beans + LLMs = Magic ✨
 
 Beans shines when working with Large Language Models like GitHub Copilot because:
 
 1. **Context-aware**: LLMs can read your entire issue structure to understand project priorities
-2. **Semantic search**: Find related issues naturally using AI-powered search
-3. **Automated planning**: LLMs can create, organize, and break down issues intelligently
-4. **Workflow automation**: AI can update statuses, link dependencies, and manage your backlog
-5. **No API limits**: Everything is local files, no rate limiting or API tokens needed
+2. **GraphQL queries**: Agents can fetch exactly the data they need, minimizing token usage
+3. **Automated planning**: AI can create, organize, and break down issues intelligently
+4. **Workflow automation**: Agents can update statuses, link dependencies, and manage your backlog
+5. **No API limits**: Everything is local files, no rate limiting or authentication needed
+6. **Project memory**: Completed beans provide historical context for better decision-making
 
 ### This Extension
 
@@ -33,7 +37,7 @@ This extension brings Beans into VS Code with deep GitHub Copilot integration th
 - Specialized `@beans` chat participant for GitHub Copilot
 - Remote development support (SSH, WSL, Dev Containers, Codespaces)
 
-**Thank you** to Harry Smith and the Beans contributors for creating such an elegant, developer-friendly issue tracker that pairs perfectly with modern AI tools!
+**Thank you** to [Hendrik Mans](https://github.com/hmans) and the [Beans contributors](https://github.com/hmans/beans/graphs/contributors) for creating such an elegant, developer-friendly issue tracker that pairs perfectly with modern AI tools!
 
 ## Features
 
@@ -101,11 +105,14 @@ This extension fully supports VS Code Remote Development scenarios and runs in t
 **Critical**: The `beans` CLI must be installed on the remote machine, not your local machine.
 
 ```bash
-# Install beans on the remote machine
-# SSH/WSL/Container/Codespace
-curl -fsSL https://raw.githubusercontent.com/h-arry-smith/beans/main/install.sh | sh
+# Install beans on the remote machine via Homebrew
+brew install hmans/beans/beans
 
-# Or use your preferred package manager on the remote
+# Or download from releases
+# https://github.com/hmans/beans/releases
+
+# Or install via Go
+go install github.com/hmans/beans@latest
 ```
 
 ### How Remote Operation Works
