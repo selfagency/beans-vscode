@@ -20,10 +20,12 @@ const execAsync = promisify(exec);
 export class BeansService {
   private readonly logger = BeansOutput.getInstance();
   private cliPath: string;
+  private workspaceRoot: string;
 
-  constructor(private readonly workspaceRoot: string) {
+  constructor(defaultWorkspaceRoot: string) {
     const config = vscode.workspace.getConfiguration('beans');
     this.cliPath = config.get<string>('cliPath', 'beans');
+    this.workspaceRoot = config.get<string>('workspaceRoot', '') || defaultWorkspaceRoot;
   }
 
   /**

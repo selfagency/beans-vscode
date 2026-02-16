@@ -36,6 +36,19 @@ export async function activate(context: vscode.ExtensionContext) {
     return;
   }
 
+  // Check if extension should only enable for initialized workspaces
+  const config = vscode.workspace.getConfiguration('beans');
+  const enableOnlyIfInitialized = config.get<boolean>('enableOnlyIfInitialized', false);
+
+  if (enableOnlyIfInitialized) {
+    // Check for .beans.yml in workspace
+    const configFiles = await vscode.workspace.findFiles('.beans.yml', null, 1);
+    if (configFiles.length === 0) {
+      logger.info('Extension set to enable only if initialized, but .beans.yml not found. Skipping activation.');
+      return;
+    }
+  }
+
   try {
     beansService = new BeansService(workspaceFolder.uri.fsPath);
 
