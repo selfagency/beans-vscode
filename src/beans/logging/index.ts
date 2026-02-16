@@ -3,4 +3,5 @@
  * @module beans/logging
  */
 
-export { BeansOutput, LogLevel } from './BeansOutput';
+export { BeansOutput } from './BeansOutput';
+export type { LogLevel } from './BeansOutput';

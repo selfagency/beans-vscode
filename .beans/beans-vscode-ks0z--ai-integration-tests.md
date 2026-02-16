@@ -1,10 +1,11 @@
 ---
 # beans-vscode-ks0z
 title: AI integration tests
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-02-16T04:05:02Z
-updated_at: 2026-02-16T04:05:02Z
+updated_at: 2026-02-16T18:11:39Z
 parent: beans-vscode-xwzf
 ---
 
