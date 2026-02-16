@@ -9,8 +9,14 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 IMAGE_NAME="beans-vscode-remote-test"
 CONTAINER_NAME="beans-test-$(date +%s)"
 
+# Pin versions for reproducible tests
+BEANS_VERSION="${BEANS_VERSION:-v0.13.2}"
+GO_VERSION="${GO_VERSION:-1.23.5}"
+
 echo "🧪 Beans VS Code Remote Compatibility Test"
 echo "==========================================="
+echo "Using Beans version: $BEANS_VERSION"
+echo "Using Go version: $GO_VERSION"
 echo ""
 
 # Colors for output
@@ -37,32 +43,37 @@ if ! command -v vsce &> /dev/null; then
   echo "Installing @vscode/vsce..."
   pnpm install -g @vscode/vsce
 fi
+# Use --no-dependencies to avoid pnpm/npm conflicts in test environment
 vsce package --no-dependencies --out beans-vscode-test.vsix
 
 echo ""
 echo "Step 3: Creating test Dockerfile..."
-cat > Dockerfile.remote-test << 'EOF'
+cat > Dockerfile.remote-test << EOF
 FROM mcr.microsoft.com/devcontainers/typescript-node:22
 
-# Install Go from official source (distro packages are often too old)
-RUN apt-get update && apt-get install -y curl jq git wget && \
-    wget -q https://go.dev/dl/go1.23.5.linux-amd64.tar.gz && \
-    tar -C /usr/local -xzf go1.23.5.linux-amd64.tar.gz && \
-    rm go1.23.5.linux-amd64.tar.gz && \
+# Install Go from official source with architecture detection
+RUN ARCH=\$(uname -m) && \\
+    if [ "\$ARCH" = "x86_64" ]; then GOARCH="amd64"; \\
+    elif [ "\$ARCH" = "aarch64" ]; then GOARCH="arm64"; \\
+    else echo "Unsupported architecture: \$ARCH" && exit 1; fi && \\
+    apt-get update && apt-get install -y curl jq git wget && \\
+    wget -q https://go.dev/dl/go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
+    tar -C /usr/local -xzf go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
+    rm go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
     rm -rf /var/lib/apt/lists/*
 
-ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}"
+ENV PATH="/usr/local/go/bin:/root/go/bin:\${PATH}"
 
-# Install beans CLI
-RUN go install github.com/hmans/beans@latest
+# Install beans CLI (pinned version for reproducible tests)
+RUN go install github.com/hmans/beans@${BEANS_VERSION}
 
 # Verify beans installed
 RUN beans version
 
 # Set up workspace
 WORKDIR /workspace
-RUN git config --global user.email "test@example.com" && \
-    git config --global user.name "Test User" && \
+RUN git config --global user.email "test@example.com" && \\
+    git config --global user.name "Test User" && \\
     git config --global init.defaultBranch main
 
 # Copy extension and test files
