@@ -8,6 +8,10 @@ set -e
 GO_VERSION="1.23.5"
 BEANS_VERSION="v0.13.2"
 
+# SHA256 checksums for Go downloads (from https://go.dev/dl/)
+GO_SHA256_AMD64="cbcad4a6482107c7c7926df1608106c189417163428200ce357695cc7e01d091"
+GO_SHA256_ARM64="47c84d332123883653b70da2db7dd57d2a865921ba4724efcdf56b5da7021db0"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 IMAGE_NAME="beans-vscode-remote-test"
@@ -57,13 +61,20 @@ echo "Step 3: Creating test Dockerfile..."
 cat > Dockerfile.remote-test << EOF
 FROM mcr.microsoft.com/devcontainers/typescript-node:22
 
-# Install Go from official source with architecture detection
+# Install Go from official source with architecture detection and checksum verification
 RUN ARCH=\$(uname -m) && \\
-    if [ "\$ARCH" = "x86_64" ]; then GOARCH="amd64"; \\
-    elif [ "\$ARCH" = "aarch64" ]; then GOARCH="arm64"; \\
-    else echo "Unsupported architecture: \$ARCH" && exit 1; fi && \\
+    if [ "\$ARCH" = "x86_64" ]; then \\
+        GOARCH="amd64"; \\
+        EXPECTED_SHA256="${GO_SHA256_AMD64}"; \\
+    elif [ "\$ARCH" = "aarch64" ]; then \\
+        GOARCH="arm64"; \\
+        EXPECTED_SHA256="${GO_SHA256_ARM64}"; \\
+    else \\
+        echo "Unsupported architecture: \$ARCH" && exit 1; \\
+    fi && \\
     apt-get update && apt-get install -y curl jq git wget && \\
     wget -q https://go.dev/dl/go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
+    echo "\$EXPECTED_SHA256  go${GO_VERSION}.linux-\${GOARCH}.tar.gz" | sha256sum -c - && \\
     tar -C /usr/local -xzf go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
     rm go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
     rm -rf /var/lib/apt/lists/*
