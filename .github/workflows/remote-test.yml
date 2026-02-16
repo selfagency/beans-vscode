@@ -9,6 +9,9 @@ on:
 
 env:
   BEANS_VERSION: "v0.13.2"  # Pin Beans version for reproducible CI builds
+  GO_VERSION: "1.23.5"      # Pin Go version for stability
+  GO_SHA256_AMD64: "cbcad4a6482107c7c7926df1608106c189417163428200ce357695cc7e01d091"  # SHA256 checksum for Go 1.23.5 linux-amd64
+  GO_SHA256_ARM64: "47c84d332123883653b70da2db7dd57d2a865921ba4724efcdf56b5da7021db0"  # SHA256 checksum for Go 1.23.5 linux-arm64
 
 jobs:
   docker-remote-test:
@@ -72,24 +75,30 @@ jobs:
           cat > Dockerfile.test << EOF
           FROM ${{ matrix.base-image }}
 
-          # Install Go from official source with architecture detection
-          # Go version is dynamically fetched to always use the latest stable release
-          RUN ARCH=\$(uname -m) && \\
-              if [ "\$ARCH" = "x86_64" ]; then GOARCH="amd64"; \\
-              elif [ "\$ARCH" = "aarch64" ]; then GOARCH="arm64"; \\
-              else echo "Unsupported architecture: \$ARCH" && exit 1; fi && \\
-              if command -v apt-get > /dev/null; then \\
-                apt-get update && apt-get install -y curl jq git wget && \\
-                wget https://go.dev/dl/go${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz || \\
-                  (echo "Failed to download Go ${{ steps.go-version.outputs.version }} for \${GOARCH}" && exit 1) && \\
-                tar -C /usr/local -xzf go${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz && \\
-                rm go${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz; \\
-              elif command -v apk > /dev/null; then \\
-                apk add --no-cache curl jq git bash wget && \\
-                wget https://go.dev/dl/go${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz || \\
-                  (echo "Failed to download Go ${{ steps.go-version.outputs.version }} for \${GOARCH}" && exit 1) && \\
-                tar -C /usr/local -xzf go${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz && \\
-                rm go${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz; \\
+          # Install Go from official source with architecture detection and checksum verification
+          # Note: Checksum verification duplicated in apt-get and apk paths for compatibility
+          RUN ARCH=$(uname -m) && \
+              if [ "$ARCH" = "x86_64" ]; then \
+                GOARCH="amd64"; \
+                EXPECTED_SHA256="${{ env.GO_SHA256_AMD64 }}"; \
+              elif [ "$ARCH" = "aarch64" ]; then \
+                GOARCH="arm64"; \
+                EXPECTED_SHA256="${{ env.GO_SHA256_ARM64 }}"; \
+              else \
+                echo "Unsupported architecture: $ARCH" && exit 1; \
+              fi && \
+              if command -v apt-get > /dev/null; then \
+                apt-get update && apt-get install -y curl jq git wget && \
+                wget -q https://go.dev/dl/go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz && \
+                echo "$EXPECTED_SHA256  go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz" | sha256sum -c - || { echo "ERROR: Go tarball checksum verification failed"; exit 1; } && \
+                tar -C /usr/local -xzf go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz && \
+                rm go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz; \
+              elif command -v apk > /dev/null; then \
+                apk add --no-cache curl jq git bash wget && \
+                wget -q https://go.dev/dl/go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz && \
+                echo "$EXPECTED_SHA256  go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz" | sha256sum -c - || { echo "ERROR: Go tarball checksum verification failed"; exit 1; } && \
+                tar -C /usr/local -xzf go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz && \
+                rm go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz; \
               fi
 
           ENV PATH="/usr/local/go/bin:/root/go/bin:\${PATH}"
