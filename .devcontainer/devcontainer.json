@@ -1,0 +1,23 @@
+{
+  "name": "Beans VS Code Extension Development",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+  "features": {
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "latest"
+    }
+  },
+  "postCreateCommand": "go install github.com/hmans/beans@latest",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "beans.ai.enabled": true,
+        "beans.logging.level": "debug"
+      },
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "remoteUser": "node"
+}
