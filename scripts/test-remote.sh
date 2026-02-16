@@ -45,6 +45,8 @@ vsce package --no-dependencies --out beans-vscode-test.vsix
 
 echo ""
 echo "Step 3: Creating test Dockerfile..."
+# Note: Using EOF (not 'EOF') to allow ${GO_VERSION} and ${BEANS_VERSION} expansion
+# from bash variables while \$ escapes Docker variables evaluated at build time
 cat > Dockerfile.remote-test << EOF
 FROM mcr.microsoft.com/devcontainers/typescript-node:22
 

@@ -183,7 +183,7 @@ jobs:
       - name: Create test devcontainer config
         run: |
           mkdir -p .devcontainer-test
-          cat > .devcontainer-test/devcontainer.json << 'EOF'
+          cat > .devcontainer-test/devcontainer.json << EOF
           {
             "name": "Beans Remote Test",
             "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
@@ -192,7 +192,10 @@ jobs:
                 "version": "latest"
               }
             },
-            "postCreateCommand": "go install github.com/hmans/beans@latest && beans init",
+            "postCreateCommand": "go install github.com/hmans/beans@${{ env.BEANS_VERSION }} && beans init",
+            "remoteEnv": {
+              "PATH": "\${containerEnv:PATH}:/root/go/bin"
+            },
             "customizations": {
               "vscode": {
                 "settings": {
