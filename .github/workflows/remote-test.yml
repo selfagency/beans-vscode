@@ -8,8 +8,8 @@ on:
   workflow_dispatch: # Allow manual triggering
 
 env:
-  GO_VERSION: "1.23.5"
-  BEANS_VERSION: "v0.13.2"
+  BEANS_VERSION: "v0.13.2"  # Pin Beans version for reproducible CI builds
+  GO_VERSION: "1.23.5"      # Pin Go version for stability
 
 jobs:
   docker-remote-test:
@@ -77,7 +77,7 @@ jobs:
 
           ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}"
 
-          # Install beans CLI (pinned version for reproducibility)
+          # Install beans CLI (pinned version for reproducible CI)
           RUN go install github.com/hmans/beans@${{ env.BEANS_VERSION }}
 
           # Verify beans installed

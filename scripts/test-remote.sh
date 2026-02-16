@@ -13,8 +13,14 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 IMAGE_NAME="beans-vscode-remote-test"
 CONTAINER_NAME="beans-test-$(date +%s)"
 
+# Pin versions for reproducible tests
+BEANS_VERSION="${BEANS_VERSION:-v0.13.2}"
+GO_VERSION="${GO_VERSION:-1.23.5}"
+
 echo "🧪 Beans VS Code Remote Compatibility Test"
 echo "==========================================="
+echo "Using Beans version: $BEANS_VERSION"
+echo "Using Go version: $GO_VERSION"
 echo ""
 
 # Colors for output
@@ -41,6 +47,7 @@ if ! command -v vsce &> /dev/null; then
   echo "Installing @vscode/vsce..."
   pnpm install -g @vscode/vsce
 fi
+# Use --no-dependencies to avoid pnpm/npm conflicts in test environment
 vsce package --no-dependencies --out beans-vscode-test.vsix
 
 echo ""
@@ -63,7 +70,7 @@ RUN ARCH=\$(uname -m) && \\
 
 ENV PATH="/usr/local/go/bin:/root/go/bin:\${PATH}"
 
-# Install beans CLI (pinned version for reproducibility)
+# Install beans CLI (pinned version for reproducible tests)
 RUN go install github.com/hmans/beans@${BEANS_VERSION}
 
 # Verify beans installed
