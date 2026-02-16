@@ -74,7 +74,7 @@ RUN ARCH=\$(uname -m) && \\
     fi && \\
     apt-get update && apt-get install -y curl jq git wget && \\
     wget -q https://go.dev/dl/go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
-    echo "\$EXPECTED_SHA256  go${GO_VERSION}.linux-\${GOARCH}.tar.gz" | sha256sum -c - && \\
+    echo "\$EXPECTED_SHA256  go${GO_VERSION}.linux-\${GOARCH}.tar.gz" | sha256sum -c - || { echo "ERROR: Go tarball checksum verification failed. Possible tampering detected."; exit 1; } && \\
     tar -C /usr/local -xzf go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
     rm go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
     rm -rf /var/lib/apt/lists/*
