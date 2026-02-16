@@ -4,20 +4,12 @@
 
 set -e
 
-# Pin versions for reproducibility
-GO_VERSION="1.23.5"
-BEANS_VERSION="v0.13.2"
-
-# SHA256 checksums for Go downloads (from https://go.dev/dl/)
-GO_SHA256_AMD64="cbcad4a6482107c7c7926df1608106c189417163428200ce357695cc7e01d091"
-GO_SHA256_ARM64="47c84d332123883653b70da2db7dd57d2a865921ba4724efcdf56b5da7021db0"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 IMAGE_NAME="beans-vscode-remote-test"
 CONTAINER_NAME="beans-test-$(date +%s)"
 
-# Pin versions for reproducible tests
+# Pin versions for reproducible tests (allow override via environment)
 BEANS_VERSION="${BEANS_VERSION:-v0.13.2}"
 GO_VERSION="${GO_VERSION:-1.23.5}"
 
