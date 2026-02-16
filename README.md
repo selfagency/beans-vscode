@@ -66,18 +66,34 @@ The extension uses GitHub Actions for continuous integration and deployment:
 - Executes type checking, linting, and all tests
 - Uses xvfb for headless VS Code extension testing on Linux
 - Uploads test artifacts and coverage reports on failures
+- **Required secrets**: None (fully automated)
 
 ### Release Workflow
 
 - Triggered on version tags (e.g., `v1.0.0`)
 - Builds and packages the extension
 - Creates GitHub releases with `.vsix` artifacts
-- Publishes to VS Code Marketplace and Open VSX (requires secrets)
+- Publishes to VS Code Marketplace and Open VSX
+
+**Required secrets** (configure in repository Settings → Secrets and variables → Actions):
+
+- **`VSCE_PAT`**: VS Code Marketplace Personal Access Token
+  - Create at [Visual Studio Marketplace Publisher Management](https://marketplace.visualstudio.com/manage/publishers)
+  - Required to publish extensions to the VS Code Marketplace
+
+- **`OVSX_PAT`**: Open VSX Personal Access Token
+  - Create at [Open VSX Registry](https://open-vsx.org/user-settings/tokens)
+  - Required to publish extensions to Open VSX
+
+**Note**: `GITHUB_TOKEN` is automatically provided by GitHub Actions and doesn't need manual configuration.
+
+If you skip configuring `VSCE_PAT` or `OVSX_PAT`, the release workflow will still create GitHub releases but will fail when attempting to publish to those registries.
 
 ### Dependabot
 
 - Automatically creates PRs for dependency updates weekly
 - Groups related dependencies for easier review
+- **Required secrets**: None (uses default `GITHUB_TOKEN`)
 
 ## Development
 
