@@ -4,6 +4,10 @@
 
 set -e
 
+# Pin versions for reproducibility
+GO_VERSION="1.23.5"
+BEANS_VERSION="v0.13.2"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 IMAGE_NAME="beans-vscode-remote-test"
@@ -48,6 +52,8 @@ vsce package --no-dependencies --out beans-vscode-test.vsix
 
 echo ""
 echo "Step 3: Creating test Dockerfile..."
+# Note: Using EOF (not 'EOF') to allow ${GO_VERSION} and ${BEANS_VERSION} expansion
+# from bash variables while \$ escapes Docker variables evaluated at build time
 cat > Dockerfile.remote-test << EOF
 FROM mcr.microsoft.com/devcontainers/typescript-node:22
 

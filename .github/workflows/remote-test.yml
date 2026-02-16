@@ -48,8 +48,9 @@ jobs:
       - name: Package extension
         run: |
           pnpm install -g @vscode/vsce
-          # Use --no-dependencies to avoid pnpm/npm conflicts in CI test environment.
-          # The release workflow packages with full dependencies for distribution.
+          # Use --no-dependencies to avoid pnpm/npm install conflicts in the
+          # remote/docker test environment. The bundled extension already contains
+          # all necessary code in dist/, so npm install is not needed during packaging.
           vsce package --no-dependencies --out beans-vscode-test.vsix
 
       - name: Create Dockerfile for testing
@@ -182,7 +183,7 @@ jobs:
       - name: Create test devcontainer config
         run: |
           mkdir -p .devcontainer-test
-          cat > .devcontainer-test/devcontainer.json << 'EOF'
+          cat > .devcontainer-test/devcontainer.json << EOF
           {
             "name": "Beans Remote Test",
             "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
@@ -191,7 +192,10 @@ jobs:
                 "version": "latest"
               }
             },
-            "postCreateCommand": "go install github.com/hmans/beans@latest && beans init",
+            "postCreateCommand": "go install github.com/hmans/beans@${{ env.BEANS_VERSION }} && beans init",
+            "remoteEnv": {
+              "PATH": "\${containerEnv:PATH}:/root/go/bin"
+            },
             "customizations": {
               "vscode": {
                 "settings": {

@@ -7,13 +7,9 @@ export default defineConfig({
     environment: 'node',
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
+      reporter: ['text', 'json', 'html'],
       include: ['src/**/*.ts'],
-      exclude: [
-        'src/test/**',
-        'src/**/*.test.ts',
-        '**/*.d.ts'
-      ]
+      exclude: ['src/test/**', 'src/**/*.test.ts', 'src/test/mocks/**']
     }
   },
   resolve: {
