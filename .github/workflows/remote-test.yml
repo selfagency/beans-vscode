@@ -9,7 +9,6 @@ on:
 
 env:
   BEANS_VERSION: "v0.13.2"  # Pin Beans version for reproducible CI builds
-  GO_VERSION: "1.23.5"      # Pin Go version for stability
 
 jobs:
   docker-remote-test:
@@ -53,29 +52,37 @@ jobs:
           # all necessary code in dist/, so npm install is not needed during packaging.
           vsce package --no-dependencies --out beans-vscode-test.vsix
 
+      - name: Get latest Go version
+        id: go-version
+        run: |
+          GO_VERSION=$(curl -s https://go.dev/dl/?mode=json | jq -r '.[0].version')
+          echo "version=${GO_VERSION}" >> $GITHUB_OUTPUT
+          echo "Using Go version: ${GO_VERSION}"
+
       - name: Create Dockerfile for testing
         run: |
-          cat > Dockerfile.test << 'EOF'
+          cat > Dockerfile.test << EOF
           FROM ${{ matrix.base-image }}
 
           # Install Go from official source with architecture detection
-          RUN ARCH=$(uname -m) && \
-              if [ "$ARCH" = "x86_64" ]; then GOARCH="amd64"; \
-              elif [ "$ARCH" = "aarch64" ]; then GOARCH="arm64"; \
-              else echo "Unsupported architecture: $ARCH" && exit 1; fi && \
-              if command -v apt-get > /dev/null; then \
-                apt-get update && apt-get install -y curl jq git wget && \
-                wget -q https://go.dev/dl/go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz && \
-                tar -C /usr/local -xzf go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz && \
-                rm go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz; \
-              elif command -v apk > /dev/null; then \
-                apk add --no-cache curl jq git bash wget && \
-                wget -q https://go.dev/dl/go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz && \
-                tar -C /usr/local -xzf go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz && \
-                rm go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz; \
+          # Go version is dynamically fetched to always use the latest stable release
+          RUN ARCH=\$(uname -m) && \\
+              if [ "\$ARCH" = "x86_64" ]; then GOARCH="amd64"; \\
+              elif [ "\$ARCH" = "aarch64" ]; then GOARCH="arm64"; \\
+              else echo "Unsupported architecture: \$ARCH" && exit 1; fi && \\
+              if command -v apt-get > /dev/null; then \\
+                apt-get update && apt-get install -y curl jq git wget && \\
+                wget -q https://go.dev/dl/${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz && \\
+                tar -C /usr/local -xzf ${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz && \\
+                rm ${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz; \\
+              elif command -v apk > /dev/null; then \\
+                apk add --no-cache curl jq git bash wget && \\
+                wget -q https://go.dev/dl/${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz && \\
+                tar -C /usr/local -xzf ${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz && \\
+                rm ${{ steps.go-version.outputs.version }}.linux-\${GOARCH}.tar.gz; \\
               fi
 
-          ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}"
+          ENV PATH="/usr/local/go/bin:/root/go/bin:\${PATH}"
 
           # Install beans CLI (pinned version for reproducible CI)
           RUN go install github.com/hmans/beans@${{ env.BEANS_VERSION }}

@@ -4,18 +4,21 @@
 
 set -e
 
-# Pin versions for reproducibility
-GO_VERSION="1.23.5"
+# Pin Beans version for reproducibility
 BEANS_VERSION="v0.13.2"
+
+# Dynamically fetch latest Go version
+echo "Fetching latest Go version..."
+GO_VERSION=$(curl -s https://go.dev/dl/?mode=json | jq -r '.[0].version')
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 IMAGE_NAME="beans-vscode-remote-test"
 CONTAINER_NAME="beans-test-$(date +%s)"
 
-# Pin versions for reproducible tests
+# Allow overrides via environment variables
 BEANS_VERSION="${BEANS_VERSION:-v0.13.2}"
-GO_VERSION="${GO_VERSION:-1.23.5}"
+GO_VERSION="${GO_VERSION:-$(curl -s https://go.dev/dl/?mode=json | jq -r '.[0].version')}"
 
 echo "🧪 Beans VS Code Remote Compatibility Test"
 echo "==========================================="
@@ -53,11 +56,12 @@ vsce package --no-dependencies --out beans-vscode-test.vsix
 echo ""
 echo "Step 3: Creating test Dockerfile..."
 # Note: Using EOF (not 'EOF') to allow ${GO_VERSION} and ${BEANS_VERSION} expansion
-# from bash variables while \$ escapes Docker variables evaluated at build time
+# from bash variables. Go version is dynamically fetched for latest stable release.
 cat > Dockerfile.remote-test << EOF
 FROM mcr.microsoft.com/devcontainers/typescript-node:22
 
 # Install Go from official source with architecture detection
+# Go version is dynamically fetched to always use the latest stable release
 RUN ARCH=\$(uname -m) && \\
     if [ "\$ARCH" = "x86_64" ]; then GOARCH="amd64"; \\
     elif [ "\$ARCH" = "aarch64" ]; then GOARCH="arm64"; \\
