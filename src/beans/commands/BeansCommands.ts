@@ -25,6 +25,8 @@ export class BeansCommands {
 
 		// Status management
 		this.registerCommand('beans.setStatus', this.setStatus.bind(this));
+		this.registerCommand('beans.reopenCompleted', this.reopenCompleted.bind(this));
+		this.registerCommand('beans.reopenScrapped', this.reopenScrapped.bind(this));
 
 		// Type management
 		this.registerCommand('beans.setType', this.setType.bind(this));
@@ -202,6 +204,78 @@ export class BeansCommands {
 			await vscode.commands.executeCommand('beans.refreshAll');
 		} catch (error) {
 			const message = `Failed to set status: ${(error as Error).message}`;
+			logger.error(message, error as Error);
+			vscode.window.showErrorMessage(message);
+		}
+	}
+
+	/**
+	 * Reopen a completed bean (explicit access to completed beans)
+	 */
+	private async reopenCompleted(): Promise<void> {
+		try {
+			const bean = await this.pickBean('Select completed bean to reopen', ['completed'], true);
+			if (!bean) {
+				return;
+			}
+
+			const config = await this.service.getConfig();
+			const statuses = config.statuses || ['todo', 'in-progress', 'completed', 'scrapped', 'draft'];
+			const nonClosedStatuses = statuses.filter(s => s !== 'completed' && s !== 'scrapped');
+
+			const newStatus = await vscode.window.showQuickPick(nonClosedStatuses, {
+				placeHolder: 'Select new status',
+				title: `Reopen ${bean.code}`
+			});
+
+			if (!newStatus) {
+				return;
+			}
+
+			await this.service.updateBean(bean.id, { status: newStatus as any });
+			vscode.window.showInformationMessage(`Reopened ${bean.code} as ${newStatus}`);
+			logger.info(`Reopened bean ${bean.code} from completed to ${newStatus}`);
+
+			// Refresh trees
+			await vscode.commands.executeCommand('beans.refreshAll');
+		} catch (error) {
+			const message = `Failed to reopen bean: ${(error as Error).message}`;
+			logger.error(message, error as Error);
+			vscode.window.showErrorMessage(message);
+		}
+	}
+
+	/**
+	 * Reopen a scrapped bean (explicit access to scrapped beans)
+	 */
+	private async reopenScrapped(): Promise<void> {
+		try {
+			const bean = await this.pickBean('Select scrapped bean to reopen', ['scrapped'], true);
+			if (!bean) {
+				return;
+			}
+
+			const config = await this.service.getConfig();
+			const statuses = config.statuses || ['todo', 'in-progress', 'completed', 'scrapped', 'draft'];
+			const nonClosedStatuses = statuses.filter(s => s !== 'completed' && s !== 'scrapped');
+
+			const newStatus = await vscode.window.showQuickPick(nonClosedStatuses, {
+				placeHolder: 'Select new status',
+				title: `Reopen ${bean.code}`
+			});
+
+			if (!newStatus) {
+				return;
+			}
+
+			await this.service.updateBean(bean.id, { status: newStatus as any });
+			vscode.window.showInformationMessage(`Reopened ${bean.code} as ${newStatus}`);
+			logger.info(`Reopened bean ${bean.code} from scrapped to ${newStatus}`);
+
+			// Refresh trees
+			await vscode.commands.executeCommand('beans.refreshAll');
+		} catch (error) {
+			const message = `Failed to reopen bean: ${(error as Error).message}`;
 			logger.error(message, error as Error);
 			vscode.window.showErrorMessage(message);
 		}
@@ -491,13 +565,28 @@ export class BeansCommands {
 	 */
 	private async pickBean(
 		prompt: string,
-		statusFilter?: string[]
+		statusFilter?: string[],
+		includeClosedBeans = false
 	): Promise<Bean | undefined> {
 		const beans = await this.service.listBeans();
 		
-		const filteredBeans = statusFilter
+		// Apply status filter if provided
+		let filteredBeans = statusFilter
 			? beans.filter(b => statusFilter.includes(b.status))
 			: beans;
+
+		// Hide completed and scrapped beans unless explicitly included
+		if (!includeClosedBeans) {
+			const hideClosedInQuickPick = vscode.workspace
+				.getConfiguration('beans')
+				.get<boolean>('hideClosedInQuickPick', true);
+
+			if (hideClosedInQuickPick && !statusFilter) {
+				filteredBeans = filteredBeans.filter(
+					b => b.status !== 'completed' && b.status !== 'scrapped'
+				);
+			}
+		}
 
 		if (filteredBeans.length === 0) {
 			vscode.window.showInformationMessage('No beans available');

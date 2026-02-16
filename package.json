@@ -35,6 +35,101 @@
         "command": "beans.openConfig",
         "title": "Open Configuration",
         "category": "Beans"
+      },
+      {
+        "command": "beans.view",
+        "title": "View Bean",
+        "category": "Beans",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.create",
+        "title": "Create Bean",
+        "category": "Beans",
+        "icon": "$(add)",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.edit",
+        "title": "Edit Bean",
+        "category": "Beans",
+        "icon": "$(edit)",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.setStatus",
+        "title": "Set Status",
+        "category": "Beans",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.reopenCompleted",
+        "title": "Reopen Completed Bean",
+        "category": "Beans",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.reopenScrapped",
+        "title": "Reopen Scrapped Bean",
+        "category": "Beans",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.setType",
+        "title": "Set Type",
+        "category": "Beans",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.setPriority",
+        "title": "Set Priority",
+        "category": "Beans",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.setParent",
+        "title": "Set Parent",
+        "category": "Beans",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.removeParent",
+        "title": "Remove Parent",
+        "category": "Beans",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.editBlocking",
+        "title": "Edit Blocking Relationships",
+        "category": "Beans",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.copyId",
+        "title": "Copy Bean ID",
+        "category": "Beans",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.delete",
+        "title": "Delete Bean (Scrapped/Draft Only)",
+        "category": "Beans",
+        "icon": "$(trash)",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.filter",
+        "title": "Filter Beans",
+        "category": "Beans",
+        "icon": "$(filter)",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.sort",
+        "title": "Change Sort Mode",
+        "category": "Beans",
+        "icon": "$(list-ordered)",
+        "when": "beans.initialized"
       }
     ],
     "viewsContainers": {
@@ -81,6 +176,73 @@
           "command": "beans.refresh",
           "when": "view =~ /^beans\\./",
           "group": "navigation"
+        },
+        {
+          "command": "beans.create",
+          "when": "view =~ /^beans\\./",
+          "group": "navigation"
+        },
+        {
+          "command": "beans.filter",
+          "when": "view =~ /^beans\\./",
+          "group": "1_filter"
+        },
+        {
+          "command": "beans.sort",
+          "when": "view =~ /^beans\\./",
+          "group": "1_filter"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "beans.view",
+          "when": "view =~ /^beans\\./ && viewItem =~ /^bean/",
+          "group": "1_view"
+        },
+        {
+          "command": "beans.edit",
+          "when": "view =~ /^beans\\./ && viewItem =~ /^bean/",
+          "group": "1_view"
+        },
+        {
+          "command": "beans.setStatus",
+          "when": "view =~ /^beans\\./ && viewItem =~ /^bean/",
+          "group": "2_modify@1"
+        },
+        {
+          "command": "beans.setType",
+          "when": "view =~ /^beans\\./ && viewItem =~ /^bean/",
+          "group": "2_modify@2"
+        },
+        {
+          "command": "beans.setPriority",
+          "when": "view =~ /^beans\\./ && viewItem =~ /^bean/",
+          "group": "2_modify@3"
+        },
+        {
+          "command": "beans.setParent",
+          "when": "view =~ /^beans\\./ && viewItem =~ /^bean/",
+          "group": "3_relationships@1"
+        },
+        {
+          "command": "beans.removeParent",
+          "when": "view =~ /^beans\\./ && viewItem =~ /^bean/ && viewItem =~ /hasParent/",
+          "group": "3_relationships@2"
+        },
+        {
+          "command": "beans.editBlocking",
+          "when": "view =~ /^beans\\./ && viewItem =~ /^bean/",
+          "group": "3_relationships@3"
+        },
+        {
+          "command": "beans.copyId",
+          "when": "view =~ /^beans\\./ && viewItem =~ /^bean/",
+          "group": "4_util@1"
+        },
+        {
+          "command": "beans.delete",
+          "when": "view =~ /^beans\\./ && viewItem =~ /deletable/",
+          "group": "5_danger"
         }
       ]
     },

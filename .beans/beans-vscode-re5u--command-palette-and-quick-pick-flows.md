@@ -1,10 +1,11 @@
 ---
 # beans-vscode-re5u
 title: Command palette and quick pick flows
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-02-16T04:04:36Z
-updated_at: 2026-02-16T04:04:36Z
+updated_at: 2026-02-16T04:32:48Z
 parent: beans-vscode-d3a0
 ---
 
