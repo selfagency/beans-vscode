@@ -1,5 +1,8 @@
 # Beans VS Code Extension
 
+[![CI](https://github.com/selfagency/beans-vscode/actions/workflows/ci.yml/badge.svg)](https://github.com/selfagency/beans-vscode/actions/workflows/ci.yml)
+[![Release](https://github.com/selfagency/beans-vscode/actions/workflows/release.yml/badge.svg)](https://github.com/selfagency/beans-vscode/actions/workflows/release.yml)
+
 Beans support for VS Code, with tree-based issue workflows and MCP integration for Copilot.
 
 ## Features
@@ -51,6 +54,30 @@ If AI features are turned off, the extension removes this generated skill file.
 - `beans.ai.enabled`: master switch for AI integrations (MCP + chat participant).
 - `beans.mcp.enabled`: enable or disable MCP provider publishing.
 - `beans.logging.level`: extension log level.
+
+## CI/CD
+
+The extension uses GitHub Actions for continuous integration and deployment:
+
+### CI Workflow
+
+- Runs on every push to `main` and on pull requests
+- Tests on Ubuntu, macOS, and Windows
+- Executes type checking, linting, and all tests
+- Uses xvfb for headless VS Code extension testing on Linux
+- Uploads test artifacts and coverage reports on failures
+
+### Release Workflow
+
+- Triggered on version tags (e.g., `v1.0.0`)
+- Builds and packages the extension
+- Creates GitHub releases with `.vsix` artifacts
+- Publishes to VS Code Marketplace and Open VSX (requires secrets)
+
+### Dependabot
+
+- Automatically creates PRs for dependency updates weekly
+- Groups related dependencies for easier review
 
 ## Development
 
