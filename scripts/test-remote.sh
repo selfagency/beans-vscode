@@ -51,7 +51,7 @@ RUN apt-get update && apt-get install -y curl jq git && rm -rf /var/lib/apt/list
 RUN curl -fsSL https://raw.githubusercontent.com/hmans/beans/main/install.sh | sh
 
 # Verify beans installed
-RUN beans --version
+RUN beans version
 
 # Set up workspace
 WORKDIR /workspace
@@ -80,7 +80,7 @@ set -e
 echo "=== Test Environment Info ==="
 echo "OS: $(uname -a)"
 echo "Node: $(node --version)"
-echo "Beans: $(beans --version)"
+echo "Beans: $(beans version)"
 echo ""
 
 echo "=== Test 1: Initialize Beans workspace ==="
