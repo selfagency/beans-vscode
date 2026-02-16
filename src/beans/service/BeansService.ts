@@ -96,6 +96,42 @@ export class BeansService {
   }
 
   /**
+   * Execute beans CLI command and return raw text output.
+   */
+  private async executeText(args: string[]): Promise<string> {
+    const command = `${this.cliPath} ${args.join(' ')}`;
+    this.logger.info(`Executing text command: ${command}`);
+
+    try {
+      const { stdout, stderr } = await execAsync(command, {
+        cwd: this.workspaceRoot,
+        maxBuffer: 10 * 1024 * 1024,
+        timeout: 30000
+      });
+
+      if (stderr && !stderr.includes('[INFO]')) {
+        this.logger.warn(`CLI stderr: ${stderr}`);
+      }
+
+      return stdout;
+    } catch (error: unknown) {
+      const err = error as NodeJS.ErrnoException & { killed?: boolean; signal?: string };
+
+      if (err.code === 'ENOENT') {
+        throw new BeansCLINotFoundError(
+          `Beans CLI not found at: ${this.cliPath}. Please install beans or configure beans.cliPath setting.`
+        );
+      }
+
+      if (err.killed && err.signal === 'SIGTERM') {
+        throw new BeansTimeoutError('Beans CLI operation timed out');
+      }
+
+      throw error;
+    }
+  }
+
+  /**
    * Check if the current workspace is initialized with Beans
    */
   async checkInitialized(): Promise<boolean> {
@@ -288,5 +324,12 @@ export class BeansService {
     }
 
     await this.execute<Record<string, unknown>>(args);
+  }
+
+  /**
+   * Get project-focused guidance text from `beans prime`.
+   */
+  async prime(): Promise<string> {
+    return (await this.executeText(['prime'])).trim();
   }
 }

@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
+import * as path from 'node:path';
 import { BeansCommands } from './beans/commands';
-import { BeansConfigManager } from './beans/config';
+import { BeansConfigManager, buildBeansCopilotInstructions, writeBeansCopilotInstructions } from './beans/config';
 import { BeansDetailsViewProvider } from './beans/details';
 import { BeansOutput } from './beans/logging';
+import { BeansMcpIntegration } from './beans/mcp';
 import { Bean, BeansCLINotFoundError } from './beans/model';
 import { BeansPreviewProvider } from './beans/preview';
 import { BeansSearchViewProvider } from './beans/search';
@@ -23,6 +25,7 @@ let draftProvider: DraftBeansProvider | undefined;
 let scrappedProvider: ScrappedBeansProvider | undefined;
 let filterManager: BeansFilterManager | undefined;
 let detailsProvider: BeansDetailsViewProvider | undefined;
+let mcpIntegration: BeansMcpIntegration | undefined;
 let initPromptDismissed = false; // Track if user dismissed init prompt in this session
 
 /**
@@ -53,7 +56,16 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   try {
+    // Mirror output channel logs to a file that MCP tools can read.
+    const outputMirrorPath = path.join(workspaceFolder.uri.fsPath, '.beans', '.vscode', 'beans-output.log');
+    logger.setMirrorFilePath(outputMirrorPath);
+
     beansService = new BeansService(workspaceFolder.uri.fsPath);
+    const configuredCliPath = vscode.workspace.getConfiguration('beans').get<string>('cliPath', 'beans');
+
+    // Register MCP integration provider and related troubleshooting commands.
+    mcpIntegration = new BeansMcpIntegration(context, workspaceFolder.uri.fsPath, configuredCliPath);
+    mcpIntegration.register();
 
     // Check if beans CLI is available
     const cliAvailable = await beansService.checkCLIAvailable();
@@ -86,7 +98,7 @@ export async function activate(context: vscode.ExtensionContext) {
     await vscode.commands.executeCommand('setContext', 'beans.initialized', isInitialized);
 
     if (!isInitialized) {
-      await promptForInitialization(context, beansService);
+      await promptForInitialization(context, beansService, workspaceFolder.uri.fsPath);
     } else {
       logger.info('Beans workspace detected and initialized');
 
@@ -131,6 +143,8 @@ export async function activate(context: vscode.ExtensionContext) {
           // Register tree views after successful initialization
           // filterManager and detailsProvider are guaranteed to exist
           registerTreeViews(context, beansService, filterManager!, detailsProvider!);
+
+          await ensureCopilotInstructionsFromPrime(beansService, workspaceFolder.uri.fsPath);
 
           vscode.window.showInformationMessage('Beans initialized successfully!');
           logger.info('Beans initialized via command');
@@ -210,7 +224,11 @@ async function promptForCLIInstallation(): Promise<void> {
 /**
  * Prompt user to initialize Beans in workspace
  */
-async function promptForInitialization(context: vscode.ExtensionContext, service: BeansService): Promise<void> {
+async function promptForInitialization(
+  context: vscode.ExtensionContext,
+  service: BeansService,
+  workspaceRoot: string
+): Promise<void> {
   const config = vscode.workspace.getConfiguration('beans');
   if (!config.get<boolean>('autoInit.enabled', true)) {
     return;
@@ -237,6 +255,8 @@ async function promptForInitialization(context: vscode.ExtensionContext, service
       // filterManager and detailsProvider are guaranteed to exist since they're created before this
       registerTreeViews(context, service, filterManager!, detailsProvider!);
 
+      await ensureCopilotInstructionsFromPrime(service, workspaceRoot);
+
       vscode.window.showInformationMessage('Beans initialized successfully!');
       logger.info('Beans initialized in workspace');
     } catch (error) {
@@ -250,6 +270,17 @@ async function promptForInitialization(context: vscode.ExtensionContext, service
     // Remember dismissal for this session
     initPromptDismissed = true;
     logger.info('User dismissed initialization prompt');
+  }
+}
+
+async function ensureCopilotInstructionsFromPrime(service: BeansService, workspaceRoot: string): Promise<void> {
+  try {
+    const primeOutput = await service.prime();
+    const content = buildBeansCopilotInstructions(primeOutput);
+    const writtenPath = await writeBeansCopilotInstructions(workspaceRoot, content);
+    logger.info(`Generated Copilot instructions from beans prime at ${writtenPath}`);
+  } catch (error) {
+    logger.warn('Failed to generate Copilot instructions from beans prime', error as Error);
   }
 }
 
@@ -412,5 +443,6 @@ function debounceRefresh(callback: () => void, delayMs: number): () => void {
  */
 export function deactivate(): void {
   logger?.info('Deactivating Beans extension');
+  mcpIntegration = undefined;
   logger?.dispose();
 }

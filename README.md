@@ -1,71 +1,53 @@
-# beans-vscode README
+# Beans VS Code Extension
 
-This is the README for your extension "beans-vscode". After writing up a brief description, we recommend including the following sections.
+Beans support for VS Code, with tree-based issue workflows and MCP integration for Copilot.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- Sidebar views for active/draft/completed/scrapped beans.
+- Command palette and context-menu flows for common Beans operations.
+- MCP server definition provider that exposes Beans commands as MCP tools.
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- `beans` CLI installed and available in `PATH` (or set `beans.cliPath`).
+- VS Code `^1.109.0`.
+
+## MCP Integration
+
+This extension contributes a dynamic MCP server provider (`beans.mcpServers`) that launches an internal stdio server bundled in `dist/beans-mcp-server.js`.
+
+The server exposes tools that mirror extension capabilities, including:
+
+- init / refresh / view / create / edit
+- set status / type / priority
+- set or remove parent
+- edit blocking relationships
+- copy id / delete
+- filter / search / sort
+- open config / show output guidance
+
+### MCP troubleshooting commands
+
+- `Beans: MCP: Refresh Server Definitions`
+- `Beans: MCP: Show Server Info`
+- `Beans: MCP: Open MCP Settings`
+- `Beans: MCP: Open Logs`
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+- `beans.cliPath`: path to Beans CLI.
+- `beans.mcp.enabled`: enable or disable MCP provider publishing.
+- `beans.logging.level`: extension log level.
 
-For example:
+## Development
 
-This extension contributes the following settings:
+```bash
+pnpm install
+pnpm run compile
+pnpm test
+```
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+## Accessibility note
 
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+This extension is built with accessibility in mind, but issues may still exist. Please manually test keyboard and screen-reader flows and consider auditing with Accessibility Insights.

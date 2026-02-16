@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 
 /**
  * Log level enumeration
@@ -13,6 +15,7 @@ export class BeansOutput {
   private static instance: BeansOutput;
   private outputChannel: vscode.OutputChannel;
   private level: LogLevel = 'info';
+  private mirrorFilePath: string | undefined;
 
   private constructor() {
     this.outputChannel = vscode.window.createOutputChannel('Beans', { log: true });
@@ -54,13 +57,30 @@ export class BeansOutput {
     return new Date().toISOString();
   }
 
+  private writeMirror(line: string): void {
+    if (!this.mirrorFilePath) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        await fs.mkdir(path.dirname(this.mirrorFilePath!), { recursive: true });
+        await fs.appendFile(this.mirrorFilePath!, `${line}\n`, 'utf8');
+      } catch {
+        // Swallow mirror errors to avoid interfering with extension logging.
+      }
+    })();
+  }
+
   /**
    * Log debug message
    */
   debug(message: string, ...args: unknown[]): void {
     if (this.shouldLog('debug')) {
       const argsStr = args.length > 0 ? ` ${JSON.stringify(args)}` : '';
-      this.outputChannel.appendLine(`[${this.getTimestamp()}] [DEBUG] ${message}${argsStr}`);
+      const line = `[${this.getTimestamp()}] [DEBUG] ${message}${argsStr}`;
+      this.outputChannel.appendLine(line);
+      this.writeMirror(line);
     }
   }
 
@@ -69,7 +89,9 @@ export class BeansOutput {
    */
   info(message: string): void {
     if (this.shouldLog('info')) {
-      this.outputChannel.appendLine(`[${this.getTimestamp()}] [INFO] ${message}`);
+      const line = `[${this.getTimestamp()}] [INFO] ${message}`;
+      this.outputChannel.appendLine(line);
+      this.writeMirror(line);
     }
   }
 
@@ -79,7 +101,9 @@ export class BeansOutput {
   warn(message: string, error?: Error): void {
     if (this.shouldLog('warn')) {
       const errorStr = error ? ` - ${error.message}` : '';
-      this.outputChannel.appendLine(`[${this.getTimestamp()}] [WARN] ${message}${errorStr}`);
+      const line = `[${this.getTimestamp()}] [WARN] ${message}${errorStr}`;
+      this.outputChannel.appendLine(line);
+      this.writeMirror(line);
     }
   }
 
@@ -88,11 +112,26 @@ export class BeansOutput {
    */
   error(message: string, error?: Error): void {
     if (this.shouldLog('error')) {
-      this.outputChannel.appendLine(`[${this.getTimestamp()}] [ERROR] ${message}`);
+      const line = `[${this.getTimestamp()}] [ERROR] ${message}`;
+      this.outputChannel.appendLine(line);
+      this.writeMirror(line);
       if (error) {
-        this.outputChannel.appendLine(`  ${error.stack || error.message}`);
+        const stackLine = `  ${error.stack || error.message}`;
+        this.outputChannel.appendLine(stackLine);
+        this.writeMirror(stackLine);
       }
     }
+  }
+
+  /**
+   * Enable mirroring output messages to a workspace file for MCP log access.
+   */
+  setMirrorFilePath(filePath: string): void {
+    this.mirrorFilePath = filePath;
+  }
+
+  getMirrorFilePath(): string | undefined {
+    return this.mirrorFilePath;
   }
 
   /**

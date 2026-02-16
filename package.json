@@ -144,6 +144,32 @@
         "category": "Beans",
         "icon": "$(list-ordered)",
         "when": "beans.initialized"
+      },
+      {
+        "command": "beans.mcp.refreshDefinitions",
+        "title": "MCP: Refresh Server Definitions",
+        "category": "Beans"
+      },
+      {
+        "command": "beans.mcp.showServerInfo",
+        "title": "MCP: Show Server Info",
+        "category": "Beans"
+      },
+      {
+        "command": "beans.mcp.openConfig",
+        "title": "MCP: Open MCP Settings",
+        "category": "Beans"
+      },
+      {
+        "command": "beans.mcp.openLogs",
+        "title": "MCP: Open Logs",
+        "category": "Beans"
+      }
+    ],
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "beans.mcpServers",
+        "label": "Beans MCP Servers"
       }
     ],
     "viewsContainers": {
@@ -392,6 +418,11 @@
           ],
           "default": "info",
           "description": "Logging verbosity for Beans extension output channel."
+        },
+        "beans.mcp.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable dynamic MCP server definition provider for Beans commands."
         }
       }
     }
@@ -423,6 +454,8 @@
     "typescript-eslint": "^8.54.0"
   },
   "dependencies": {
-    "@vscode/codicons": "^0.0.44"
+    "@modelcontextprotocol/sdk": "^1.6.1",
+    "@vscode/codicons": "^0.0.44",
+    "zod": "^3.23.8"
   }
 }
