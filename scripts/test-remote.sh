@@ -68,7 +68,7 @@ ENV PATH="/usr/local/go/bin:/root/go/bin:\${PATH}"
 RUN go install github.com/hmans/beans@${BEANS_VERSION}
 
 # Verify beans installed
-RUN beans --version
+RUN beans version
 
 # Set up workspace
 WORKDIR /workspace
@@ -97,7 +97,7 @@ set -e
 echo "=== Test Environment Info ==="
 echo "OS: $(uname -a)"
 echo "Node: $(node --version)"
-echo "Beans: $(beans --version)"
+echo "Beans: $(beans version)"
 echo ""
 
 echo "=== Test 1: Initialize Beans workspace ==="
