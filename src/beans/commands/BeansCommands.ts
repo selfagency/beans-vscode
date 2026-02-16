@@ -469,14 +469,194 @@ export class BeansCommands {
         }
       }
 
-      // TODO: Implement blocking/blocked-by management UI
-      vscode.window.showInformationMessage(`Blocking management for ${bean.code} - Coming soon!`);
-      logger.info(`Opened blocking management for bean ${bean.code}`);
+      // Show action menu
+      const action = await vscode.window.showQuickPick(
+        [
+          { label: 'Add Blocking', description: 'This bean blocks other beans', value: 'add-blocking' },
+          { label: 'Remove Blocking', description: 'Remove beans this bean blocks', value: 'remove-blocking' },
+          { label: 'Add Blocked By', description: 'This bean is blocked by other beans', value: 'add-blocked-by' },
+          { label: 'Remove Blocked By', description: 'Remove beans blocking this bean', value: 'remove-blocked-by' }
+        ],
+        {
+          placeHolder: `Manage blocking relationships for ${bean.code}`,
+          title: 'Edit Blocking Relationships'
+        }
+      );
+
+      if (!action) {
+        return;
+      }
+
+      if (action.value === 'add-blocking') {
+        await this.addBlocking(bean);
+      } else if (action.value === 'remove-blocking') {
+        await this.removeBlocking(bean);
+      } else if (action.value === 'add-blocked-by') {
+        await this.addBlockedBy(bean);
+      } else if (action.value === 'remove-blocked-by') {
+        await this.removeBlockedBy(bean);
+      }
     } catch (error) {
       const message = `Failed to edit blocking: ${(error as Error).message}`;
       logger.error(message, error as Error);
       vscode.window.showErrorMessage(message);
     }
+  }
+
+  /**
+   * Add beans that this bean blocks
+   */
+  private async addBlocking(bean: Bean): Promise<void> {
+    const allBeans = await this.service.listBeans();
+    const potentialBlocking = allBeans.filter((b) => {
+      // Can't block self
+      if (b.id === bean.id) {
+        return false;
+      }
+      // Don't show already blocking
+      if (bean.blocking?.includes(b.id)) {
+        return false;
+      }
+      return true;
+    });
+
+    const items = potentialBlocking.map((b) => ({
+      label: `${b.code}: ${b.title}`,
+      description: `${b.type} • ${b.status}`,
+      bean: b,
+      picked: false
+    }));
+
+    const selected = await vscode.window.showQuickPick(items, {
+      canPickMany: true,
+      placeHolder: `Select beans that ${bean.code} blocks`,
+      title: 'Add Blocking'
+    });
+
+    if (!selected || selected.length === 0) {
+      return;
+    }
+
+    const newBlocking = [...(bean.blocking || []), ...selected.map((s) => s.bean.id)];
+    await this.service.updateBean(bean.id, { blocking: newBlocking });
+    vscode.window.showInformationMessage(`Updated blocking relationships for ${bean.code}`);
+    logger.info(`Added ${selected.length} blocking relationships to ${bean.code}`);
+    await vscode.commands.executeCommand('beans.refreshAll');
+  }
+
+  /**
+   * Remove beans that this bean blocks
+   */
+  private async removeBlocking(bean: Bean): Promise<void> {
+    if (!bean.blocking || bean.blocking.length === 0) {
+      vscode.window.showInformationMessage(`${bean.code} doesn't block any beans`);
+      return;
+    }
+
+    const allBeans = await this.service.listBeans();
+    const blockingBeans = allBeans.filter((b) => bean.blocking?.includes(b.id));
+
+    const items = blockingBeans.map((b) => ({
+      label: `${b.code}: ${b.title}`,
+      description: `${b.type} • ${b.status}`,
+      bean: b,
+      picked: false
+    }));
+
+    const selected = await vscode.window.showQuickPick(items, {
+      canPickMany: true,
+      placeHolder: `Select beans to remove from blocking`,
+      title: 'Remove Blocking'
+    });
+
+    if (!selected || selected.length === 0) {
+      return;
+    }
+
+    const idsToRemove = selected.map((s) => s.bean.id);
+    const newBlocking = bean.blocking.filter((id) => !idsToRemove.includes(id));
+    await this.service.updateBean(bean.id, { blocking: newBlocking });
+    vscode.window.showInformationMessage(`Removed ${selected.length} blocking relationships from ${bean.code}`);
+    logger.info(`Removed ${selected.length} blocking relationships from ${bean.code}`);
+    await vscode.commands.executeCommand('beans.refreshAll');
+  }
+
+  /**
+   * Add beans that block this bean
+   */
+  private async addBlockedBy(bean: Bean): Promise<void> {
+    const allBeans = await this.service.listBeans();
+    const potentialBlockedBy = allBeans.filter((b) => {
+      // Can't be blocked by self
+      if (b.id === bean.id) {
+        return false;
+      }
+      // Don't show already blocked by
+      if (bean.blockedBy?.includes(b.id)) {
+        return false;
+      }
+      return true;
+    });
+
+    const items = potentialBlockedBy.map((b) => ({
+      label: `${b.code}: ${b.title}`,
+      description: `${b.type} • ${b.status}`,
+      bean: b,
+      picked: false
+    }));
+
+    const selected = await vscode.window.showQuickPick(items, {
+      canPickMany: true,
+      placeHolder: `Select beans that block ${bean.code}`,
+      title: 'Add Blocked By'
+    });
+
+    if (!selected || selected.length === 0) {
+      return;
+    }
+
+    const newBlockedBy = [...(bean.blockedBy || []), ...selected.map((s) => s.bean.id)];
+    await this.service.updateBean(bean.id, { blockedBy: newBlockedBy });
+    vscode.window.showInformationMessage(`Updated blocked-by relationships for ${bean.code}`);
+    logger.info(`Added ${selected.length} blocked-by relationships to ${bean.code}`);
+    await vscode.commands.executeCommand('beans.refreshAll');
+  }
+
+  /**
+   * Remove beans that block this bean
+   */
+  private async removeBlockedBy(bean: Bean): Promise<void> {
+    if (!bean.blockedBy || bean.blockedBy.length === 0) {
+      vscode.window.showInformationMessage(`${bean.code} isn't blocked by any beans`);
+      return;
+    }
+
+    const allBeans = await this.service.listBeans();
+    const blockedByBeans = allBeans.filter((b) => bean.blockedBy?.includes(b.id));
+
+    const items = blockedByBeans.map((b) => ({
+      label: `${b.code}: ${b.title}`,
+      description: `${b.type} • ${b.status}`,
+      bean: b,
+      picked: false
+    }));
+
+    const selected = await vscode.window.showQuickPick(items, {
+      canPickMany: true,
+      placeHolder: `Select beans to remove from blocked-by`,
+      title: 'Remove Blocked By'
+    });
+
+    if (!selected || selected.length === 0) {
+      return;
+    }
+
+    const idsToRemove = selected.map((s) => s.bean.id);
+    const newBlockedBy = bean.blockedBy.filter((id) => !idsToRemove.includes(id));
+    await this.service.updateBean(bean.id, { blockedBy: newBlockedBy });
+    vscode.window.showInformationMessage(`Removed ${selected.length} blocked-by relationships from ${bean.code}`);
+    logger.info(`Removed ${selected.length} blocked-by relationships from ${bean.code}`);
+    await vscode.commands.executeCommand('beans.refreshAll');
   }
 
   /**
