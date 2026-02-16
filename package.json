@@ -144,7 +144,7 @@
         {
           "id": "beans",
           "title": "Beans",
-          "icon": "$(checklist)"
+          "icon": "assets/icon.svg"
         }
       ]
     },
