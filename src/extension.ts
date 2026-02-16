@@ -195,10 +195,11 @@ export async function activate(context: vscode.ExtensionContext) {
     const beansWatcher = vscode.workspace.createFileSystemWatcher(
       new vscode.RelativePattern(workspaceFolder, '.beans/**')
     );
+    const debounceMs = vscode.workspace.getConfiguration('beans').get<number>('fileWatcher.debounceMs', 20000);
     const debouncedRefresh = debounceRefresh(() => {
       logger.debug('File change detected in .beans/, refreshing');
       vscode.commands.executeCommand('beans.refreshAll');
-    }, 500);
+    }, debounceMs);
     beansWatcher.onDidCreate(debouncedRefresh);
     beansWatcher.onDidChange(debouncedRefresh);
     beansWatcher.onDidDelete(debouncedRefresh);

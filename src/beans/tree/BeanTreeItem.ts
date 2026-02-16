@@ -181,6 +181,7 @@ export class BeanTreeItem extends vscode.TreeItem {
    * Get appropriate icon for the bean.
    * Icon color reflects priority (red/orange/yellow/green/blue).
    * In-progress items without a priority fall back to orange.
+   * Completed and scrapped items use gray to avoid distraction.
    */
   private getIcon(): vscode.ThemeIcon {
     const priorityColorId = this.bean.priority ? BeanTreeItem.PRIORITY_COLORS[this.bean.priority] : undefined;
@@ -194,11 +195,13 @@ export class BeanTreeItem extends vscode.TreeItem {
     // Status-based icons (priority over type)
     switch (this.bean.status) {
       case 'completed':
-        return new vscode.ThemeIcon('issue-closed', color);
+        // Use gray for completed items to reduce visual noise
+        return new vscode.ThemeIcon('issue-closed', new vscode.ThemeColor('descriptionForeground'));
       case 'in-progress':
         return this.getTypeIcon(color);
       case 'scrapped':
-        return new vscode.ThemeIcon('error', color);
+        // Use gray for scrapped items to reduce visual noise
+        return new vscode.ThemeIcon('error', new vscode.ThemeColor('descriptionForeground'));
       case 'draft':
         return new vscode.ThemeIcon('issue-draft', color);
       case 'todo':

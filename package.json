@@ -465,6 +465,13 @@
           "default": true,
           "description": "Master switch for AI features (MCP server provider and chat participant integrations)."
         },
+        "beans.fileWatcher.debounceMs": {
+          "type": "number",
+          "default": 20000,
+          "minimum": 1000,
+          "maximum": 120000,
+          "markdownDescription": "Debounce interval (in milliseconds) for file system watcher. Prevents excessive refreshes when many files change. Default: 20000ms (20 seconds)."
+        },
         "beans.mcp.enabled": {
           "type": "boolean",
           "default": true,
