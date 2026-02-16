@@ -1,0 +1,40 @@
+name: Other Issue
+description: Report something that doesn't fit bug or feature categories
+title: ""
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for questions, documentation issues, or anything else.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Issue Type
+      description: What type of issue is this?
+      options:
+        - Question
+        - Documentation
+        - Build/CI Issue
+        - Dependencies
+        - Testing
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe your issue, question, or concern
+      placeholder: Tell us what's on your mind
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or examples
+      placeholder: Any additional information

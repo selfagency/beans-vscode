@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Beans CLI Repository
+    url: https://github.com/hmans/beans
+    about: For issues with the Beans CLI itself (not this VS Code extension)
+  - name: Community Discussions
+    url: https://github.com/selfagency/beans-vscode/discussions
+    about: Ask questions and discuss ideas with the community

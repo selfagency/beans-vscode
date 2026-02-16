@@ -1,0 +1,198 @@
+name: Create Bean from Accepted Issue
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: read
+
+jobs:
+  create-bean:
+    name: Create Bean from Issue
+    # Only run on issues (not PRs) when comment is "/accept"
+    if: |
+      github.event.issue.pull_request == null &&
+      contains(github.event.comment.body, '/accept')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check if commenter is maintainer
+        id: check-permission
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.actor
+            });
+            
+            const hasPermission = ['admin', 'write'].includes(permission.permission);
+            
+            if (!hasPermission) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `@${context.actor} You don't have permission to use the /accept command. Only maintainers can create beans from issues.`
+              });
+              core.setFailed('User does not have permission');
+              return;
+            }
+            
+            core.setOutput('has-permission', 'true');
+
+      - name: Checkout repository
+        if: steps.check-permission.outputs.has-permission == 'true'
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        if: steps.check-permission.outputs.has-permission == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Beans CLI
+        if: steps.check-permission.outputs.has-permission == 'true'
+        run: |
+          curl -fsSL https://github.com/hmans/beans/releases/latest/download/beans_$(uname -s)_$(uname -m).tar.gz | tar xz
+          sudo mv beans /usr/local/bin/
+          beans --version
+
+      - name: Initialize Beans if needed
+        if: steps.check-permission.outputs.has-permission == 'true'
+        run: |
+          if [ ! -d ".beans" ]; then
+            beans init
+            echo "Initialized Beans repository"
+          fi
+
+      - name: Create bean from issue
+        if: steps.check-permission.outputs.has-permission == 'true'
+        id: create-bean
+        uses: actions/github-script@v7
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const fs = require('fs');
+            
+            // Determine bean type from labels
+            const labels = context.payload.issue.labels.map(l => l.name);
+            let beanType = 'task';
+            let priority = 'normal';
+            
+            if (labels.includes('bug')) {
+              beanType = 'bug';
+              priority = 'high';
+            } else if (labels.includes('feature')) {
+              beanType = 'feature';
+            } else if (labels.includes('question') || labels.includes('documentation')) {
+              beanType = 'task';
+              priority = 'low';
+            }
+            
+            // Override priority if critical label exists
+            if (labels.includes('critical')) {
+              priority = 'critical';
+            }
+            
+            const issueNumber = process.env.ISSUE_NUMBER;
+            const title = process.env.ISSUE_TITLE;
+            const body = process.env.ISSUE_BODY || '';
+            const url = process.env.ISSUE_URL;
+            const author = process.env.ISSUE_AUTHOR;
+            
+            // Create description with link to original issue
+            const description = `${body}\n\n---\n\n**Original Issue:** ${url}\n**Reported by:** @${author}\n**GitHub Issue:** #${issueNumber}`;
+            
+            // Escape strings for shell
+            const escapeShell = (str) => {
+              return str.replace(/'/g, "'\\''");
+            };
+            
+            // Create the bean
+            const cmd = `beans create --json '${escapeShell(title)}' -t ${beanType} -p ${priority} -s todo -d '${escapeShell(description)}'`;
+            
+            let beanId;
+            try {
+              const output = execSync(cmd, { encoding: 'utf-8' });
+              const result = JSON.parse(output);
+              beanId = result.id || result.code;
+              console.log(`Created bean: ${beanId}`);
+            } catch (error) {
+              console.error('Failed to create bean:', error.message);
+              throw error;
+            }
+            
+            core.setOutput('bean-id', beanId);
+            return beanId;
+
+      - name: Commit and push bean
+        if: steps.check-permission.outputs.has-permission == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .beans/
+          git commit -m "feat: create bean from issue #${{ github.event.issue.number }}
+
+          Created ${{ steps.create-bean.outputs.bean-id }} from accepted issue.
+          
+          Original issue: ${{ github.event.issue.html_url }}"
+          git push
+
+      - name: Comment on issue with bean ID
+        if: steps.check-permission.outputs.has-permission == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const beanId = '${{ steps.create-bean.outputs.bean-id }}';
+            
+            const message = [
+              `✅ Accepted! Created bean \`${beanId}\` from this issue.`,
+              '',
+              'You can view it with:',
+              '```bash',
+              `beans show ${beanId}`,
+              '```',
+              '',
+              `Or in VS Code: Open Beans sidebar → Find \`${beanId}\``
+            ].join('\n');
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: message
+            });
+            
+            // Update issue with bean label
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['has-bean']
+            });
+
+      - name: Handle errors
+        if: failure() && steps.check-permission.outputs.has-permission == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `❌ Failed to create bean from this issue. Please check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.`
+            });

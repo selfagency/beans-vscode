@@ -1,0 +1,118 @@
+name: Bug Report
+description: Report a bug or issue with the Beans VS Code extension
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the information below to help us resolve the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Tell us what went wrong
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Open VS Code
+        2. Run command '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: I expected...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: Instead...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or Error Messages
+      description: |
+        Please paste any relevant logs or error messages.
+        You can view extension logs via: Command Palette → "Beans: Open Logs"
+      placeholder: Paste logs here
+      render: shell
+
+  - type: input
+    id: extension-version
+    attributes:
+      label: Extension Version
+      description: What version of beans-vscode are you using?
+      placeholder: e.g., 0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: beans-version
+    attributes:
+      label: Beans CLI Version
+      description: Output of `beans --version`
+      placeholder: e.g., v0.4.0
+    validations:
+      required: true
+
+  - type: input
+    id: vscode-version
+    attributes:
+      label: VS Code Version
+      description: What version of VS Code are you using?
+      placeholder: e.g., 1.109.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: What OS are you running?
+      options:
+        - macOS
+        - Linux
+        - Windows
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: Are you using remote development?
+      options:
+        - Local
+        - SSH
+        - WSL
+        - Dev Container
+        - GitHub Codespaces
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here
+      placeholder: Any additional information that might help
