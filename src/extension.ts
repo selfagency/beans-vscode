@@ -2,7 +2,14 @@ import * as vscode from 'vscode';
 import * as path from 'node:path';
 import { BeansChatIntegration } from './beans/chat';
 import { BeansCommands } from './beans/commands';
-import { BeansConfigManager, buildBeansCopilotInstructions, writeBeansCopilotInstructions } from './beans/config';
+import {
+  BeansConfigManager,
+  buildBeansCopilotInstructions,
+  buildBeansCopilotSkill,
+  removeBeansCopilotSkill,
+  writeBeansCopilotInstructions,
+  writeBeansCopilotSkill
+} from './beans/config';
 import { BeansDetailsViewProvider } from './beans/details';
 import { BeansOutput } from './beans/logging';
 import { BeansMcpIntegration } from './beans/mcp';
@@ -119,6 +126,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
       // Register tree views when initialized
       registerTreeViews(context, beansService, filterManager, detailsProvider);
+
+      await ensureCopilotAiArtifacts(beansService, workspaceFolder.uri.fsPath, aiEnabled);
     }
 
     // Register config manager
@@ -156,7 +165,8 @@ export async function activate(context: vscode.ExtensionContext) {
           // filterManager and detailsProvider are guaranteed to exist
           registerTreeViews(context, beansService, filterManager!, detailsProvider!);
 
-          await ensureCopilotInstructionsFromPrime(beansService, workspaceFolder.uri.fsPath);
+          const aiEnabledNow = vscode.workspace.getConfiguration('beans').get<boolean>('ai.enabled', true);
+          await ensureCopilotAiArtifacts(beansService, workspaceFolder.uri.fsPath, aiEnabledNow);
 
           vscode.window.showInformationMessage('Beans initialized successfully!');
           logger.info('Beans initialized via command');
@@ -267,7 +277,8 @@ async function promptForInitialization(
       // filterManager and detailsProvider are guaranteed to exist since they're created before this
       registerTreeViews(context, service, filterManager!, detailsProvider!);
 
-      await ensureCopilotInstructionsFromPrime(service, workspaceRoot);
+      const aiEnabledNow = vscode.workspace.getConfiguration('beans').get<boolean>('ai.enabled', true);
+      await ensureCopilotAiArtifacts(service, workspaceRoot, aiEnabledNow);
 
       vscode.window.showInformationMessage('Beans initialized successfully!');
       logger.info('Beans initialized in workspace');
@@ -285,14 +296,24 @@ async function promptForInitialization(
   }
 }
 
-async function ensureCopilotInstructionsFromPrime(service: BeansService, workspaceRoot: string): Promise<void> {
+async function ensureCopilotAiArtifacts(service: BeansService, workspaceRoot: string, aiEnabled: boolean): Promise<void> {
   try {
+    if (!aiEnabled) {
+      await removeBeansCopilotSkill(workspaceRoot);
+      logger.info('AI disabled; removed Beans Copilot skill file if present');
+      return;
+    }
+
     const primeOutput = await service.prime();
-    const content = buildBeansCopilotInstructions(primeOutput);
-    const writtenPath = await writeBeansCopilotInstructions(workspaceRoot, content);
-    logger.info(`Generated Copilot instructions from beans prime at ${writtenPath}`);
+    const instructionsContent = buildBeansCopilotInstructions(primeOutput);
+    const instructionsPath = await writeBeansCopilotInstructions(workspaceRoot, instructionsContent);
+    logger.info(`Generated Copilot instructions from beans prime at ${instructionsPath}`);
+
+    const skillContent = buildBeansCopilotSkill(primeOutput);
+    const skillPath = await writeBeansCopilotSkill(workspaceRoot, skillContent);
+    logger.info(`Generated Copilot skill at ${skillPath}`);
   } catch (error) {
-    logger.warn('Failed to generate Copilot instructions from beans prime', error as Error);
+    logger.warn('Failed to synchronize Copilot AI artifacts from beans prime', error as Error);
   }
 }
 

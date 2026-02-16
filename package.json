@@ -186,12 +186,28 @@
             "description": "Summarize Beans status in this workspace"
           },
           {
+            "name": "priority",
+            "description": "Show top-priority issues in this workspace"
+          },
+          {
+            "name": "stale",
+            "description": "List stale issues that need attention"
+          },
+          {
+            "name": "create",
+            "description": "Guide creating a new issue"
+          },
+          {
             "name": "next",
             "description": "Suggest the next bean to work on"
           },
           {
             "name": "search",
             "description": "Search beans by text"
+          },
+          {
+            "name": "commit",
+            "description": "Guide an issue-related commit for current workspace"
           }
         ]
       }

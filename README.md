@@ -7,7 +7,7 @@ Beans support for VS Code, with tree-based issue workflows and MCP integration f
 - Sidebar views for active/draft/completed/scrapped beans.
 - Command palette and context-menu flows for common Beans operations.
 - MCP server definition provider that exposes Beans commands as MCP tools.
-- Beans chat participant (`@beans`) with slash commands for summary, next-task suggestions, and search.
+- Beans chat participant (`@beans`) with slash commands for summary, top-priority issues, stale issues, issue creation guidance, search, and issue-related commit guidance.
 
 ## Requirements
 
@@ -34,6 +34,16 @@ The server exposes tools that mirror extension capabilities, including:
 - `Beans: MCP: Show Server Info`
 - `Beans: MCP: Open MCP Settings`
 - `Beans: MCP: Open Logs`
+
+## Copilot Skill Generation
+
+When `beans.ai.enabled` is true, the extension generates and maintains a compact Beans skill file at:
+
+- `.github/skills/beans/SKILL.md`
+
+The generated skill includes planning-mode guidance to help map an epic into child issues and then create/link those issues with parent relationships.
+
+If AI features are turned off, the extension removes this generated skill file.
 
 ## Extension Settings
 

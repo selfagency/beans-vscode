@@ -32,16 +32,28 @@ export class BeansChatIntegration {
             command: 'summary'
           },
           {
-            prompt: 'What should I work on next?',
-            label: 'Suggest next task',
+            prompt: 'Show the top-priority issues for this workspace',
+            label: 'Top-priority issues',
             participant: CHAT_PARTICIPANT_ID,
-            command: 'next'
+            command: 'priority'
           },
           {
-            prompt: 'Search for beans mentioning MCP',
-            label: 'Search beans for MCP',
+            prompt: 'Which issues are stale in this workspace?',
+            label: 'Stale issues',
             participant: CHAT_PARTICIPANT_ID,
-            command: 'search'
+            command: 'stale'
+          },
+          {
+            prompt: 'Help me create a new issue',
+            label: 'Create a new issue',
+            participant: CHAT_PARTICIPANT_ID,
+            command: 'create'
+          },
+          {
+            prompt: 'Help me create an issue-related commit for the current workspace',
+            label: 'Issue-related commit',
+            participant: CHAT_PARTICIPANT_ID,
+            command: 'commit'
           }
         ];
       }
@@ -60,8 +72,20 @@ export class BeansChatIntegration {
         case 'next':
           await this.handleNext(stream);
           return;
+        case 'priority':
+          await this.handleTopPriority(stream);
+          return;
+        case 'stale':
+          await this.handleStale(stream);
+          return;
+        case 'create':
+          await this.handleCreateIssue(stream);
+          return;
         case 'search':
           await this.handleSearch(request.prompt, stream);
+          return;
+        case 'commit':
+          await this.handleIssueRelatedCommit(stream);
           return;
         default:
           await this.handleGeneral(request, stream, token);
@@ -136,7 +160,7 @@ export class BeansChatIntegration {
   private async handleSearch(prompt: string, stream: vscode.ChatResponseStream): Promise<void> {
     const query = prompt.trim();
     if (!query) {
-      stream.markdown('Please provide search text after `/search`, e.g. `/search mcp`');
+      stream.markdown('What would you like to search for? Enter `/search <term>` and I will find matching beans.');
       return;
     }
 
@@ -151,6 +175,106 @@ export class BeansChatIntegration {
     for (const bean of results.slice(0, 20)) {
       stream.markdown(`- \`${bean.id}\` — ${bean.title} (${bean.status}, ${bean.type})\n`);
     }
+  }
+
+  private async handleTopPriority(stream: vscode.ChatResponseStream): Promise<void> {
+    const beans = await this.service.listBeans({ status: ['in-progress', 'todo'] });
+    const priorityRank: Record<string, number> = {
+      critical: 0,
+      high: 1,
+      normal: 2,
+      low: 3,
+      deferred: 4
+    };
+
+    const prioritized = [...beans].sort((a, b) => {
+      const aStatusRank = a.status === 'in-progress' ? 0 : 1;
+      const bStatusRank = b.status === 'in-progress' ? 0 : 1;
+      const statusDiff = aStatusRank - bStatusRank;
+      if (statusDiff !== 0) {
+        return statusDiff;
+      }
+
+      const priorityDiff =
+        (priorityRank[a.priority ?? 'normal'] ?? 99) - (priorityRank[b.priority ?? 'normal'] ?? 99);
+      if (priorityDiff !== 0) {
+        return priorityDiff;
+      }
+
+      return a.title.localeCompare(b.title);
+    });
+
+    stream.markdown('## Top-priority issues\n\n');
+    if (prioritized.length === 0) {
+      stream.markdown('No active issues found. Try creating one with `beans.create`.');
+      return;
+    }
+
+    for (const bean of prioritized.slice(0, 8)) {
+      stream.markdown(`- \`${bean.id}\` — **${bean.title}** (${bean.status}, ${bean.priority ?? 'normal'})\n`);
+    }
+  }
+
+  private async handleStale(stream: vscode.ChatResponseStream): Promise<void> {
+    const beans = await this.service.listBeans({ status: ['in-progress', 'todo', 'draft'] });
+    const nowMs = Date.now();
+    const staleDaysThreshold = 21;
+    const staleMsThreshold = staleDaysThreshold * 24 * 60 * 60 * 1000;
+
+    const stale = beans
+      .filter((bean) => nowMs - bean.updatedAt.getTime() >= staleMsThreshold)
+      .sort((a, b) => a.updatedAt.getTime() - b.updatedAt.getTime());
+
+    stream.markdown(`## Stale issues (${staleDaysThreshold}+ days without updates)\n\n`);
+    if (stale.length === 0) {
+      stream.markdown('Nice — no stale issues found.');
+      return;
+    }
+
+    for (const bean of stale.slice(0, 12)) {
+      const ageDays = Math.floor((nowMs - bean.updatedAt.getTime()) / (24 * 60 * 60 * 1000));
+      stream.markdown(`- \`${bean.id}\` — ${bean.title} (${bean.status}, updated ${ageDays}d ago)\n`);
+    }
+  }
+
+  private async handleCreateIssue(stream: vscode.ChatResponseStream): Promise<void> {
+    stream.markdown('## Create a new issue\n\n');
+    stream.markdown('Tell me these fields and I will draft it:\n');
+    stream.markdown('- **Title**\n');
+    stream.markdown('- **Type** (`task`, `bug`, `feature`, `epic`, `milestone`)\n');
+    stream.markdown('- **Priority** (`critical`, `high`, `normal`, `low`, `deferred`)\n');
+    stream.markdown('- **Description**\n');
+    stream.markdown('- **Parent** (optional bean id)\n\n');
+    stream.markdown('You can also create directly in VS Code using the `beans.create` command.');
+  }
+
+  private async handleIssueRelatedCommit(stream: vscode.ChatResponseStream): Promise<void> {
+    const beans = await this.service.listBeans({ status: ['in-progress', 'todo'] });
+    const likely = [...beans]
+      .sort((a, b) => {
+        if (a.status !== b.status) {
+          return a.status === 'in-progress' ? -1 : 1;
+        }
+        return b.updatedAt.getTime() - a.updatedAt.getTime();
+      })
+      .slice(0, 5);
+
+    stream.markdown('## Create an issue-related commit\n\n');
+    stream.markdown('Suggested workflow:\n');
+    stream.markdown('1. Confirm which bean(s) this change belongs to.\n');
+    stream.markdown('2. Stage only the relevant files.\n');
+    stream.markdown('3. Use a conventional commit message and include bean id(s).\n\n');
+
+    if (likely.length > 0) {
+      stream.markdown('Likely beans for this workspace context:\n');
+      for (const bean of likely) {
+        stream.markdown(`- \`${bean.id}\` — ${bean.title} (${bean.status})\n`);
+      }
+      stream.markdown('\n');
+    }
+
+    stream.markdown('Example commit subject:\n');
+    stream.markdown('- `feat(scope): concise description (bean-id)`\n');
   }
 
   private async handleGeneral(
