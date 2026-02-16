@@ -87,7 +87,12 @@ export async function activate(context: vscode.ExtensionContext) {
     // Register commands
     const beansCommands = new BeansCommands(beansService, context, previewProvider, filterManager);
     beansCommands.registerAll();
-
+    // Register beans.showOutput command (always available)
+    context.subscriptions.push(
+      vscode.commands.registerCommand('beans.showOutput', () => {
+        logger.show();
+      })
+    );
     // Register beans.init command (special case - needed before initialization)
     context.subscriptions.push(
       vscode.commands.registerCommand('beans.init', async () => {

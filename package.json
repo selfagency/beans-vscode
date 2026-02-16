@@ -38,6 +38,12 @@
         "category": "Beans"
       },
       {
+        "command": "beans.showOutput",
+        "title": "Show Output",
+        "category": "Beans",
+        "icon": "$(terminal)"
+      },
+      {
         "command": "beans.view",
         "title": "View Bean",
         "category": "Beans",
@@ -187,6 +193,11 @@
           "command": "beans.create",
           "when": "view =~ /^beans\\./",
           "group": "navigation"
+        },
+        {
+          "command": "beans.showOutput",
+          "when": "view =~ /^beans\\./",
+          "group": "navigation@99"
         },
         {
           "command": "beans.filter",

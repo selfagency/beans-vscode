@@ -57,7 +57,7 @@ export class BeansService {
   private async execute<T>(args: string[]): Promise<T> {
     // Build command with proper escaping
     const command = `${this.cliPath} ${args.join(' ')}`;
-    this.logger.debug('Executing:', command);
+    this.logger.info(`Executing: ${command}`);
 
     try {
       const { stdout, stderr } = await execAsync(command, {
@@ -66,8 +66,18 @@ export class BeansService {
         timeout: 30000 // 30s
       });
 
-      if (stderr && !stderr.includes('[INFO]')) {
-        this.logger.warn('CLI stderr:', new Error(stderr));
+      // Log CLI output
+      if (stdout) {
+        this.logger.debug(`CLI stdout: ${stdout.substring(0, 500)}${stdout.length > 500 ? '...' : ''}`);
+      }
+
+      if (stderr) {
+        // Beans CLI sometimes outputs info to stderr
+        if (stderr.includes('[INFO]')) {
+          this.logger.debug(`CLI info: ${stderr}`);
+        } else {
+          this.logger.warn(`CLI stderr: ${stderr}`);
+        }
       }
 
       try {
