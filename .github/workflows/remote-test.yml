@@ -245,16 +245,18 @@ jobs:
           pnpm install -g @vscode/vsce
           vsce package --no-dependencies
 
-      - name: Install VS Code CLI
+      - name: Verify extension package
         run: |
-          wget -qO- https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64 | tar -xz
-          mv code /usr/local/bin/
-
-      - name: Run VS Code extension test in container
-        run: |
-          # This is a simplified test - full integration would require more setup
           echo "Extension packaged successfully for remote installation"
           ls -lh *.vsix
+          
+          # Verify the .vsix file was created
+          if [ ! -f *.vsix ]; then
+            echo "ERROR: Extension package not found"
+            exit 1
+          fi
+          
+          echo "✅ Extension can be packaged for remote deployment"
 
   summary:
     name: Remote Tests Summary
