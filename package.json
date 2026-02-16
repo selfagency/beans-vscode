@@ -145,26 +145,31 @@
     "views": {
       "beans": [
         {
+          "icon": "$(issue-opened)",
           "id": "beans.active",
           "name": "Active",
           "when": "beans.initialized"
         },
         {
+          "icon": "$(issue-closed)",
           "id": "beans.completed",
           "name": "Completed",
           "when": "beans.initialized"
         },
         {
+          "icon": "$(issue-draft)",
           "id": "beans.draft",
           "name": "Draft",
           "when": "beans.initialized"
         },
         {
+          "icon": "$(error)",
           "id": "beans.scrapped",
           "name": "Scrapped",
           "when": "beans.initialized"
         },
         {
+          "icon": "$(archive)",
           "id": "beans.archived",
           "name": "Archived",
           "when": "beans.initialized"

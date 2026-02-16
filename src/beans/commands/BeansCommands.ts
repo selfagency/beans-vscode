@@ -3,6 +3,7 @@ import { BeansOutput } from '../logging';
 import { Bean } from '../model';
 import { BeansPreviewProvider } from '../preview';
 import { BeansService } from '../service';
+import { BeansFilterManager } from '../tree';
 
 const logger = BeansOutput.getInstance();
 
@@ -13,7 +14,8 @@ export class BeansCommands {
   constructor(
     private readonly service: BeansService,
     private readonly context: vscode.ExtensionContext,
-    private readonly previewProvider: BeansPreviewProvider
+    private readonly previewProvider: BeansPreviewProvider,
+    private readonly filterManager: BeansFilterManager
   ) {}
 
   /**
@@ -544,21 +546,62 @@ export class BeansCommands {
   }
 
   /**
-   * Filter beans (placeholder for now)
+   * Filter beans
    */
   private async filter(): Promise<void> {
-    // TODO: Implement filtering UI (will be done in filtering task)
-    vscode.window.showInformationMessage('Filter command - Coming soon!');
-    logger.info('Filter command invoked');
+    try {
+      // Get the active tree view ID from the currently focused view
+      // Note: We'll apply filter to all views for now
+      const viewId = 'beans.active'; // Default to active view
+
+      const currentFilter = this.filterManager.getFilter(viewId);
+      const newFilter = await this.filterManager.showFilterUI(currentFilter);
+
+      if (newFilter) {
+        this.filterManager.setFilter(viewId, newFilter);
+      }
+    } catch (error) {
+      const message = `Failed to apply filter: ${(error as Error).message}`;
+      logger.error(message, error as Error);
+      vscode.window.showErrorMessage(message);
+    }
   }
 
   /**
-   * Sort beans (placeholder for now)
+   * Sort beans
    */
   private async sort(): Promise<void> {
-    // TODO: Implement sort mode selection UI
-    vscode.window.showInformationMessage('Sort command - Coming soon!');
-    logger.info('Sort command invoked');
+    try {
+      const sortMode = await vscode.window.showQuickPick(
+        [
+          { label: 'Status → Priority → Type → Title', value: 'status-priority-type-title' },
+          { label: 'Recently Updated', value: 'updated' },
+          { label: 'Recently Created', value: 'created' },
+          { label: 'Bean ID', value: 'id' }
+        ],
+        {
+          placeHolder: 'Select sort mode',
+          title: 'Sort Beans'
+        }
+      );
+
+      if (sortMode) {
+        // Update configuration
+        await vscode.workspace
+          .getConfiguration('beans')
+          .update('defaultSortMode', sortMode.value, vscode.ConfigurationTarget.Workspace);
+
+        vscode.window.showInformationMessage(`Sort mode changed to: ${sortMode.label}`);
+        logger.info(`Sort mode changed to ${sortMode.value}`);
+
+        // Refresh all trees to apply sort
+        await vscode.commands.executeCommand('beans.refreshAll');
+      }
+    } catch (error) {
+      const message = `Failed to change sort mode: ${(error as Error).message}`;
+      logger.error(message, error as Error);
+      vscode.window.showErrorMessage(message);
+    }
   }
 
   /**

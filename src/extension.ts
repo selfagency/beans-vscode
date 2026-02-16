@@ -4,7 +4,7 @@ import { BeansOutput } from './beans/logging';
 import { BeansCLINotFoundError } from './beans/model';
 import { BeansPreviewProvider } from './beans/preview';
 import { BeansService } from './beans/service';
-import { BeansDragAndDropController } from './beans/tree';
+import { BeansDragAndDropController, BeansFilterManager } from './beans/tree';
 import {
   ActiveBeansProvider,
   ArchivedBeansProvider,
@@ -20,6 +20,7 @@ let completedProvider: CompletedBeansProvider | undefined;
 let draftProvider: DraftBeansProvider | undefined;
 let scrappedProvider: ScrappedBeansProvider | undefined;
 let archivedProvider: ArchivedBeansProvider | undefined;
+let filterManager: BeansFilterManager | undefined;
 
 /**
  * Extension activation entry point
@@ -57,15 +58,21 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.commands.executeCommand('setContext', 'beans.initialized', true);
 
       // Register tree views when initialized
-      registerTreeViews(context, beansService);
+      if (filterManager) {
+        registerTreeViews(context, beansService, filterManager);
+      }
     }
 
     // Register preview provider
     const previewProvider = new BeansPreviewProvider(beansService);
     context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('beans-preview', previewProvider));
 
+    // Register filter manager
+    filterManager = new BeansFilterManager();
+    context.subscriptions.push(filterManager);
+
     // Register commands
-    const beansCommands = new BeansCommands(beansService, context, previewProvider);
+    const beansCommands = new BeansCommands(beansService, context, previewProvider, filterManager);
     beansCommands.registerAll();
 
     // Register beans.init command (special case - needed before initialization)
@@ -81,7 +88,9 @@ export async function activate(context: vscode.ExtensionContext) {
           await vscode.commands.executeCommand('setContext', 'beans.initialized', true);
 
           // Register tree views after successful initialization
-          registerTreeViews(context, beansService);
+          if (filterManager) {
+            registerTreeViews(context, beansService, filterManager);
+          }
 
           vscode.window.showInformationMessage('Beans initialized successfully!');
           logger.info('Beans initialized via command');
@@ -185,7 +194,9 @@ async function promptForInitialization(context: vscode.ExtensionContext, service
       await vscode.commands.executeCommand('setContext', 'beans.initialized', true);
 
       // Register tree views after successful initialization
-      registerTreeViews(context, service);
+      if (filterManager) {
+        registerTreeViews(context, service, filterManager);
+      }
 
       vscode.window.showInformationMessage('Beans initialized successfully!');
       logger.info('Beans initialized in workspace');
@@ -202,7 +213,7 @@ async function promptForInitialization(context: vscode.ExtensionContext, service
 /**
  * Register tree views for all bean panes
  */
-function registerTreeViews(context: vscode.ExtensionContext, service: BeansService): void {
+function registerTreeViews(context: vscode.ExtensionContext, service: BeansService, manager: BeansFilterManager): void {
   // Create drag and drop controller
   const dragAndDropController = new BeansDragAndDropController(service);
 
@@ -212,6 +223,40 @@ function registerTreeViews(context: vscode.ExtensionContext, service: BeansServi
   draftProvider = new DraftBeansProvider(service);
   scrappedProvider = new ScrappedBeansProvider(service);
   archivedProvider = new ArchivedBeansProvider(service);
+
+  // Subscribe to filter changes
+  context.subscriptions.push(
+    manager.onDidChangeFilter((viewId) => {
+      const filter = manager.getFilter(viewId);
+      const filterOptions = filter
+        ? {
+            searchFilter: filter.text,
+            tagFilter: filter.tags,
+            typeFilter: filter.types as any
+            // Note: priorities not yet supported in TreeFilterOptions
+          }
+        : {};
+
+      // Apply filter to the appropriate provider
+      switch (viewId) {
+        case 'beans.active':
+          activeProvider?.setFilter(filterOptions);
+          break;
+        case 'beans.completed':
+          completedProvider?.setFilter(filterOptions);
+          break;
+        case 'beans.draft':
+          draftProvider?.setFilter(filterOptions);
+          break;
+        case 'beans.scrapped':
+          scrappedProvider?.setFilter(filterOptions);
+          break;
+        case 'beans.archived':
+          archivedProvider?.setFilter(filterOptions);
+          break;
+      }
+    })
+  );
 
   // Register tree views with drag and drop support
   const activeTreeView = vscode.window.createTreeView('beans.active', {

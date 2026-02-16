@@ -1,11 +1,11 @@
 ---
 # beans-vscode-d3a0
 title: Core Commands & TUI Parity
-status: in-progress
+status: completed
 type: epic
 priority: normal
 created_at: 2026-02-16T04:04:06Z
-updated_at: 2026-02-16T04:23:11Z
+updated_at: 2026-02-16T04:58:22Z
 parent: beans-vscode-3y36
 ---
 
