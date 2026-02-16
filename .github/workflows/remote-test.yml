@@ -170,6 +170,11 @@ jobs:
           {
             "name": "Beans Remote Test",
             "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+            "features": {
+              "ghcr.io/devcontainers/features/go:1": {
+                "version": "latest"
+              }
+            },
             "postCreateCommand": "go install github.com/hmans/beans@latest && beans init",
             "customizations": {
               "vscode": {
