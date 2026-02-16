@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch: # Allow manual triggering
 
+env:
+  BEANS_VERSION: "v0.13.2"  # Pin Beans version for reproducible CI builds
+  GO_VERSION: "1.23.5"      # Pin Go version for stability
+
 jobs:
   docker-remote-test:
     name: Docker Remote Test
@@ -44,6 +48,8 @@ jobs:
       - name: Package extension
         run: |
           pnpm install -g @vscode/vsce
+          # Use --no-dependencies to avoid pnpm/npm conflicts in CI test environment.
+          # The release workflow packages with full dependencies for distribution.
           vsce package --no-dependencies --out beans-vscode-test.vsix
 
       - name: Create Dockerfile for testing
@@ -51,23 +57,27 @@ jobs:
           cat > Dockerfile.test << 'EOF'
           FROM ${{ matrix.base-image }}
 
-          # Install Go from official source (distro packages are often too old)
-          RUN if command -v apt-get > /dev/null; then \
+          # Install Go from official source with architecture detection
+          RUN ARCH=$(uname -m) && \
+              if [ "$ARCH" = "x86_64" ]; then GOARCH="amd64"; \
+              elif [ "$ARCH" = "aarch64" ]; then GOARCH="arm64"; \
+              else echo "Unsupported architecture: $ARCH" && exit 1; fi && \
+              if command -v apt-get > /dev/null; then \
                 apt-get update && apt-get install -y curl jq git wget && \
-                wget -q https://go.dev/dl/go1.23.5.linux-amd64.tar.gz && \
-                tar -C /usr/local -xzf go1.23.5.linux-amd64.tar.gz && \
-                rm go1.23.5.linux-amd64.tar.gz; \
+                wget -q https://go.dev/dl/go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz && \
+                tar -C /usr/local -xzf go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz && \
+                rm go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz; \
               elif command -v apk > /dev/null; then \
                 apk add --no-cache curl jq git bash wget && \
-                wget -q https://go.dev/dl/go1.23.5.linux-amd64.tar.gz && \
-                tar -C /usr/local -xzf go1.23.5.linux-amd64.tar.gz && \
-                rm go1.23.5.linux-amd64.tar.gz; \
+                wget -q https://go.dev/dl/go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz && \
+                tar -C /usr/local -xzf go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz && \
+                rm go${{ env.GO_VERSION }}.linux-${GOARCH}.tar.gz; \
               fi
 
           ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}"
 
-          # Install beans CLI
-          RUN go install github.com/hmans/beans@latest
+          # Install beans CLI (pinned version for reproducible CI)
+          RUN go install github.com/hmans/beans@${{ env.BEANS_VERSION }}
 
           # Verify beans installed
           RUN beans --version
@@ -181,7 +191,10 @@ jobs:
                 "version": "latest"
               }
             },
-            "postCreateCommand": "go install github.com/hmans/beans@latest && export PATH=$PATH:~/go/bin && beans init",
+            "postCreateCommand": "go install github.com/hmans/beans@${{ env.BEANS_VERSION }} && beans init",
+            "remoteEnv": {
+              "PATH": "${containerEnv:PATH}:/root/go/bin"
+            },
             "customizations": {
               "vscode": {
                 "settings": {
