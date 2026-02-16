@@ -1,10 +1,11 @@
 ---
 # beans-vscode-1js3
 title: Implement BeansTreeDataProvider
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-02-16T04:04:26Z
-updated_at: 2026-02-16T04:04:26Z
+updated_at: 2026-02-16T04:13:48Z
 parent: beans-vscode-c96u
 ---
 

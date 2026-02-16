@@ -2,6 +2,13 @@ import * as vscode from 'vscode';
 import { BeansService } from './beans/service';
 import { BeansOutput } from './beans/logging';
 import { BeansCLINotFoundError } from './beans/model';
+import {
+	ActiveBeansProvider,
+	CompletedBeansProvider,
+	DraftBeansProvider,
+	ScrappedBeansProvider,
+	ArchivedBeansProvider
+} from './beans/tree/providers';
 
 let beansService: BeansService | undefined;
 let logger: BeansOutput;
@@ -34,9 +41,15 @@ export async function activate(context: vscode.ExtensionContext) {
 		await vscode.commands.executeCommand('setContext', 'beans.initialized', isInitialized);
 
 		if (!isInitialized) {
-			await promptForInitialization(beansService);
+			await promptForInitialization(context, beansService);
 		} else {
 			logger.info('Beans workspace detected and initialized');
+			
+			// Set context for views
+			await vscode.commands.executeCommand('setContext', 'beans.initialized', true);
+			
+			// Register tree views when initialized
+			registerTreeViews(context, beansService);
 		}
 
 		// Register commands
@@ -86,7 +99,10 @@ async function promptForCLIInstallation(): Promise<void> {
 /**
  * Prompt user to initialize Beans in workspace
  */
-async function promptForInitialization(service: BeansService): Promise<void> {
+async function promptForInitialization(
+	context: vscode.ExtensionContext,
+	service: BeansService
+): Promise<void> {
 	const config = vscode.workspace.getConfiguration('beans');
 	if (!config.get<boolean>('autoInit.enabled', true)) {
 		return;
@@ -103,6 +119,10 @@ async function promptForInitialization(service: BeansService): Promise<void> {
 		try {
 			await service.init();
 			await vscode.commands.executeCommand('setContext', 'beans.initialized', true);
+			
+			// Register tree views after successful initialization
+			registerTreeViews(context, service);
+			
 			vscode.window.showInformationMessage('Beans initialized successfully!');
 			logger.info('Beans initialized in workspace');
 		} catch (error) {
@@ -113,6 +133,55 @@ async function promptForInitialization(service: BeansService): Promise<void> {
 	} else if (result === 'Learn More') {
 		vscode.env.openExternal(vscode.Uri.parse('https://github.com/jfcantinz/beans'));
 	}
+}
+
+/**
+ * Register tree views for all bean panes
+ */
+function registerTreeViews(context: vscode.ExtensionContext, service: BeansService): void {
+	// Create providers
+	const activeProvider = new ActiveBeansProvider(service);
+	const completedProvider = new CompletedBeansProvider(service);
+	const draftProvider = new DraftBeansProvider(service);
+	const scrappedProvider = new ScrappedBeansProvider(service);
+	const archivedProvider = new ArchivedBeansProvider(service);
+
+	// Register tree views
+	const activeTreeView = vscode.window.createTreeView('beans.active', {
+		treeDataProvider: activeProvider,
+		showCollapseAll: true
+	});
+
+	const completedTreeView = vscode.window.createTreeView('beans.completed', {
+		treeDataProvider: completedProvider,
+		showCollapseAll: true
+	});
+
+	const draftTreeView = vscode.window.createTreeView('beans.draft', {
+		treeDataProvider: draftProvider,
+		showCollapseAll: true
+	});
+
+	const scrappedTreeView = vscode.window.createTreeView('beans.scrapped', {
+		treeDataProvider: scrappedProvider,
+		showCollapseAll: true
+	});
+
+	const archivedTreeView = vscode.window.createTreeView('beans.archived', {
+		treeDataProvider: archivedProvider,
+		showCollapseAll: true
+	});
+
+	// Add disposables
+	context.subscriptions.push(
+		activeTreeView,
+		completedTreeView,
+		draftTreeView,
+		scrappedTreeView,
+		archivedTreeView
+	);
+
+	logger.info('Tree views registered');
 }
 
 /**

@@ -37,6 +37,53 @@
         "category": "Beans"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "beans",
+          "title": "Beans",
+          "icon": "$(checklist)"
+        }
+      ]
+    },
+    "views": {
+      "beans": [
+        {
+          "id": "beans.active",
+          "name": "Active",
+          "when": "beans.initialized"
+        },
+        {
+          "id": "beans.completed",
+          "name": "Completed",
+          "when": "beans.initialized"
+        },
+        {
+          "id": "beans.draft",
+          "name": "Draft",
+          "when": "beans.initialized"
+        },
+        {
+          "id": "beans.scrapped",
+          "name": "Scrapped",
+          "when": "beans.initialized"
+        },
+        {
+          "id": "beans.archived",
+          "name": "Archived",
+          "when": "beans.initialized"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "beans.refresh",
+          "when": "view =~ /^beans\\./",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "Beans",
       "properties": {
