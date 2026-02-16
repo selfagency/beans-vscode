@@ -94,6 +94,11 @@ jobs:
             beans version
 
             echo ""
+            echo "=== Creating clean test directory ==="
+            mkdir -p /tmp/beans-test
+            cd /tmp/beans-test
+
+            echo ""
             echo "=== Initializing Beans workspace ==="
             beans init
 
@@ -181,7 +186,7 @@ jobs:
                 "version": "latest"
               }
             },
-            "postCreateCommand": "go install github.com/hmans/beans@latest && beans init",
+            "postCreateCommand": "go install github.com/hmans/beans@latest",
             "customizations": {
               "vscode": {
                 "settings": {
@@ -200,6 +205,12 @@ jobs:
           runCmd: |
             echo "=== Checking beans installation ==="
             beans version
+
+            echo ""
+            echo "=== Creating clean test directory ==="
+            mkdir -p /tmp/beans-test
+            cd /tmp/beans-test
+            beans init
 
             echo ""
             echo "=== Verifying workspace initialized ==="
