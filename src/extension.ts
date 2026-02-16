@@ -21,6 +21,7 @@ let draftProvider: DraftBeansProvider | undefined;
 let scrappedProvider: ScrappedBeansProvider | undefined;
 let archivedProvider: ArchivedBeansProvider | undefined;
 let filterManager: BeansFilterManager | undefined;
+let initPromptDismissed = false; // Track if user dismissed init prompt in this session
 
 /**
  * Extension activation entry point
@@ -199,6 +200,11 @@ async function promptForInitialization(context: vscode.ExtensionContext, service
     return;
   }
 
+  // Don't prompt again if user already dismissed in this session
+  if (initPromptDismissed) {
+    return;
+  }
+
   const result = await vscode.window.showInformationMessage(
     'Beans is not initialized in this workspace. Would you like to initialize it now?',
     'Initialize',
@@ -225,6 +231,10 @@ async function promptForInitialization(context: vscode.ExtensionContext, service
     }
   } else if (result === 'Learn More') {
     vscode.env.openExternal(vscode.Uri.parse('https://github.com/jfcantinz/beans'));
+  } else if (result === 'Not Now') {
+    // Remember dismissal for this session
+    initPromptDismissed = true;
+    logger.info('User dismissed initialization prompt');
   }
 }
 
