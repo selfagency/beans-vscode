@@ -89,6 +89,12 @@ echo "Node: $(node --version)"
 echo "Beans: $(beans version)"
 echo ""
 
+echo "=== Creating clean test directory ==="
+mkdir -p /tmp/beans-test
+cd /tmp/beans-test
+echo "✅ Test directory created"
+echo ""
+
 echo "=== Test 1: Initialize Beans workspace ==="
 beans init
 if [ ! -f ".beans.yml" ]; then
