@@ -105,6 +105,11 @@ jobs:
             beans version
 
             echo ""
+            echo "=== Creating clean test directory ==="
+            mkdir -p /tmp/beans-test
+            cd /tmp/beans-test
+
+            echo ""
             echo "=== Initializing Beans workspace ==="
             beans init
 
@@ -214,6 +219,12 @@ jobs:
           runCmd: |
             echo "=== Checking beans installation ==="
             beans version
+
+            echo ""
+            echo "=== Creating clean test directory ==="
+            mkdir -p /tmp/beans-test
+            cd /tmp/beans-test
+            beans init
 
             echo ""
             echo "=== Verifying workspace initialized ==="
