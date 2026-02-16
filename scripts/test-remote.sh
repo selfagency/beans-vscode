@@ -7,10 +7,6 @@ set -e
 # Pin Beans version for reproducibility
 BEANS_VERSION="v0.13.2"
 
-# Dynamically fetch latest Go version
-echo "Fetching latest Go version..."
-GO_VERSION=$(curl -s https://go.dev/dl/?mode=json | jq -r '.[0].version')
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 IMAGE_NAME="beans-vscode-remote-test"
@@ -18,7 +14,16 @@ CONTAINER_NAME="beans-test-$(date +%s)"
 
 # Allow overrides via environment variables
 BEANS_VERSION="${BEANS_VERSION:-v0.13.2}"
-GO_VERSION="${GO_VERSION:-$(curl -s https://go.dev/dl/?mode=json | jq -r '.[0].version')}"
+
+# Dynamically fetch latest Go version if not already set
+if [ -z "$GO_VERSION" ]; then
+  echo "Fetching latest Go version..."
+  GO_VERSION=$(curl -s https://go.dev/dl/?mode=json | jq -r '.[0].version')
+  if [ -z "$GO_VERSION" ] || [ "$GO_VERSION" = "null" ]; then
+    echo "Error: Failed to fetch latest Go version from API"
+    exit 1
+  fi
+fi
 
 echo "🧪 Beans VS Code Remote Compatibility Test"
 echo "==========================================="
@@ -67,7 +72,8 @@ RUN ARCH=\$(uname -m) && \\
     elif [ "\$ARCH" = "aarch64" ]; then GOARCH="arm64"; \\
     else echo "Unsupported architecture: \$ARCH" && exit 1; fi && \\
     apt-get update && apt-get install -y curl jq git wget && \\
-    wget -q https://go.dev/dl/go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
+    wget https://go.dev/dl/go${GO_VERSION}.linux-\${GOARCH}.tar.gz || \\
+      (echo "Failed to download Go ${GO_VERSION} for \${GOARCH}" && exit 1) && \\
     tar -C /usr/local -xzf go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
     rm go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
     rm -rf /var/lib/apt/lists/*
