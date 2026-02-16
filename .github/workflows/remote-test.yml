@@ -44,7 +44,7 @@ jobs:
       - name: Package extension
         run: |
           pnpm install -g @vscode/vsce
-          vsce package --out beans-vscode-test.vsix
+          vsce package --no-dependencies --out beans-vscode-test.vsix
 
       - name: Create Dockerfile for testing
         run: |
@@ -237,7 +237,7 @@ jobs:
         run: |
           pnpm run compile
           pnpm install -g @vscode/vsce
-          vsce package
+          vsce package --no-dependencies
 
       - name: Install VS Code CLI
         run: |
