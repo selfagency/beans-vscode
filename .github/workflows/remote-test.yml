@@ -44,20 +44,22 @@ jobs:
       - name: Package extension
         run: |
           pnpm install -g @vscode/vsce
-          vsce package --out beans-vscode-test.vsix
+          vsce package --no-dependencies --out beans-vscode-test.vsix
 
       - name: Create Dockerfile for testing
         run: |
           cat > Dockerfile.test << 'EOF'
           FROM ${{ matrix.base-image }}
 
-          # Install beans CLI
+          # Install beans CLI via Go
           RUN if command -v apt-get > /dev/null; then \
-                apt-get update && apt-get install -y curl jq git && \
-                curl -fsSL https://raw.githubusercontent.com/hmans/beans/main/install.sh | sh; \
+                apt-get update && apt-get install -y curl jq git golang-go && \
+                go install github.com/hmans/beans@latest && \
+                ln -s /root/go/bin/beans /usr/local/bin/beans; \
               elif command -v apk > /dev/null; then \
-                apk add --no-cache curl jq git bash && \
-                curl -fsSL https://raw.githubusercontent.com/hmans/beans/main/install.sh | sh; \
+                apk add --no-cache curl jq git bash go && \
+                go install github.com/hmans/beans@latest && \
+                ln -s /root/go/bin/beans /usr/local/bin/beans; \
               fi
 
           # Verify beans installed
@@ -167,7 +169,7 @@ jobs:
           {
             "name": "Beans Remote Test",
             "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
-            "postCreateCommand": "curl -fsSL https://raw.githubusercontent.com/hmans/beans/main/install.sh | sh && beans init",
+            "postCreateCommand": "go install github.com/hmans/beans@latest && export PATH=$PATH:~/go/bin && beans init",
             "customizations": {
               "vscode": {
                 "settings": {
@@ -229,7 +231,7 @@ jobs:
         run: |
           pnpm run compile
           pnpm install -g @vscode/vsce
-          vsce package
+          vsce package --no-dependencies
 
       - name: Install VS Code CLI
         run: |
