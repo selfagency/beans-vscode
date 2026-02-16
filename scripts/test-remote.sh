@@ -44,12 +44,17 @@ echo "Step 3: Creating test Dockerfile..."
 cat > Dockerfile.remote-test << 'EOF'
 FROM mcr.microsoft.com/devcontainers/typescript-node:22
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y curl jq git golang-go && rm -rf /var/lib/apt/lists/*
+# Install Go from official source (distro packages are often too old)
+RUN apt-get update && apt-get install -y curl jq git wget && \
+    wget -q https://go.dev/dl/go1.23.5.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.23.5.linux-amd64.tar.gz && \
+    rm go1.23.5.linux-amd64.tar.gz && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install beans CLI via Go
-RUN go install github.com/hmans/beans@latest && \
-    ln -s /root/go/bin/beans /usr/local/bin/beans
+ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}"
+
+# Install beans CLI
+RUN go install github.com/hmans/beans@latest
 
 # Verify beans installed
 RUN beans --version
