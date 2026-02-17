@@ -86,7 +86,7 @@ Use compact planning checklist format:
 
 ## Beans CLI baseline (from `beans prime`)
 
-```text
+````text
 <EXTREMELY_IMPORTANT>
 # Beans Usage Guide for Agents
 
@@ -124,7 +124,8 @@ beans list --json --ready
 
 # View full details of specific beans (supports multiple IDs)
 beans show --json <id> [id...]
-```
+````
+
 </EXTREMELY_IMPORTANT>
 
 ## CLI Commands
@@ -201,21 +202,26 @@ Beans without a priority are treated as `normal` priority for sorting purposes.
 Use `beans update` to modify body content along with metadata changes:
 
 **Replace text (exact match, must occur exactly once):**
+
 ```bash
 beans update <id> --body-replace-old "- [ ] Task 1" --body-replace-new "- [x] Task 1"
 ```
+
 - Errors if text not found or found multiple times
 - Use empty string to delete the matched text
 
 **Append content:**
+
 ```bash
 beans update <id> --body-append "## Notes\n\nAdded content"
 echo "Multi-line content" | beans update <id> --body-append -
 ```
+
 - Adds text to end of body with blank line separator
 - Use `-` to read from stdin
 
 **Combined with metadata changes:**
+
 ```bash
 beans update <id> \
   --body-replace-old "- [ ] Deploy to prod" --body-replace-new "- [x] Deploy to prod" \
@@ -223,6 +229,7 @@ beans update <id> \
 ```
 
 **Multiple replacements (via GraphQL):**
+
 ```bash
 beans query 'mutation {
   updateBean(id: "<id>", input: {
@@ -237,6 +244,7 @@ beans query 'mutation {
   }) { id body etag }
 }'
 ```
+
 - Replacements execute sequentially (each operates on result of previous)
 - Append applied after all replacements
 - All operations atomic with single etag validation
@@ -245,6 +253,7 @@ beans query 'mutation {
 ## Concurrency Control
 
 Use etags with `--if-match`:
+
 ```bash
 ETAG=$(beans show <id> --etag-only)
 beans update <id> --if-match "$ETAG" ...
@@ -276,4 +285,7 @@ beans query --json '{ beans(filter: { type: ["bug"], priority: ["critical", "hig
 # Search with text
 beans query --json '{ beans(filter: { search: "authentication" }) { id title body } }'
 ```
+
+```
+
 ```

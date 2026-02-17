@@ -10,6 +10,17 @@ Beans is a file-based issue tracker that lives alongside your code. This extensi
 [![Release](https://github.com/selfagency/beans-vscode/actions/workflows/release.yml/badge.svg)](https://github.com/selfagency/beans-vscode/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+## Key Features
+
+- **🌴 Tree Views**: Organized views for active, completed, draft, and scrapped beans
+- **🔍 Search & Filter**: Full-text search, filter by status/type/priority/tags
+- **🎯 Drag & Drop**: Create hierarchies and relationships visually
+- **🤖 AI Integration**: MCP tools, `@beans` chat participant, auto-generated Copilot skills & instructions
+- **🌐 Remote Ready**: Works seamlessly in SSH, WSL, containers, and Codespaces
+- **⚡ Keyboard-First**: Configurable shortcuts for all operations
+- **🧪 Extensively Tested**: Comprehensive automated unit and integration test suite
+- **♿ Accessible**: Built following WCAG 2.2 Level AA guidelines
+
 ## About Beans
 
 Beans is a modern, file-based issue tracker designed for developers who want their issues to live alongside their code. Each "bean" is a markdown file in your repository—no databases, no external services, just version-controlled files.
@@ -57,17 +68,6 @@ Or use Command Palette: `Beans: Initialize Beans in Workspace`
 ### 4. Create Your First Bean
 
 Click the `+` icon in the Beans sidebar, enter a title, select a type (task, bug, feature), and you're done!
-
-## Key Features
-
-- **🌴 Tree Views**: Organized views for active, completed, draft, and scrapped beans
-- **🔍 Search & Filter**: Full-text search, filter by status/type/priority/tags
-- **🎯 Drag & Drop**: Create hierarchies and relationships visually
-- **🤖 AI Integration**: MCP tools, `@beans` chat participant, auto-generated Copilot skills & instructions
-- **🌐 Remote Ready**: Works seamlessly in SSH, WSL, containers, and Codespaces
-- **⚡ Keyboard-First**: Configurable shortcuts for all operations
-- **🧪 Extensively Tested**: Comprehensive automated unit and integration test suite
-- **♿ Accessible**: Built following WCAG 2.2 Level AA guidelines
 
 ## Documentation
 

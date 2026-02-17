@@ -5,12 +5,14 @@ status: todo
 type: task
 priority: normal
 created_at: 2026-02-17T02:32:49Z
-updated_at: 2026-02-17T02:32:49Z
+updated_at: 2026-02-17T07:13:33Z
+parent: beans-vscode-3y36
 ---
 
 New BeansService features lack unit test coverage:
 
 **Missing tests for:**
+
 - normalizeBean function (validation, date parsing, field mapping)
 - Offline mode cache fallback behavior
 - inProgressDescendantsCache algorithm in tree provider
