@@ -122,10 +122,13 @@ export class BeansService {
   }
 
   /**
-   * Retry helper with exponential backoff for transient failures
+   * Retry helper with exponential backoff for transient failures.
+   *
    * @param fn Function to retry
-   * @param maxRetries Maximum retry attempts (default 3)
-   * @param baseDelay Base delay in ms (default 100ms)
+   * @param maxRetries Maximum number of retries AFTER the initial attempt (default 3).
+   *   This results in up to maxRetries + 1 total attempts (1 initial + maxRetries retries).
+   *   For example, maxRetries=3 means 4 total attempts: 1 initial + 3 retries.
+   * @param baseDelay Base delay in ms between retries (default 100ms), grows exponentially
    * @returns Result from function
    */
   private async withRetry<T>(fn: () => Promise<T>, maxRetries: number = 3, baseDelay: number = 100): Promise<T> {
