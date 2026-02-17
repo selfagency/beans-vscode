@@ -1,11 +1,11 @@
 ---
 # beans-vscode-qo1h
 title: Fix CodeQL pack validity and v4 upgrade
-status: completed
+status: in-progress
 type: bug
 priority: high
 created_at: 2026-02-17T16:10:25Z
-updated_at: 2026-02-17T16:18:36Z
+updated_at: 2026-02-17T16:20:57Z
 ---
 
 Resolve CodeQL init failures for local custom packs and upgrade github/codeql-action from v3 to v4.
@@ -32,3 +32,5 @@ Re-opened to fix remaining CodeQL init errors reporting local packs as invalid i
 - Replaced  usage in CodeQL workflow with direct local custom query paths in .
 - Kept CodeQL Action on v4.
 - This avoids pack validation failures for local packs in GitHub Actions while still running repository custom queries.
+
+## Follow-up 2\n\nCollapsing matrix-based CodeQL analyze jobs into one unified job so only a single CodeQL workflow run/check appears.

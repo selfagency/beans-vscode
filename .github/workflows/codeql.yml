@@ -17,19 +17,9 @@ permissions:
 
 jobs:
   analyze:
-    name: Analyze (${{ matrix.language }})
+    name: Analyze
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - language: javascript-typescript
-            custom-queries: ./codeql/codeql-custom-queries-javascript/queries
-            build-mode: autobuild
-          - language: actions
-            custom-queries: ./codeql/codeql-custom-queries-actions/queries
-            build-mode: none
 
     steps:
       - name: Checkout repository
@@ -38,14 +28,13 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
-          languages: ${{ matrix.language }}
-          queries: security-and-quality,${{ matrix.custom-queries }}
+          languages: javascript-typescript,actions
+          queries: security-and-quality,./codeql/codeql-custom-queries-javascript/queries,./codeql/codeql-custom-queries-actions/queries
 
       - name: Autobuild
-        if: matrix.build-mode == 'autobuild'
         uses: github/codeql-action/autobuild@v4
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
         with:
-          category: "/language:${{ matrix.language }}"
+          category: "/language:javascript-typescript,actions"
