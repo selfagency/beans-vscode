@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs/promises';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { BeansConfigManager } from '../../../beans/config/BeansConfigManager';
 

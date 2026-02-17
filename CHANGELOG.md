@@ -19,7 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 _Source: changes from v1.0.5 to v1.0.6._
 
-
 ## [1.0.5] - 2026-02-17
 
 ### Added
