@@ -66,7 +66,14 @@ describe('BeansConfigManager', () => {
       vi.mocked(vscode.workspace.findFiles).mockResolvedValue([{} as any]);
       vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue({
         getText: () =>
-          ['path: .beans', 'prefix: abc', 'id_length: 4', 'default_status: todo', 'default_type: task'].join('\n'),
+          [
+            'beans:',
+            '  path: .beans',
+            '  prefix: abc',
+            '  id_length: 4',
+            '  default_status: todo',
+            '  default_type: task',
+          ].join('\n'),
       } as any);
 
       const result = await manager.read();
