@@ -241,8 +241,17 @@ jobs:
           TAG="${{ needs.detect-tag.outputs.release_tag }}"
           VERSION="${TAG#v}"
           echo "Syncing package.json version to $VERSION from tag $TAG"
-          VERSION="$VERSION" node -e "const fs=require('fs'); const pkgPath='package.json'; const pkg=JSON.parse(fs.readFileSync(pkgPath,'utf8')); pkg.version=process.env.VERSION; fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\\n');"
-          echo "package.json version now $(node -p \"require('./package.json').version\")"
+          
+          cat > /tmp/update-version.cjs <<'NODE'
+          const fs = require('fs');
+          const pkgPath = 'package.json';
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+          pkg.version = process.env.VERSION;
+          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+          
+          VERSION="$VERSION" node /tmp/update-version.cjs
+          echo "package.json version now $(node -p "require('./package.json').version")"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
