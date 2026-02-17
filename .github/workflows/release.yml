@@ -1,26 +1,21 @@
 name: Release
 
 on:
-  workflow_run:
-    # Only trigger when the final integration/remote compatibility workflow completes.
-    # This prevents running the release detector multiple times (once per upstream workflow).
-    workflows: ["Remote Compatibility Tests"]
-    types: [completed]
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
   actions: read
 
 concurrency:
-  group: release-${{ github.event.workflow_run.head_sha }}
-  # Cancel any in-progress release detector runs for the same commit so we don't run the
-  # release job multiple times during a rapid sequence of workflow completions.
+  group: release-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   detect-tag:
     name: Detect release tag and readiness
-    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -36,29 +31,59 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const triggerRun = context.payload.workflow_run;
-            const sha = triggerRun.head_sha;
+            const tagName = context.ref.replace('refs/tags/', '');
 
-            const tags = await github.paginate(github.rest.repos.listTags, {
-              owner,
-              repo,
-              per_page: 100,
-            });
-
-            const match = tags.find(tag => tag.name.startsWith('v') && tag.commit?.sha === sha);
-
-            if (!match) {
-              core.info(`No release tag found for SHA ${sha}; skipping release.`);
+            if (!tagName || !tagName.startsWith('v')) {
+              core.info(`Ref '${context.ref}' is not a release tag; skipping.`);
               core.setOutput('release_tag', '');
               core.setOutput('ready', 'false');
               return;
             }
 
-            core.info(
-              `Release tag detected: ${match.name} for SHA ${sha}. ` +
-              `Triggered after successful '${triggerRun.name}' completion.`
-            );
-            core.setOutput('release_tag', match.name);
+            const refData = await github.rest.git.getRef({
+              owner,
+              repo,
+              ref: `tags/${tagName}`,
+            });
+
+            const taggedSha = refData.data.object.sha;
+            const main = await github.rest.repos.getBranch({ owner, repo, branch: 'main' });
+            const mainSha = main.data.commit.sha;
+
+            if (taggedSha !== mainSha) {
+              core.setFailed(
+                `Release blocked: tag ${tagName} points to ${taggedSha}, but latest main is ${mainSha}.`
+              );
+              return;
+            }
+
+            const requiredWorkflows = ['CI', 'Remote Compatibility Tests'];
+            const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+              owner,
+              repo,
+              branch: 'main',
+              status: 'completed',
+              per_page: 100,
+            });
+
+            for (const workflowName of requiredWorkflows) {
+              const run = runs.find(r => r.name === workflowName && r.head_sha === mainSha);
+              if (!run) {
+                core.setFailed(
+                  `Release blocked: required workflow '${workflowName}' has no completed run for ${mainSha}.`
+                );
+                return;
+              }
+              if (run.conclusion !== 'success') {
+                core.setFailed(
+                  `Release blocked: workflow '${workflowName}' concluded with '${run.conclusion}' on ${mainSha}.`
+                );
+                return;
+              }
+            }
+
+            core.info(`Release tag detected: ${tagName} on latest main commit ${mainSha}; all checks passed.`);
+            core.setOutput('release_tag', tagName);
             core.setOutput('ready', 'true');
 
   release:
