@@ -37,6 +37,7 @@ interface RawBeanFromCLI {
   blockingIds?: string[];
   blocked_by?: string[];
   blocked_by_ids?: string[];
+  blockedBy?: string[];
   blockedByIds?: string[];
   created_at?: string;
   createdAt?: string;
