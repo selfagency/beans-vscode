@@ -84,9 +84,56 @@ export class BeansService {
   }
 
   /**
+   * Retry helper with exponential backoff for transient failures
+   * @param fn Function to retry
+   * @param maxRetries Maximum retry attempts (default 3)
+   * @param baseDelay Base delay in ms (default 100ms)
+   * @returns Result from function
+   */
+  private async withRetry<T>(fn: () => Promise<T>, maxRetries: number = 3, baseDelay: number = 100): Promise<T> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error: unknown) {
+        lastError = error as Error;
+        const err = error as NodeJS.ErrnoException & { killed?: boolean; signal?: string };
+
+        // Don't retry for these permanent errors
+        if (err.code === 'ENOENT' || error instanceof BeansJSONParseError || error instanceof BeansCLINotFoundError) {
+          throw error;
+        }
+
+        // Don't retry on last attempt
+        if (attempt === maxRetries) {
+          break;
+        }
+
+        // Retry for transient errors (timeouts, network issues, etc.)
+        const isTransient = err.killed || err.signal === 'SIGTERM' || error instanceof BeansTimeoutError;
+
+        if (isTransient) {
+          const delay = baseDelay * Math.pow(2, attempt);
+          this.logger.warn(`Transient error on attempt ${attempt + 1}/${maxRetries + 1}, retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+
+        // For other errors, don't retry
+        throw error;
+      }
+    }
+
+    // All retries exhausted
+    throw lastError || new Error('Operation failed after retries');
+  }
+
+  /**
    * Execute beans CLI command with JSON output
    * Security: Uses execFile with argument array to prevent shell injection
    * Request deduplication: Identical concurrent requests share the same promise
+   * Resilience: Automatic retry with exponential backoff for transient failures
    * @param args Command arguments (don't include 'beans' itself)
    * @returns Parsed JSON response
    */
@@ -101,36 +148,39 @@ export class BeansService {
       return existingRequest as Promise<T>;
     }
 
-    // Create new request
+    // Create new request with retry logic
     this.logger.info(`Executing: ${this.cliPath} ${args.join(' ')}`);
 
     const requestPromise = (async () => {
       try {
-        const { stdout, stderr } = await execFileAsync(this.cliPath, args, {
-          cwd: this.workspaceRoot,
-          maxBuffer: 10 * 1024 * 1024, // 10MB
-          timeout: 30000, // 30s
-        });
+        // Wrap execution with retry logic for transient failures
+        return await this.withRetry(async () => {
+          const { stdout, stderr } = await execFileAsync(this.cliPath, args, {
+            cwd: this.workspaceRoot,
+            maxBuffer: 10 * 1024 * 1024, // 10MB
+            timeout: 30000, // 30s
+          });
 
-        // Log CLI output
-        if (stdout) {
-          this.logger.debug(`CLI stdout: ${stdout.substring(0, 500)}${stdout.length > 500 ? '...' : ''}`);
-        }
-
-        if (stderr) {
-          // Beans CLI sometimes outputs info to stderr
-          if (stderr.includes('[INFO]')) {
-            this.logger.debug(`CLI info: ${stderr}`);
-          } else {
-            this.logger.warn(`CLI stderr: ${stderr}`);
+          // Log CLI output
+          if (stdout) {
+            this.logger.debug(`CLI stdout: ${stdout.substring(0, 500)}${stdout.length > 500 ? '...' : ''}`);
           }
-        }
 
-        try {
-          return JSON.parse(stdout) as T;
-        } catch (parseError) {
-          throw new BeansJSONParseError('Failed to parse beans CLI JSON output', stdout, parseError as Error);
-        }
+          if (stderr) {
+            // Beans CLI sometimes outputs info to stderr
+            if (stderr.includes('[INFO]')) {
+              this.logger.debug(`CLI info: ${stderr}`);
+            } else {
+              this.logger.warn(`CLI stderr: ${stderr}`);
+            }
+          }
+
+          try {
+            return JSON.parse(stdout) as T;
+          } catch (parseError) {
+            throw new BeansJSONParseError('Failed to parse beans CLI JSON output', stdout, parseError as Error);
+          }
+        });
       } catch (error: unknown) {
         const err = error as NodeJS.ErrnoException & { killed?: boolean; signal?: string };
 
