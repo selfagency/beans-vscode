@@ -47,7 +47,7 @@ vi.mock('node:fs/promises', () => ({
   rm: rmMock,
 }));
 
-vi.mock('../../../beans/config', () => ({
+vi.mock('../../../beans/config/CopilotInstructions', () => ({
   buildBeansCopilotInstructions: buildInstructionsMock,
   writeBeansCopilotInstructions: writeInstructionsMock,
 }));
