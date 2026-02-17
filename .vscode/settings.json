@@ -15,6 +15,7 @@
         "git add": true,
         "git commit": true,
         "printf": true,
-        "git restore": true
+        "git restore": true,
+        "awk": true
     }
 }
