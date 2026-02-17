@@ -55,7 +55,7 @@ export class BeansService {
   private cliPath: string;
   private workspaceRoot: string;
   // Request deduplication: tracks in-flight CLI requests to prevent duplicate calls
-  private readonly inFlightRequests = new Map<string, Promise<any>>();
+  private readonly inFlightRequests = new Map<string, Promise<unknown>>();
   // Offline mode: cache last successful results for graceful degradation
   private offlineMode = false;
   private cachedBeans: Bean[] | null = null;
