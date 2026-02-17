@@ -148,7 +148,7 @@ export const commands = {
   registerCommand: (): { dispose: () => void } => {
     return { dispose: () => {} };
   },
-  executeCommand: <T = unknown>(): Thenable<T | undefined> => Promise.resolve(undefined),
+  executeCommand: (): Promise<any> => Promise.resolve(),
 };
 
 export const env = {
@@ -157,7 +157,7 @@ export const env = {
 
 export class RelativePattern {
   constructor(
-    public base: string | { uri: { fsPath: string } },
+    public base: any,
     public pattern: string
   ) {}
 }
