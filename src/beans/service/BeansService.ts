@@ -481,6 +481,10 @@ export class BeansService {
     // Derive short code from ID: last segment after final hyphen
     const code = bean.code || (bean.id ? bean.id.split('-').pop() : '') || '';
 
+    // Parse and validate dates
+    const createdAt = this.parseDate(bean.createdAt || bean.created_at, 'created_at', bean.id);
+    const updatedAt = this.parseDate(bean.updatedAt || bean.updated_at, 'updated_at', bean.id);
+
     return {
       id: bean.id,
       code,
@@ -500,6 +504,23 @@ export class BeansService {
       updatedAt: this.parseDateValue(bean.updatedAt || bean.updated_at),
       etag: bean.etag,
     };
+  }
+
+  /**
+   * Parse and validate a date string, returning current date if invalid
+   */
+  private parseDate(dateValue: string | Date | number | undefined, fieldName: string, beanId: string): Date {
+    if (!dateValue) {
+      return new Date();
+    }
+
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) {
+      this.logger.warn(`Invalid ${fieldName} date for bean ${beanId}: ${dateValue}. Using current date.`);
+      return new Date();
+    }
+
+    return date;
   }
 
   /**
