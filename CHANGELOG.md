@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Pre-commit hooks using Husky and lint-staged for automatic linting and formatting
+- Devcontainer configuration (`.devcontainer/devcontainer.json`) for local development
+- Remote compatibility testing infrastructure with Docker and devcontainer tests
+- GitHub Actions workflows for CI, remote testing, and releases
+- GitHub issue templates and PR workflow
+- Dependabot configuration for automated dependency updates
+- Comprehensive remote development support documentation
+- Code formatting with Prettier
+
+### Fixed
+
+- CI test failures and reliability improvements across multiple workflows
+- Broken pnpm lockfile with duplicate package entries
+- Beans CLI installation using `@latest` instead of invalid hardcoded versions
+- Test isolation issues by running tests in clean `/tmp/beans-test` directory
+- VSCE packaging errors with pnpm by adding `--no-dependencies` flag
+- Coverage dependency (`@vitest/coverage-v8`) missing from devDependencies
+- Devcontainer postCreateCommand to use `go install` method
+- Beans CLI version command usage (`beans version` not `beans --version`)
+- Git pre-commit hook configuration (removed redundant `git add`)
+- Go installation in CI using official binaries (Go 1.23.5) instead of distro packages
+- SHA256 checksum verification for Go downloads in test scripts
+- Remote workspace initialization and Beans CLI resolution
+
+### Changed
+
+- Updated `@types/node` from 22.19.11 to 25.2.3
+- Updated `zod` from 3.25.76 to 4.3.6
+- Updated `typescript-eslint` to latest version
+- Updated GitHub Actions: `actions/checkout`, `actions/setup-node`, `actions/upload-artifact` to latest versions
+- Improved CI caching and pnpm installation order
+- Enhanced error handling and messages in CI workflows
+- Improved documentation clarity for CI setup and remote development
+
 ### Planned
 
 - Archive view for archived beans
