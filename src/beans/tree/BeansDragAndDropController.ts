@@ -106,7 +106,7 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
     if (isDescendant) {
       return {
         valid: false,
-        reason: `Cannot create cycle: ${targetBean.code} is a descendant of ${draggedBean.code}`
+        reason: `Cannot create cycle: ${targetBean.code} is a descendant of ${draggedBean.code}`,
       };
     }
 
@@ -157,9 +157,8 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
    * Perform the re-parent operation
    */
   private async reparentBean(bean: Bean, newParent: Bean | undefined): Promise<void> {
-    await this.service.updateBean(bean.id, {
-      parent: newParent?.id
-    });
+    const updates = newParent ? { parent: newParent.id } : { clearParent: true };
+    await this.service.updateBean(bean.id, updates);
 
     const beanName = bean.title || bean.code || bean.id;
     const parentName = newParent ? newParent.title || newParent.code || newParent.id : 'root';

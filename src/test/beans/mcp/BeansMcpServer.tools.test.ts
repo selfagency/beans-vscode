@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const toolHandlers = vi.hoisted(() => new Map<string, (...args: any[]) => any>());
 const connectSpy = vi.hoisted(() => vi.fn(async () => {}));
 const execFileMock = vi.hoisted(() => vi.fn());
+const createReadStreamMock = vi.hoisted(() => vi.fn());
+const createInterfaceMock = vi.hoisted(() => vi.fn());
 const readFileMock = vi.hoisted(() => vi.fn());
 const writeFileMock = vi.hoisted(() => vi.fn());
 const mkdirMock = vi.hoisted(() => vi.fn());
@@ -28,6 +30,14 @@ vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
 
 vi.mock('node:child_process', () => ({
   execFile: execFileMock,
+}));
+
+vi.mock('node:fs', () => ({
+  createReadStream: createReadStreamMock,
+}));
+
+vi.mock('node:readline', () => ({
+  createInterface: createInterfaceMock,
 }));
 
 vi.mock('node:fs/promises', () => ({
@@ -118,6 +128,14 @@ describe('BeansMcpServer tool handlers', () => {
     toolHandlers.clear();
     setupExecFileMock();
     readFileMock.mockResolvedValue('line1\nline2\nline3\n');
+    createReadStreamMock.mockReturnValue({ __lines: ['line1', 'line2', 'line3'] });
+    createInterfaceMock.mockImplementation(({ input }: { input: { __lines: string[] } }) => ({
+      async *[Symbol.asyncIterator]() {
+        for (const line of input.__lines) {
+          yield line;
+        }
+      },
+    }));
     mkdirMock.mockResolvedValue(undefined);
     writeFileMock.mockResolvedValue(undefined);
     rmMock.mockResolvedValue(undefined);

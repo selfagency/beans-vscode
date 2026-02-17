@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
-import { BeansCLINotFoundError, type Bean } from '../../../beans/model';
 import { BeansCommands } from '../../../beans/commands/BeansCommands';
+import { BeansCLINotFoundError, type Bean } from '../../../beans/model';
 
 // TODO(beans-vscode-v2n7): Deepen BeansCommands coverage with command-palette
 // integration flows, richer quick-pick interaction edge cases, and exhaustive
@@ -263,6 +263,16 @@ describe('BeansCommands', () => {
     const bean = makeBean({ parent: undefined });
     await (commands as any).removeParent(bean);
     expect(showInformationMessage).toHaveBeenCalledWith(`${bean.code} has no parent`);
+  });
+
+  it('removes parent using explicit clearParent semantics', async () => {
+    const bean = makeBean({ parent: 'beans-vscode-parent', code: 'ABCD' });
+    showInformationMessage.mockResolvedValueOnce('Yes').mockResolvedValueOnce(undefined);
+
+    await (commands as any).removeParent(bean);
+
+    expect(service.updateBean).toHaveBeenCalledWith(bean.id, { clearParent: true });
+    expect(executeCommand).toHaveBeenCalledWith('beans.refreshAll');
   });
 
   it('warns when deleting non-draft/non-scrapped bean', async () => {

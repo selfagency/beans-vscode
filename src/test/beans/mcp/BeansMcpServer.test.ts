@@ -19,7 +19,7 @@ describe('BeansMcpServer helpers', () => {
       [
         { id: 'a', title: 'Zeta', status: 'todo', type: 'task', priority: 'normal' },
         { id: 'b', title: 'Alpha', status: 'in-progress', type: 'bug', priority: 'high' },
-        { id: 'c', title: 'Beta', status: 'in-progress', type: 'task', priority: 'critical' }
+        { id: 'c', title: 'Beta', status: 'in-progress', type: 'task', priority: 'critical' },
       ],
       'status-priority-type-title'
     );
@@ -33,7 +33,7 @@ describe('BeansMcpServer helpers', () => {
     const sorted = sortBeans(
       [
         { id: 'bean-2', title: 'Two', status: 'todo', type: 'task' },
-        { id: 'bean-1', title: 'One', status: 'todo', type: 'task' }
+        { id: 'bean-1', title: 'One', status: 'todo', type: 'task' },
       ],
       'id'
     );

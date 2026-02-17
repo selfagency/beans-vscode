@@ -24,7 +24,7 @@ describe('Bean Operations', () => {
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-02'),
     etag: 'e1',
-    ...overrides
+    ...overrides,
   });
 
   beforeEach(() => {
@@ -41,7 +41,7 @@ describe('Bean Operations', () => {
         id: 'new-bean',
         title: 'New Test Bean',
         status: 'todo',
-        type: 'task'
+        type: 'task',
       });
 
       vi.spyOn(mockService, 'createBean').mockResolvedValue(newBean);
@@ -50,7 +50,7 @@ describe('Bean Operations', () => {
         title: 'New Test Bean',
         type: 'task',
         status: 'todo',
-        description: 'Description text'
+        description: 'Description text',
       });
 
       expect(result.id).toBe('new-bean');
@@ -63,7 +63,7 @@ describe('Bean Operations', () => {
       const newBean = makeMockBean({
         id: 'priority-bean',
         title: 'Priority Bean',
-        priority: 'high'
+        priority: 'high',
       });
 
       vi.spyOn(mockService, 'createBean').mockResolvedValue(newBean);
@@ -73,7 +73,7 @@ describe('Bean Operations', () => {
         type: 'bug',
         status: 'todo',
         description: 'Critical bug',
-        priority: 'high'
+        priority: 'high',
       });
 
       expect(result.priority).toBe('high');
@@ -183,13 +183,13 @@ describe('Bean Operations', () => {
     it('should add blocking relationship', async () => {
       const blockingBean = makeMockBean({
         id: 'blocker-1',
-        blocking: ['blocked-1']
+        blocking: ['blocked-1'],
       });
 
       vi.spyOn(mockService, 'updateBean').mockResolvedValue(blockingBean);
 
       const result = await mockService.updateBean('blocker-1', {
-        blocking: ['blocked-1']
+        blocking: ['blocked-1'],
       });
 
       expect(result.blocking).toContain('blocked-1');
@@ -198,13 +198,13 @@ describe('Bean Operations', () => {
     it('should add blocked-by relationship', async () => {
       const blockedBean = makeMockBean({
         id: 'blocked-1',
-        blockedBy: ['blocker-1']
+        blockedBy: ['blocker-1'],
       });
 
       vi.spyOn(mockService, 'updateBean').mockResolvedValue(blockedBean);
 
       const result = await mockService.updateBean('blocked-1', {
-        blockedBy: ['blocker-1']
+        blockedBy: ['blocker-1'],
       });
 
       expect(result.blockedBy).toContain('blocker-1');
@@ -213,13 +213,13 @@ describe('Bean Operations', () => {
     it('should handle multiple blocking relationships', async () => {
       const blockingBean = makeMockBean({
         id: 'blocker-1',
-        blocking: ['blocked-1', 'blocked-2', 'blocked-3']
+        blocking: ['blocked-1', 'blocked-2', 'blocked-3'],
       });
 
       vi.spyOn(mockService, 'updateBean').mockResolvedValue(blockingBean);
 
       const result = await mockService.updateBean('blocker-1', {
-        blocking: ['blocked-1', 'blocked-2', 'blocked-3']
+        blocking: ['blocked-1', 'blocked-2', 'blocked-3'],
       });
 
       expect(result.blocking).toHaveLength(3);

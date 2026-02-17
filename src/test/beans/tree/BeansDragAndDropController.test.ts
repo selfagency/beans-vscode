@@ -216,7 +216,7 @@ describe('BeansDragAndDropController', () => {
 
     await controller.handleDrop(undefined, dataTransfer as any, { isCancellationRequested: false } as any);
 
-    expect(service.updateBean).toHaveBeenCalledWith('bean-1', { parent: undefined });
+    expect(service.updateBean).toHaveBeenCalledWith('bean-1', { clearParent: true });
   });
 
   it('continues when ancestor lookup fails during cycle check', async () => {

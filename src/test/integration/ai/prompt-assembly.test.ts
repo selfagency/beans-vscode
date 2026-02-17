@@ -31,15 +31,15 @@ describe('Chat Prompt Assembly', () => {
           title: 'Test Bean',
           status: 'todo',
           type: 'task',
-          priority: 'high'
+          priority: 'high',
         } as Bean,
         {
           id: 'bean-2',
           title: 'Another Bean',
           status: 'in-progress',
           type: 'bug',
-          priority: 'critical'
-        } as Bean
+          priority: 'critical',
+        } as Bean,
       ];
 
       const prompt = buildBeansChatSystemPrompt('summary', beans);
@@ -63,8 +63,8 @@ describe('Chat Prompt Assembly', () => {
           id: 'bean-1',
           title: 'No Priority Bean',
           status: 'todo',
-          type: 'task'
-        } as Bean
+          type: 'task',
+        } as Bean,
       ];
 
       const prompt = buildBeansChatSystemPrompt(undefined, beans);
@@ -85,7 +85,7 @@ describe('Chat Prompt Assembly', () => {
         title: `Bean ${i}`,
         status: 'todo',
         type: 'task',
-        priority: 'normal'
+        priority: 'normal',
       })) as Bean[];
 
       const prompt = buildBeansChatSystemPrompt(undefined, beans);

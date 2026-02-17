@@ -11,7 +11,7 @@ const STATUS_EMOJI: Record<string, string> = {
   'in-progress': '⏳',
   completed: '✅',
   draft: '📝',
-  scrapped: '🗑️'
+  scrapped: '🗑️',
 };
 
 /**
@@ -22,7 +22,7 @@ const TYPE_EMOJI: Record<string, string> = {
   bug: '🐛',
   feature: '💡',
   epic: '⚡',
-  milestone: '🏁'
+  milestone: '🏁',
 };
 
 /**
@@ -33,7 +33,7 @@ const PRIORITY_EMOJI: Record<string, string> = {
   high: '🟠',
   normal: '🟡',
   low: '🟢',
-  deferred: '🔵'
+  deferred: '🔵',
 };
 
 /**
@@ -47,7 +47,10 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private readonly logger = BeansOutput.getInstance();
 
-  constructor(private readonly extensionUri: vscode.Uri, private readonly service: BeansService) {}
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly service: BeansService
+  ) {}
 
   /* ------------------------------------------------------------------ */
   /*  Webview lifecycle                                                  */
@@ -64,10 +67,10 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.options = {
       enableScripts: true,
-      localResourceRoots: [this.extensionUri, codiconsUri]
+      localResourceRoots: [this.extensionUri, codiconsUri],
     };
 
-    webviewView.webview.onDidReceiveMessage(async (message) => {
+    webviewView.webview.onDidReceiveMessage(async message => {
       switch (message.command) {
         case 'search':
           await this.handleSearch(message.query, message.filters);
@@ -107,13 +110,13 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
       // Client-side priority filter (CLI may not support it)
       if (filters.priorities.length > 0) {
         const prioSet = new Set(filters.priorities);
-        beans = beans.filter((b) => b.priority && prioSet.has(b.priority));
+        beans = beans.filter(b => b.priority && prioSet.has(b.priority));
       }
 
       // Client-side full-text search across all fields
       if (query) {
         const q = query.toLowerCase();
-        beans = beans.filter((b) => this.matchesQuery(b, q));
+        beans = beans.filter(b => this.matchesQuery(b, q));
       }
 
       // Sort by field-weighted relevancy when a query is present
@@ -121,14 +124,14 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
 
       this._view?.webview.postMessage({
         command: 'results',
-        beans: beans.map((b) => this.beanToResult(b))
+        beans: beans.map(b => this.beanToResult(b)),
       });
     } catch (error) {
       this.logger.error('Search failed', error as Error);
       this._view?.webview.postMessage({
         command: 'results',
         beans: [],
-        error: (error as Error).message
+        error: (error as Error).message,
       });
     }
   }
@@ -162,9 +165,9 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
       ...(bean.tags || []),
       bean.parent || '',
       ...(bean.blocking || []),
-      ...(bean.blockedBy || [])
+      ...(bean.blockedBy || []),
     ];
-    return fields.some((f) => f.toLowerCase().includes(q));
+    return fields.some(f => f.toLowerCase().includes(q));
   }
 
   /**
@@ -202,7 +205,7 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
     if ((bean.body || '').toLowerCase().includes(q)) {
       score += 20;
     }
-    if ((bean.tags || []).some((t) => t.toLowerCase().includes(q))) {
+    if ((bean.tags || []).some(t => t.toLowerCase().includes(q))) {
       score += 15;
     }
     if (
@@ -222,14 +225,14 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
       todo: 1,
       draft: 2,
       completed: 3,
-      scrapped: 4
+      scrapped: 4,
     };
     const priorityOrder: Record<string, number> = {
       critical: 0,
       high: 1,
       normal: 2,
       low: 3,
-      deferred: 4
+      deferred: 4,
     };
 
     const q = (query || '').toLowerCase();
@@ -268,7 +271,7 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
       priority: bean.priority,
       statusEmoji: STATUS_EMOJI[bean.status] || '',
       typeEmoji: TYPE_EMOJI[bean.type] || '',
-      priorityEmoji: bean.priority ? PRIORITY_EMOJI[bean.priority] || '' : ''
+      priorityEmoji: bean.priority ? PRIORITY_EMOJI[bean.priority] || '' : '',
     };
   }
 
@@ -277,26 +280,34 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
   /* ------------------------------------------------------------------ */
 
   private getHtml(webview: vscode.Webview): string {
+    const nonce = this.getNonce();
     const codiconsUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
     );
+    const csp = [
+      "default-src 'none'",
+      `font-src ${webview.cspSource}`,
+      `style-src ${webview.cspSource} 'unsafe-inline'`,
+      `script-src 'nonce-${nonce}'`,
+      `img-src ${webview.cspSource} data:`,
+    ].join('; ');
 
     const statusCheckboxes = BEAN_STATUSES.map(
-      (s) =>
+      s =>
         `<label class="filter-option"><input type="checkbox" value="${s}" data-group="status" />${
           STATUS_EMOJI[s] || ''
         } ${capitalize(s)}</label>`
     ).join('\n');
 
     const typeCheckboxes = BEAN_TYPES.map(
-      (t) =>
+      t =>
         `<label class="filter-option"><input type="checkbox" value="${t}" data-group="type" />${
           TYPE_EMOJI[t] || ''
         } ${capitalize(t)}</label>`
     ).join('\n');
 
     const priorityCheckboxes = BEAN_PRIORITIES.map(
-      (p) =>
+      p =>
         `<label class="filter-option"><input type="checkbox" value="${p}" data-group="priority" />${
           PRIORITY_EMOJI[p] || ''
         } ${capitalize(p)}</label>`
@@ -307,6 +318,7 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="${csp}" />
   <link href="${codiconsUri}" rel="stylesheet" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -487,7 +499,7 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
 
   <div id="resultsContainer"></div>
 
-  <script>
+  <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     const searchInput = document.getElementById('searchInput');
     const filtersToggle = document.getElementById('filtersToggle');
@@ -610,12 +622,16 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
 </body>
 </html>`;
   }
+
+  private getNonce(): string {
+    return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+  }
 }
 
 /** Capitalise first letter, replace hyphens with spaces */
 function capitalize(s: string): string {
   return s
     .split('-')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
 }

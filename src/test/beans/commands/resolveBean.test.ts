@@ -43,7 +43,7 @@ function makeBean(overrides: Partial<Bean> = {}): Bean {
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-02'),
     etag: 'etag1',
-    ...overrides
+    ...overrides,
   } as Bean;
 }
 
@@ -63,7 +63,7 @@ describe('resolveBean (duck-typing)', () => {
       bean,
       label: '⏳ Tree Item Bean',
       description: 'abc1',
-      command: { command: 'beans.openBean', title: 'Open', arguments: [bean] }
+      command: { command: 'beans.openBean', title: 'Open', arguments: [bean] },
     };
     const result = resolveBean(treeItem);
     expect(result).toBe(bean);

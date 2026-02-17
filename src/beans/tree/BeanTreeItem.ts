@@ -27,7 +27,7 @@ export class BeanTreeItem extends vscode.TreeItem {
     this.command = {
       command: 'beans.openBean',
       title: 'Open Bean',
-      arguments: [bean]
+      arguments: [bean],
     };
   }
 
@@ -39,7 +39,7 @@ export class BeanTreeItem extends vscode.TreeItem {
     high: 'charts.orange',
     normal: 'charts.yellow',
     low: 'charts.green',
-    deferred: 'charts.blue'
+    deferred: 'charts.blue',
   };
 
   /**
@@ -50,7 +50,7 @@ export class BeanTreeItem extends vscode.TreeItem {
     'in-progress': '⏳ In Progress',
     completed: '✅ Completed',
     draft: '📝 Draft',
-    scrapped: '🗑️ Scrapped'
+    scrapped: '🗑️ Scrapped',
   };
 
   /**
@@ -61,7 +61,7 @@ export class BeanTreeItem extends vscode.TreeItem {
     bug: '🐛 Bug',
     feature: '💡 Feature',
     epic: '⚡ Epic',
-    milestone: '🏁 Milestone'
+    milestone: '🏁 Milestone',
   };
 
   /**
@@ -72,7 +72,7 @@ export class BeanTreeItem extends vscode.TreeItem {
     high: '🟠 High',
     normal: '🟡 Normal',
     low: '🟢 Low',
-    deferred: '🔵 Deferred'
+    deferred: '🔵 Deferred',
   };
 
   /**
@@ -189,8 +189,8 @@ export class BeanTreeItem extends vscode.TreeItem {
     const color = priorityColorId
       ? new vscode.ThemeColor(priorityColorId)
       : shouldHighlight
-      ? new vscode.ThemeColor('charts.orange')
-      : undefined;
+        ? new vscode.ThemeColor('charts.orange')
+        : undefined;
 
     // Status-based icons (priority over type)
     switch (this.bean.status) {

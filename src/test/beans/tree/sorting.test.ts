@@ -25,7 +25,7 @@ function makeBean(overrides: Partial<Bean> = {}): Bean {
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-02'),
     etag: 'e1',
-    ...overrides
+    ...overrides,
   } as Bean;
 }
 
@@ -34,7 +34,7 @@ const statusOrder: Record<string, number> = {
   todo: 1,
   draft: 2,
   completed: 3,
-  scrapped: 4
+  scrapped: 4,
 };
 
 const priorityOrder: Record<string, number> = {
@@ -42,7 +42,7 @@ const priorityOrder: Record<string, number> = {
   high: 1,
   normal: 2,
   low: 3,
-  deferred: 4
+  deferred: 4,
 };
 
 const typeOrder: Record<string, number> = {
@@ -50,7 +50,7 @@ const typeOrder: Record<string, number> = {
   epic: 1,
   feature: 2,
   bug: 3,
-  task: 4
+  task: 4,
 };
 
 function sortByStatusPriorityTypeTitle(beans: Bean[]): Bean[] {
@@ -80,7 +80,7 @@ describe('Sort: status-priority-type-title', () => {
   it('in-progress comes before todo', () => {
     const beans = [
       makeBean({ id: '1', status: 'todo', title: 'Alpha' }),
-      makeBean({ id: '2', status: 'in-progress', title: 'Beta' })
+      makeBean({ id: '2', status: 'in-progress', title: 'Beta' }),
     ];
     const sorted = sortByStatusPriorityTypeTitle(beans);
     expect(sorted[0].status).toBe('in-progress');
@@ -90,7 +90,7 @@ describe('Sort: status-priority-type-title', () => {
   it('todo comes before completed', () => {
     const beans = [
       makeBean({ id: '1', status: 'completed', title: 'A' }),
-      makeBean({ id: '2', status: 'todo', title: 'B' })
+      makeBean({ id: '2', status: 'todo', title: 'B' }),
     ];
     const sorted = sortByStatusPriorityTypeTitle(beans);
     expect(sorted[0].status).toBe('todo');
@@ -101,7 +101,7 @@ describe('Sort: status-priority-type-title', () => {
     const beans = [
       makeBean({ id: '1', priority: 'normal', title: 'C' }),
       makeBean({ id: '2', priority: 'critical', title: 'A' }),
-      makeBean({ id: '3', priority: 'high', title: 'B' })
+      makeBean({ id: '3', priority: 'high', title: 'B' }),
     ];
     const sorted = sortByStatusPriorityTypeTitle(beans);
     expect(sorted[0].priority).toBe('critical');
@@ -114,7 +114,7 @@ describe('Sort: status-priority-type-title', () => {
       makeBean({ id: '1', type: 'task', title: 'D' }),
       makeBean({ id: '2', type: 'milestone', title: 'A' }),
       makeBean({ id: '3', type: 'bug', title: 'C' }),
-      makeBean({ id: '4', type: 'epic', title: 'B' })
+      makeBean({ id: '4', type: 'epic', title: 'B' }),
     ];
     const sorted = sortByStatusPriorityTypeTitle(beans);
     expect(sorted[0].type).toBe('milestone');
@@ -127,7 +127,7 @@ describe('Sort: status-priority-type-title', () => {
     const beans = [
       makeBean({ id: '1', title: 'Zulu' }),
       makeBean({ id: '2', title: 'Alpha' }),
-      makeBean({ id: '3', title: 'Mike' })
+      makeBean({ id: '3', title: 'Mike' }),
     ];
     const sorted = sortByStatusPriorityTypeTitle(beans);
     expect(sorted[0].title).toBe('Alpha');
@@ -140,7 +140,7 @@ describe('Sort: status-priority-type-title', () => {
       makeBean({ id: '1', status: 'todo', priority: 'low', type: 'task', title: 'Z' }),
       makeBean({ id: '2', status: 'in-progress', priority: 'low', type: 'task', title: 'Y' }),
       makeBean({ id: '3', status: 'todo', priority: 'critical', type: 'task', title: 'X' }),
-      makeBean({ id: '4', status: 'todo', priority: 'critical', type: 'milestone', title: 'W' })
+      makeBean({ id: '4', status: 'todo', priority: 'critical', type: 'milestone', title: 'W' }),
     ];
     const sorted = sortByStatusPriorityTypeTitle(beans);
     expect(sorted[0].id).toBe('2'); // in-progress first
@@ -152,7 +152,7 @@ describe('Sort: status-priority-type-title', () => {
   it('undefined priority treated as normal', () => {
     const beans = [
       makeBean({ id: '1', priority: undefined, title: 'No Priority' }),
-      makeBean({ id: '2', priority: 'high', title: 'High Priority' })
+      makeBean({ id: '2', priority: 'high', title: 'High Priority' }),
     ];
     const sorted = sortByStatusPriorityTypeTitle(beans);
     expect(sorted[0].id).toBe('2'); // high comes before normal

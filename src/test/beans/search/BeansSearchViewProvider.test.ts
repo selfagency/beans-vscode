@@ -102,6 +102,7 @@ describe('BeansSearchViewProvider', () => {
     expect(webview.options.enableScripts).toBe(true);
     expect(webview.options.localResourceRoots).toHaveLength(2);
     expect(webview.html).toContain('Search beans');
+    expect(webview.html).toContain('Content-Security-Policy');
     expect(webview.html).toContain('filtersPanel');
     expect(webview.html).toContain('data-group="status"');
     expect(mockLogger.debug).toHaveBeenCalledWith('Search view resolved');

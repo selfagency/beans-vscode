@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
-import type { Bean } from '../../../beans/model';
 import { BeansDetailsViewProvider } from '../../../beans/details/BeansDetailsViewProvider';
+import type { Bean } from '../../../beans/model';
 
 // TODO(beans-vscode-1m8d): Add deeper webview integration tests for details
 // panel interactions (real DOM script execution, select-change update flows,
@@ -82,6 +82,7 @@ describe('BeansDetailsViewProvider', () => {
 
     expect(webview.options.enableScripts).toBe(true);
     expect(webview.options.localResourceRoots).toHaveLength(2);
+    expect(webview.html).toContain('Content-Security-Policy');
     expect(webview.html).toContain('Select a bean to view details');
     expect(mockLogger.debug).toHaveBeenCalledWith('Bean details view resolved');
     expect(receivedHandler).toBeTypeOf('function');
@@ -192,11 +193,18 @@ describe('BeansDetailsViewProvider', () => {
     expect(html).toContain('<em>italic</em>');
     expect(html).toContain('<code>inline</code>');
     expect(html).toContain('<pre><code>block</code></pre>');
-    expect(html).toContain('<a href="https://example.com">link</a>');
+    expect(html).toContain('<a href="https://example.com" target="_blank" rel="noopener noreferrer">link</a>');
     expect(html).toContain('<ul><li>item</li></ul>');
 
     const escaped = (provider as any).escapeHtml('<tag>"x"&\'y\'');
     expect(escaped).toBe('&lt;tag&gt;&quot;x&quot;&amp;&#039;y&#039;');
+  });
+
+  it('does not render unsafe javascript: markdown links', () => {
+    const html = (provider as any).renderMarkdown('[x](javascript:alert(1))');
+    expect(html).not.toContain('javascript:');
+    expect(html).not.toContain('<a href=');
+    expect(html).toContain('x');
   });
 
   it('returns expected icon names by status/type', () => {

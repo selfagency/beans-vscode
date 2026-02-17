@@ -33,12 +33,12 @@ describe('Command Registration', () => {
         get: vi.fn(),
         update: vi.fn(),
         keys: vi.fn(() => []),
-        setKeysForSync: vi.fn()
+        setKeysForSync: vi.fn(),
       },
       workspaceState: {
         get: vi.fn(),
         update: vi.fn(),
-        keys: vi.fn(() => [])
+        keys: vi.fn(() => []),
       },
       secrets: {} as any,
       storageUri: vscode.Uri.file('/mock/storage'),
@@ -51,7 +51,7 @@ describe('Command Registration', () => {
       asAbsolutePath: (path: string) => `/mock/extension/${path}`,
       storagePath: '/mock/storage',
       globalStoragePath: '/mock/globalStorage',
-      logPath: '/mock/log'
+      logPath: '/mock/log',
     };
 
     // Mock vscode.commands.registerCommand to track registered commands
@@ -104,7 +104,7 @@ describe('Command Registration', () => {
       'beans.filter',
       'beans.search',
       'beans.sort',
-      'beans.openConfig'
+      'beans.openConfig',
     ];
 
     for (const cmd of expectedCommands) {
