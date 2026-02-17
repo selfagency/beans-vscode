@@ -46,7 +46,11 @@ jobs:
               ref: `tags/${tagName}`,
             });
 
-            const taggedSha = refData.data.object.sha;
+            const refObj = refData.data.object;
+            const taggedSha =
+              refObj.type === 'tag'
+                ? (await github.rest.git.getTag({ owner, repo, tag_sha: refObj.sha })).data.object.sha
+                : refObj.sha;
             const main = await github.rest.repos.getBranch({ owner, repo, branch: 'main' });
             const mainSha = main.data.commit.sha;
 
