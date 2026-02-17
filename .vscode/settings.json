@@ -21,7 +21,8 @@
         "git worktree": true,
         "git rev-parse": true,
         "test": true,
-        "pnpm": true
+        "pnpm": true,
+        "git tag": true
     },
-    "codeQL.createQuery.qlPackLocation": "/Users/daniel/Developer/beans-vscode-fixes"
+    "codeQL.createQuery.qlPackLocation": "${workspaceFolder}/codeql"
 }
