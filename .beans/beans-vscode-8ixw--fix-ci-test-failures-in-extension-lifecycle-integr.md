@@ -5,7 +5,7 @@ status: completed
 type: bug
 priority: normal
 created_at: 2026-02-17T19:26:37Z
-updated_at: 2026-02-17T19:38:41Z
+updated_at: 2026-02-17T19:53:11Z
 ---
 
 The extension-lifecycle.test.ts integration test was failing because the mock for ../../beans/config was missing required constant exports (COPILOT_INSTRUCTIONS_RELATIVE_PATH and COPILOT_SKILL_RELATIVE_PATH).
@@ -32,3 +32,11 @@ Note: The initial commit (86e5088) only changed the test prompt handling but did
 Follow-up fixes:
 - Fixed shell syntax error in release workflow version sync step (was trying to parse node require() calls)
 - Removed tag trigger from CodeQL workflow to avoid unnecessary runs on version tags
+
+
+
+Additional workflow fixes:
+- Combined version and changelog updates into single step to ensure both are committed together
+- After committing, tag is moved forward to new commit so package/release uses updated files
+- Removed duplicate version sync step
+- Fixed duplicate changelog in GitHub releases by using pre-generated notes instead of auto-generation
