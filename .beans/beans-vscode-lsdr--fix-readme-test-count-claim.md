@@ -1,11 +1,11 @@
 ---
 # beans-vscode-lsdr
 title: Fix README test count claim
-status: in-progress
+status: todo
 type: task
 priority: low
 created_at: 2026-02-17T03:46:17Z
-updated_at: 2026-02-17T04:07:52Z
+updated_at: 2026-02-17T03:46:17Z
 ---
 
 README claims '43+ unit tests' but the project actually has 127 tests.
