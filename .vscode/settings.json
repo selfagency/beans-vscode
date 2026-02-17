@@ -14,6 +14,7 @@
         "mkdir": true,
         "git add": true,
         "git commit": true,
-        "printf": true
+        "printf": true,
+        "git restore": true
     }
 }
