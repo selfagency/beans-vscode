@@ -1,10 +1,49 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
-import { Bean, BeansCLINotFoundError, BeansConfig, BeansJSONParseError, BeansTimeoutError } from '../model';
+import {
+  Bean,
+  BeansCLINotFoundError,
+  BeansConfig,
+  BeansJSONParseError,
+  BeansTimeoutError,
+  BeanStatus,
+  BeanType,
+  BeanPriority,
+} from '../model';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+/**
+ * Raw bean data structure as returned by Beans CLI
+ */
+interface RawBeanFromCLI {
+  id: string;
+  title: string;
+  slug: string;
+  path: string;
+  body: string;
+  status: string;
+  type: string;
+  priority?: string;
+  tags?: string[];
+  parent?: string;
+  parent_id?: string;
+  parentId?: string;
+  blocking?: string[];
+  blocking_ids?: string[];
+  blockingIds?: string[];
+  blocked_by?: string[];
+  blocked_by_ids?: string[];
+  blockedByIds?: string[];
+  created_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
+  code?: string;
+  etag: string;
+}
 
 /**
  * Service for interacting with the Beans CLI
@@ -26,9 +65,9 @@ export class BeansService {
    */
   async checkCLIAvailable(): Promise<boolean> {
     try {
-      await execAsync(`${this.cliPath} --version`, {
+      await execFileAsync(this.cliPath, ['--version'], {
         cwd: this.workspaceRoot,
-        timeout: 5000
+        timeout: 5000,
       });
       return true;
     } catch (error: unknown) {
@@ -43,20 +82,18 @@ export class BeansService {
 
   /**
    * Execute beans CLI command with JSON output
-   * Security: Uses argument array to prevent shell injection
+   * Security: Uses execFile with argument array to prevent shell injection
    * @param args Command arguments (don't include 'beans' itself)
    * @returns Parsed JSON response
    */
   private async execute<T>(args: string[]): Promise<T> {
-    // Build command with proper escaping
-    const command = `${this.cliPath} ${args.join(' ')}`;
-    this.logger.info(`Executing: ${command}`);
+    this.logger.info(`Executing: ${this.cliPath} ${args.join(' ')}`);
 
     try {
-      const { stdout, stderr } = await execAsync(command, {
+      const { stdout, stderr } = await execFileAsync(this.cliPath, args, {
         cwd: this.workspaceRoot,
         maxBuffer: 10 * 1024 * 1024, // 10MB
-        timeout: 30000 // 30s
+        timeout: 30000, // 30s
       });
 
       // Log CLI output
@@ -97,16 +134,16 @@ export class BeansService {
 
   /**
    * Execute beans CLI command and return raw text output.
+   * Security: Uses execFile with argument array to prevent shell injection
    */
   private async executeText(args: string[]): Promise<string> {
-    const command = `${this.cliPath} ${args.join(' ')}`;
-    this.logger.info(`Executing text command: ${command}`);
+    this.logger.info(`Executing text command: ${this.cliPath} ${args.join(' ')}`);
 
     try {
-      const { stdout, stderr } = await execAsync(command, {
+      const { stdout, stderr } = await execFileAsync(this.cliPath, args, {
         cwd: this.workspaceRoot,
         maxBuffer: 10 * 1024 * 1024,
-        timeout: 30000
+        timeout: 30000,
       });
 
       if (stderr && !stderr.includes('[INFO]')) {
@@ -158,7 +195,7 @@ export class BeansService {
       default_type: 'task',
       statuses: ['todo', 'in-progress', 'completed', 'scrapped', 'draft'],
       types: ['milestone', 'epic', 'feature', 'task', 'bug'],
-      priorities: ['critical', 'high', 'normal', 'low', 'deferred']
+      priorities: ['critical', 'high', 'normal', 'low', 'deferred'],
     };
   }
 
@@ -185,31 +222,50 @@ export class BeansService {
       args.push('--search', options.search);
     }
 
-    const result = await this.execute<Bean[]>(args);
+    const result = await this.execute<RawBeanFromCLI[]>(args);
     const beans = result || [];
 
     // Normalize bean data to ensure arrays are always arrays
-    return beans.map((bean) => this.normalizeBean(bean));
+    return beans.map(bean => this.normalizeBean(bean));
   }
 
   /**
    * Normalize bean data from CLI to ensure required fields exist.
    * CLI outputs snake_case (created_at, updated_at, blocked_by, parent_id, blocking_ids, blocked_by_ids).
    * We map to camelCase model fields and derive the short 'code' from the ID.
+   * @throws BeansJSONParseError if bean is missing required fields
    */
-  private normalizeBean(bean: any): Bean {
+  private normalizeBean(rawBean: RawBeanFromCLI): Bean {
+    // Validate required fields
+    if (!rawBean.id || !rawBean.title || !rawBean.status || !rawBean.type) {
+      throw new BeansJSONParseError(
+        'Bean missing required fields (id, title, status, or type)',
+        JSON.stringify(rawBean),
+        new Error('Invalid bean structure')
+      );
+    }
+
+    const bean = rawBean;
     // Derive short code from ID: last segment after final hyphen
-    const code = bean.code || (bean.id ? bean.id.split('-').pop() : '');
+    const code = bean.code || (bean.id ? bean.id.split('-').pop() : '') || '';
 
     return {
-      ...bean,
+      id: bean.id,
       code,
+      slug: bean.slug,
+      path: bean.path,
+      title: bean.title,
+      body: bean.body,
+      status: bean.status as BeanStatus,
+      type: bean.type as BeanType,
+      priority: bean.priority as BeanPriority | undefined,
       tags: bean.tags || [],
+      parent: bean.parent || bean.parentId || bean.parent_id,
       blocking: bean.blocking || bean.blockingIds || bean.blocking_ids || [],
-      blockedBy: bean.blockedBy || bean.blockedByIds || bean.blocked_by_ids || [],
-      parent: bean.parent || bean.parentId || bean.parent_id || undefined,
+      blockedBy: bean.blocked_by || bean.blockedByIds || bean.blocked_by_ids || [],
       createdAt: new Date(bean.createdAt || bean.created_at || Date.now()),
-      updatedAt: new Date(bean.updatedAt || bean.updated_at || Date.now())
+      updatedAt: new Date(bean.updatedAt || bean.updated_at || Date.now()),
+      etag: bean.etag,
     };
   }
 
@@ -217,12 +273,59 @@ export class BeansService {
    * Get a single bean by ID
    */
   async showBean(id: string): Promise<Bean> {
-    const result = await this.execute<Bean>(['show', '--json', id]);
+    const result = await this.execute<RawBeanFromCLI>(['show', '--json', id]);
     return this.normalizeBean(result);
   }
 
   /**
+   * Validate bean title
+   * @throws Error if title is invalid
+   */
+  private validateTitle(title: string): void {
+    if (!title || title.trim().length === 0) {
+      throw new Error('Bean title is required');
+    }
+    if (title.length > 200) {
+      throw new Error('Bean title must be 200 characters or less');
+    }
+  }
+
+  /**
+   * Validate bean type
+   * @throws Error if type is invalid
+   */
+  private validateType(type: string): void {
+    const validTypes: BeanType[] = ['milestone', 'epic', 'feature', 'bug', 'task'];
+    if (!validTypes.includes(type as BeanType)) {
+      throw new Error(`Invalid type: ${type}. Must be one of: ${validTypes.join(', ')}`);
+    }
+  }
+
+  /**
+   * Validate bean status
+   * @throws Error if status is invalid
+   */
+  private validateStatus(status: string): void {
+    const validStatuses: BeanStatus[] = ['todo', 'in-progress', 'completed', 'scrapped', 'draft'];
+    if (!validStatuses.includes(status as BeanStatus)) {
+      throw new Error(`Invalid status: ${status}. Must be one of: ${validStatuses.join(', ')}`);
+    }
+  }
+
+  /**
+   * Validate bean priority
+   * @throws Error if priority is invalid
+   */
+  private validatePriority(priority: string): void {
+    const validPriorities: BeanPriority[] = ['critical', 'high', 'normal', 'low', 'deferred'];
+    if (!validPriorities.includes(priority as BeanPriority)) {
+      throw new Error(`Invalid priority: ${priority}. Must be one of: ${validPriorities.join(', ')}`);
+    }
+  }
+
+  /**
    * Create a new bean
+   * @throws Error if input validation fails
    */
   async createBean(data: {
     title: string;
@@ -232,6 +335,16 @@ export class BeansService {
     description?: string;
     parent?: string;
   }): Promise<Bean> {
+    // Validate inputs
+    this.validateTitle(data.title);
+    this.validateType(data.type);
+    if (data.status) {
+      this.validateStatus(data.status);
+    }
+    if (data.priority) {
+      this.validatePriority(data.priority);
+    }
+
     const args = ['create', '--json', data.title, '-t', data.type];
 
     if (data.status) {
@@ -250,12 +363,13 @@ export class BeansService {
       args.push('--parent', data.parent);
     }
 
-    const result = await this.execute<Bean>(args);
+    const result = await this.execute<RawBeanFromCLI>(args);
     return this.normalizeBean(result);
   }
 
   /**
    * Update an existing bean
+   * @throws Error if input validation fails
    */
   async updateBean(
     id: string,
@@ -268,6 +382,17 @@ export class BeansService {
       blockedBy?: string[];
     }
   ): Promise<Bean> {
+    // Validate inputs
+    if (updates.status) {
+      this.validateStatus(updates.status);
+    }
+    if (updates.type) {
+      this.validateType(updates.type);
+    }
+    if (updates.priority) {
+      this.validatePriority(updates.priority);
+    }
+
     const args = ['update', '--json', id];
 
     if (updates.status) {
@@ -294,7 +419,7 @@ export class BeansService {
       args.push('--blocked-by', updates.blockedBy.join(','));
     }
 
-    const result = await this.execute<Bean>(args);
+    const result = await this.execute<RawBeanFromCLI>(args);
     return this.normalizeBean(result);
   }
 
