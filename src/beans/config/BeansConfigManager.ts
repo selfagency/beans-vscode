@@ -42,8 +42,12 @@ export class BeansConfigManager {
       const document = await vscode.workspace.openTextDocument(configFile[0]);
       const content = document.getText();
 
-      // Parse YAML using js-yaml
-      const parsed = yaml.load(content, { schema: yaml.DEFAULT_SCHEMA });
+      // Parse YAML using js-yaml with safe schema
+      // CORE_SCHEMA is safer than DEFAULT_SCHEMA (no custom types/functions/eval)
+      const parsed = yaml.load(content, {
+        schema: yaml.CORE_SCHEMA,
+        json: false,
+      });
 
       // Validate that parsed content is an object
       if (!parsed || typeof parsed !== 'object') {
