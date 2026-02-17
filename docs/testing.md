@@ -596,7 +596,9 @@ open coverage/index.html
 
 #### CI Workflow (.github/workflows/ci.yml)
 
-Runs on every push and pull request:
+Runs on every push and pull request. See [.github/workflows/ci.yml](../.github/workflows/ci.yml) for the complete, authoritative workflow configuration.
+
+**Simplified example:**
 
 ```yaml
 jobs:
@@ -606,25 +608,68 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-      - run: pnpm install
-      - run: pnpm run compile
-      - run: pnpm test
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Install pnpm
+        run: npm install -g pnpm@9
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Type check
+        run: pnpm run check-types
+      - name: Lint
+        run: pnpm run lint
+      - name: Compile
+        run: pnpm run compile
+      - name: Run tests (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm test
+        env:
+          CI: true
+      - name: Run tests (macOS/Windows)
+        if: runner.os != 'Linux'
+        run: pnpm test
+        env:
+          CI: true
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-artifacts-${{ matrix.os }}
+          path: |
+            out/
+            dist/
+            .vscode-test/
+            coverage/
   
   coverage:
+    name: Test Coverage
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-      - run: pnpm install
-      - run: pnpm test -- --coverage
-      - uses: actions/upload-artifact@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Install pnpm
+        run: npm install -g pnpm@9
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run tests with coverage
+        run: xvfb-run -a pnpm test -- --coverage
+        env:
+          CI: true
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-report
           path: coverage/
+          retention-days: 14
 ```
 
 **Features**:
@@ -633,21 +678,23 @@ jobs:
 - Uses xvfb on Linux for headless testing
 - Uploads test artifacts on failure
 - Reports test results in PR checks
-- Dedicated coverage job generates and uploads coverage reports
+- Dedicated coverage job generates and uploads coverage reports (always, regardless of test outcome)
 
 #### Test Artifacts
 
-On failure or completion, CI uploads:
-
+**On test failure**, the `test` job uploads:
 - Test output logs
-- Coverage reports (from dedicated coverage job)
 - Extension build artifacts (`.vsix`)
+- Compiled output (`out/`, `dist/`)
 
-Access via:
+**Always**, the `coverage` job uploads:
+- Coverage reports (HTML, JSON, text formats)
 
-1. Go to failed workflow run
+Access artifacts via:
+
+1. Go to the workflow run (passing or failed)
 2. Scroll to "Artifacts" section
-3. Download test logs
+3. Download the relevant artifact(s)
 
 ### Local CI Simulation
 
