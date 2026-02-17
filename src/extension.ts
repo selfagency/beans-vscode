@@ -1,3 +1,4 @@
+import { access as fsAccess } from 'node:fs/promises';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { BeansChatIntegration } from './beans/chat';
@@ -6,6 +7,8 @@ import {
   BeansConfigManager,
   buildBeansCopilotInstructions,
   buildBeansCopilotSkill,
+  COPILOT_INSTRUCTIONS_RELATIVE_PATH,
+  COPILOT_SKILL_RELATIVE_PATH,
   removeBeansCopilotSkill,
   writeBeansCopilotInstructions,
   writeBeansCopilotSkill,
@@ -327,7 +330,8 @@ async function promptForInitialization(
 
 async function shouldGenerateCopilotInstructionsOnInit(
   context: vscode.ExtensionContext,
-  aiEnabled: boolean
+  aiEnabled: boolean,
+  workspaceRoot: string
 ): Promise<boolean> {
   if (!aiEnabled) {
     return false;
@@ -340,6 +344,13 @@ async function shouldGenerateCopilotInstructionsOnInit(
   }
   if (preference === 'never') {
     logger.info('Skipping AI artifact generation due to saved workspace preference');
+    return false;
+  }
+
+  const instructionsExists = await fileExists(path.join(workspaceRoot, COPILOT_INSTRUCTIONS_RELATIVE_PATH));
+  const skillExists = await fileExists(path.join(workspaceRoot, COPILOT_SKILL_RELATIVE_PATH));
+  if (instructionsExists && skillExists) {
+    logger.info('Copilot instruction and skill artifacts already exist; skipping generation prompt');
     return false;
   }
 
@@ -404,7 +415,7 @@ function triggerCopilotAiArtifactSync(
   aiArtifactSyncInProgress = true;
   void (async () => {
     try {
-      if (await shouldGenerateCopilotInstructionsOnInit(context, aiEnabled)) {
+      if (await shouldGenerateCopilotInstructionsOnInit(context, aiEnabled, workspaceRoot)) {
         await ensureCopilotAiArtifacts(service, workspaceRoot, aiEnabled);
       }
     } catch (error) {
@@ -413,6 +424,15 @@ function triggerCopilotAiArtifactSync(
       aiArtifactSyncInProgress = false;
     }
   })();
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fsAccess(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**

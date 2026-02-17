@@ -130,11 +130,12 @@ jobs:
             const repo = context.repo.repo;
             const currentTag = '${{ needs.detect-tag.outputs.release_tag }}';
 
-            const tags = await github.paginate(github.rest.repos.listTags, {
+            const tagsResp = await github.rest.repos.listTags({
               owner,
               repo,
               per_page: 100,
             });
+            const tags = tagsResp.data;
 
             const index = tags.findIndex(tag => tag.name === currentTag);
             const previousTag =
@@ -170,7 +171,43 @@ jobs:
           PREVIOUS_TAG: ${{ steps.changelog_notes.outputs.previous_tag }}
           RELEASE_NOTES: ${{ steps.changelog_notes.outputs.notes }}
         run: |
-          node -e "const fs=require('fs'); const path='CHANGELOG.md'; const releaseTag=(process.env.RELEASE_TAG||'').trim(); const version=releaseTag.replace(/^v/, ''); const previousTag=(process.env.PREVIOUS_TAG||'').trim(); const date=new Date().toISOString().slice(0,10); const heading=`## [${version}] - ${date}`; const sourceLine=previousTag ? `\n\n_Source: changes from ${previousTag} to ${releaseTag}._` : ''; const notesRaw=(process.env.RELEASE_NOTES||'').trim(); const notes=notesRaw || '- No notable changes.'; const section=`\n${heading}\n\n${notes}${sourceLine}\n`; const original=fs.existsSync(path)?fs.readFileSync(path,'utf8'):'# Change Log\n\n## [Unreleased]\n'; if (original.includes(heading)) { console.log('CHANGELOG already contains this release heading; skipping update.'); process.exit(0); } const marker='## [Unreleased]'; const idx=original.indexOf(marker); const updated=idx>=0 ? `${original.slice(0, idx + marker.length)}\n${section}${original.slice(idx + marker.length)}` : `${original}\n${section}`; fs.writeFileSync(path, updated); console.log(`Updated ${path} with ${heading}`);"
+          cat > /tmp/update-changelog.cjs <<'NODE'
+          const fs = require('fs');
+
+          const changelogPath = 'CHANGELOG.md';
+          const releaseTag = (process.env.RELEASE_TAG || '').trim();
+          const version = releaseTag.replace(/^v/, '');
+          const previousTag = (process.env.PREVIOUS_TAG || '').trim();
+          const date = new Date().toISOString().slice(0, 10);
+          const heading = `## [${version}] - ${date}`;
+          const sourceLine = previousTag
+            ? `\n\n_Source: changes from ${previousTag} to ${releaseTag}._`
+            : '';
+          const notesRaw = (process.env.RELEASE_NOTES || '').trim();
+          const notes = notesRaw || '- No notable changes.';
+          const section = `\n${heading}\n\n${notes}${sourceLine}\n`;
+
+          const original = fs.existsSync(changelogPath)
+            ? fs.readFileSync(changelogPath, 'utf8')
+            : '# Change Log\n\n## [Unreleased]\n';
+
+          if (original.includes(heading)) {
+            console.log('CHANGELOG already contains this release heading; skipping update.');
+            process.exit(0);
+          }
+
+          const marker = '## [Unreleased]';
+          const idx = original.indexOf(marker);
+          const updated =
+            idx >= 0
+              ? `${original.slice(0, idx + marker.length)}\n${section}${original.slice(idx + marker.length)}`
+              : `${original}\n${section}`;
+
+          fs.writeFileSync(changelogPath, updated);
+          console.log(`Updated ${changelogPath} with ${heading}`);
+          NODE
+
+          node /tmp/update-changelog.cjs
 
       - name: Commit and push changelog update
         run: |
@@ -194,6 +231,11 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Sync extension version to release tag
         run: |
           TAG="${{ needs.detect-tag.outputs.release_tag }}"
@@ -201,9 +243,6 @@ jobs:
           echo "Syncing package.json version to $VERSION from tag $TAG"
           VERSION="$VERSION" node -e "const fs=require('fs'); const pkgPath='package.json'; const pkg=JSON.parse(fs.readFileSync(pkgPath,'utf8')); pkg.version=process.env.VERSION; fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\\n');"
           echo "package.json version now $(node -p \"require('./package.json').version\")"
-
-      - name: Install pnpm
-        run: npm install -g pnpm@9
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -213,8 +252,7 @@ jobs:
 
       - name: Package extension
         run: |
-          npm install -g @vscode/vsce
-          vsce package --no-dependencies --out beans-vscode.vsix
+          pnpm dlx @vscode/vsce package --no-dependencies --out beans-vscode.vsix
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -229,14 +267,13 @@ jobs:
 
       - name: Publish to VS Code Marketplace
         if: "!contains(needs.detect-tag.outputs.release_tag, '-')"
-        run: vsce publish --packagePath beans-vscode.vsix -p ${{ secrets.VSCE_PAT }}
+        run: pnpm dlx @vscode/vsce publish --packagePath beans-vscode.vsix -p ${{ secrets.VSCE_PAT }}
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
       - name: Publish to Open VSX
         if: "!contains(needs.detect-tag.outputs.release_tag, '-')"
         run: |
-          npm install -g ovsx
-          ovsx publish beans-vscode.vsix -p ${{ secrets.OVSX_PAT }}
+          pnpm dlx ovsx publish beans-vscode.vsix -p ${{ secrets.OVSX_PAT }}
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
