@@ -227,10 +227,8 @@ export class BeansService {
       this.logger.debug(`Deduplicating request: ${this.cliPath} ${args.join(' ')}`);
       return existingRequest as Promise<T>;
     }
-
     // Create new request with retry logic
     this.logger.info(`Executing: ${this.cliPath} ${args.join(' ')}`);
-
     const requestPromise = (async () => {
       try {
         // Wrap execution with retry logic for transient failures
@@ -269,21 +267,17 @@ export class BeansService {
             `Beans CLI not found at: ${this.cliPath}. Please install beans or configure beans.cliPath setting.`
           );
         }
-
         if (err.killed && err.signal === 'SIGTERM') {
           throw new BeansTimeoutError('Beans CLI operation timed out');
         }
-
         throw error;
       } finally {
         // Remove from in-flight map when complete (success or failure)
         this.inFlightRequests.delete(requestKey);
       }
     })();
-
     // Track the in-flight request
     this.inFlightRequests.set(requestKey, requestPromise);
-
     return requestPromise;
   }
 
@@ -367,24 +361,20 @@ export class BeansService {
   async listBeans(options?: { status?: string[]; type?: string[]; search?: string }): Promise<Bean[]> {
     try {
       const args = ['list', '--json'];
-
       // Status and type filters use repeated flags, not comma-separated values
       if (options?.status && options.status.length > 0) {
         for (const status of options.status) {
           args.push('--status', status);
         }
       }
-
       if (options?.type && options.type.length > 0) {
         for (const type of options.type) {
           args.push('--type', type);
         }
       }
-
       if (options?.search) {
         args.push('--search', options.search);
       }
-
       const result = await this.execute<RawBeanFromCLI[]>(args);
       const beans = result || [];
 
