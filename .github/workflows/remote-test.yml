@@ -260,13 +260,13 @@ jobs:
         run: |
           echo "Extension packaged successfully for remote installation"
           ls -lh *.vsix
-          
+
           # Verify the .vsix file was created
           if [ ! -f *.vsix ]; then
             echo "ERROR: Extension package not found"
             exit 1
           fi
-          
+
           echo "✅ Extension can be packaged for remote deployment"
 
   summary:
