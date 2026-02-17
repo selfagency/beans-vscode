@@ -15,7 +15,7 @@ const logger = BeansOutput.getInstance();
 function formatLabel(value: string): string {
   return value
     .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
 
@@ -24,9 +24,9 @@ function formatLabel(value: string): string {
  * Returns the selected raw value or undefined if cancelled.
  */
 async function pickFromValues(values: string[], options: vscode.QuickPickOptions): Promise<string | undefined> {
-  const items: vscode.QuickPickItem[] = values.map((v) => ({
+  const items: vscode.QuickPickItem[] = values.map(v => ({
     label: formatLabel(v),
-    description: v
+    description: v,
   }));
   const picked = await vscode.window.showQuickPick(items, options);
   return picked?.description;
@@ -84,6 +84,9 @@ export class BeansCommands {
 
     // Configuration
     this.registerCommand('beans.openConfig', this.openConfig.bind(this));
+
+    // Documentation
+    this.registerCommand('beans.openUserGuide', this.openUserGuide.bind(this));
 
     logger.info('All Beans commands registered');
   }
@@ -167,7 +170,7 @@ export class BeansCommands {
       const doc = await vscode.workspace.openTextDocument(previewUri);
       await vscode.window.showTextDocument(doc, {
         preview: true,
-        preserveFocus: false
+        preserveFocus: false,
       });
 
       logger.info(`Viewed bean ${bean.code} in preview`);
@@ -187,12 +190,12 @@ export class BeansCommands {
       const title = await vscode.window.showInputBox({
         prompt: 'Bean title',
         placeHolder: 'Enter bean title',
-        validateInput: (value) => {
+        validateInput: value => {
           if (!value || value.trim().length === 0) {
             return 'Title is required';
           }
           return undefined;
-        }
+        },
       });
 
       if (!title) {
@@ -202,7 +205,7 @@ export class BeansCommands {
       // Get bean type
       const type = await vscode.window.showQuickPick(['milestone', 'epic', 'feature', 'bug', 'task'], {
         placeHolder: 'Select type',
-        title: 'Bean Type'
+        title: 'Bean Type',
       });
 
       if (!type) {
@@ -212,14 +215,14 @@ export class BeansCommands {
       // Get bean description (optional)
       const description = await vscode.window.showInputBox({
         prompt: 'Bean description (optional)',
-        placeHolder: 'Enter description'
+        placeHolder: 'Enter description',
       });
 
       // Create bean
       const bean = await this.service.createBean({
         title: title.trim(),
         type: type as any,
-        description: description || undefined
+        description: description || undefined,
       });
 
       vscode.window.showInformationMessage(`Created bean: ${bean.code}`);
@@ -287,7 +290,7 @@ export class BeansCommands {
 
       const status = await pickFromValues(statuses, {
         placeHolder: `Current: ${formatLabel(bean.status)}`,
-        title: `Set Status for ${bean.code}`
+        title: `Set Status for ${bean.code}`,
       });
 
       if (!status || status === bean.status) {
@@ -319,11 +322,11 @@ export class BeansCommands {
 
       const config = await this.service.getConfig();
       const statuses = config.statuses || ['todo', 'in-progress', 'completed', 'scrapped', 'draft'];
-      const nonClosedStatuses = statuses.filter((s) => s !== 'completed' && s !== 'scrapped');
+      const nonClosedStatuses = statuses.filter(s => s !== 'completed' && s !== 'scrapped');
 
       const newStatus = await pickFromValues(nonClosedStatuses, {
         placeHolder: 'Select new status',
-        title: `Reopen ${bean.code}`
+        title: `Reopen ${bean.code}`,
       });
 
       if (!newStatus) {
@@ -355,11 +358,11 @@ export class BeansCommands {
 
       const config = await this.service.getConfig();
       const statuses = config.statuses || ['todo', 'in-progress', 'completed', 'scrapped', 'draft'];
-      const nonClosedStatuses = statuses.filter((s) => s !== 'completed' && s !== 'scrapped');
+      const nonClosedStatuses = statuses.filter(s => s !== 'completed' && s !== 'scrapped');
 
       const newStatus = await pickFromValues(nonClosedStatuses, {
         placeHolder: 'Select new status',
-        title: `Reopen ${bean.code}`
+        title: `Reopen ${bean.code}`,
       });
 
       if (!newStatus) {
@@ -397,7 +400,7 @@ export class BeansCommands {
 
       const type = await pickFromValues(types, {
         placeHolder: `Current: ${formatLabel(bean.type)}`,
-        title: `Set Type for ${bean.code}`
+        title: `Set Type for ${bean.code}`,
       });
 
       if (!type || type === bean.type) {
@@ -435,7 +438,7 @@ export class BeansCommands {
 
       const priority = await pickFromValues(priorities, {
         placeHolder: bean.priority ? `Current: ${formatLabel(bean.priority)}` : 'No priority set',
-        title: `Set Priority for ${bean.code}`
+        title: `Set Priority for ${bean.code}`,
       });
 
       if (!priority || priority === bean.priority) {
@@ -495,7 +498,7 @@ export class BeansCommands {
       // Get all beans, filter out self, descendants, scrapped, completed
       const allBeans = await this.service.listBeans();
       const potentialParents = allBeans
-        .filter((b) => {
+        .filter(b => {
           if (b.id === bean!.id) {
             return false;
           }
@@ -509,17 +512,17 @@ export class BeansCommands {
         })
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-      const parentOnlyTypes = potentialParents.filter((b) => b.type === 'milestone' || b.type === 'epic');
+      const parentOnlyTypes = potentialParents.filter(b => b.type === 'milestone' || b.type === 'epic');
 
       interface ParentPickItem extends vscode.QuickPickItem {
         bean?: Bean;
       }
 
       const toItems = (beans: Bean[]): ParentPickItem[] =>
-        beans.map((b) => ({
+        beans.map(b => ({
           label: `${this.typeIcon(b.type)} ${b.title}`,
           description: `${b.code} · ${formatLabel(b.status)}${b.priority ? ` · ${formatLabel(b.priority)}` : ''}`,
-          bean: b
+          bean: b,
         }));
 
       const qp = vscode.window.createQuickPick<ParentPickItem>();
@@ -532,7 +535,7 @@ export class BeansCommands {
 
       const toggleButton: vscode.QuickInputButton = {
         iconPath: new vscode.ThemeIcon('list-unordered'),
-        tooltip: 'Show all issue types'
+        tooltip: 'Show all issue types',
       };
       qp.buttons = [toggleButton];
 
@@ -547,7 +550,7 @@ export class BeansCommands {
         }
       });
 
-      const selected = await new Promise<ParentPickItem | undefined>((resolve) => {
+      const selected = await new Promise<ParentPickItem | undefined>(resolve => {
         qp.onDidAccept(() => {
           resolve(qp.selectedItems[0]);
           qp.dispose();
@@ -637,11 +640,11 @@ export class BeansCommands {
           { label: 'Add Blocking', description: 'This bean blocks other beans', value: 'add-blocking' },
           { label: 'Remove Blocking', description: 'Remove beans this bean blocks', value: 'remove-blocking' },
           { label: 'Add Blocked By', description: 'This bean is blocked by other beans', value: 'add-blocked-by' },
-          { label: 'Remove Blocked By', description: 'Remove beans blocking this bean', value: 'remove-blocked-by' }
+          { label: 'Remove Blocked By', description: 'Remove beans blocking this bean', value: 'remove-blocked-by' },
         ],
         {
           placeHolder: `Manage blocking relationships for ${bean.code}`,
-          title: 'Edit Blocking Relationships'
+          title: 'Edit Blocking Relationships',
         }
       );
 
@@ -671,7 +674,7 @@ export class BeansCommands {
   private async addBlocking(bean: Bean): Promise<void> {
     const allBeans = await this.service.listBeans();
     const potentialBlocking = allBeans
-      .filter((b) => {
+      .filter(b => {
         if (b.id === bean.id) {
           return false;
         }
@@ -682,24 +685,24 @@ export class BeansCommands {
       })
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-    const items = potentialBlocking.map((b) => ({
+    const items = potentialBlocking.map(b => ({
       label: `${this.typeIcon(b.type)} ${b.title}`,
       description: `${b.code} · ${formatLabel(b.type)} · ${formatLabel(b.status)}`,
       bean: b,
-      picked: false
+      picked: false,
     }));
 
     const selected = await vscode.window.showQuickPick(items, {
       canPickMany: true,
       placeHolder: `Select beans that ${bean.code} blocks`,
-      title: 'Add Blocking'
+      title: 'Add Blocking',
     });
 
     if (!selected || selected.length === 0) {
       return;
     }
 
-    const newBlocking = [...(bean.blocking || []), ...selected.map((s) => s.bean.id)];
+    const newBlocking = [...(bean.blocking || []), ...selected.map(s => s.bean.id)];
     await this.service.updateBean(bean.id, { blocking: newBlocking });
     vscode.window.showInformationMessage(`Updated blocking relationships for ${bean.code}`);
     logger.info(`Added ${selected.length} blocking relationships to ${bean.code}`);
@@ -717,28 +720,28 @@ export class BeansCommands {
 
     const allBeans = await this.service.listBeans();
     const blockingBeans = allBeans
-      .filter((b) => bean.blocking?.includes(b.id))
+      .filter(b => bean.blocking?.includes(b.id))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-    const items = blockingBeans.map((b) => ({
+    const items = blockingBeans.map(b => ({
       label: `${this.typeIcon(b.type)} ${b.title}`,
       description: `${b.code} · ${formatLabel(b.type)} · ${formatLabel(b.status)}`,
       bean: b,
-      picked: false
+      picked: false,
     }));
 
     const selected = await vscode.window.showQuickPick(items, {
       canPickMany: true,
       placeHolder: `Select beans to remove from blocking`,
-      title: 'Remove Blocking'
+      title: 'Remove Blocking',
     });
 
     if (!selected || selected.length === 0) {
       return;
     }
 
-    const idsToRemove = selected.map((s) => s.bean.id);
-    const newBlocking = bean.blocking.filter((id) => !idsToRemove.includes(id));
+    const idsToRemove = selected.map(s => s.bean.id);
+    const newBlocking = bean.blocking.filter(id => !idsToRemove.includes(id));
     await this.service.updateBean(bean.id, { blocking: newBlocking });
     vscode.window.showInformationMessage(`Removed ${selected.length} blocking relationships from ${bean.code}`);
     logger.info(`Removed ${selected.length} blocking relationships from ${bean.code}`);
@@ -751,7 +754,7 @@ export class BeansCommands {
   private async addBlockedBy(bean: Bean): Promise<void> {
     const allBeans = await this.service.listBeans();
     const potentialBlockedBy = allBeans
-      .filter((b) => {
+      .filter(b => {
         if (b.id === bean.id) {
           return false;
         }
@@ -762,24 +765,24 @@ export class BeansCommands {
       })
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-    const items = potentialBlockedBy.map((b) => ({
+    const items = potentialBlockedBy.map(b => ({
       label: `${this.typeIcon(b.type)} ${b.title}`,
       description: `${b.code} · ${formatLabel(b.type)} · ${formatLabel(b.status)}`,
       bean: b,
-      picked: false
+      picked: false,
     }));
 
     const selected = await vscode.window.showQuickPick(items, {
       canPickMany: true,
       placeHolder: `Select beans that block ${bean.code}`,
-      title: 'Add Blocked By'
+      title: 'Add Blocked By',
     });
 
     if (!selected || selected.length === 0) {
       return;
     }
 
-    const newBlockedBy = [...(bean.blockedBy || []), ...selected.map((s) => s.bean.id)];
+    const newBlockedBy = [...(bean.blockedBy || []), ...selected.map(s => s.bean.id)];
     await this.service.updateBean(bean.id, { blockedBy: newBlockedBy });
     vscode.window.showInformationMessage(`Updated blocked-by relationships for ${bean.code}`);
     logger.info(`Added ${selected.length} blocked-by relationships to ${bean.code}`);
@@ -797,28 +800,28 @@ export class BeansCommands {
 
     const allBeans = await this.service.listBeans();
     const blockedByBeans = allBeans
-      .filter((b) => bean.blockedBy?.includes(b.id))
+      .filter(b => bean.blockedBy?.includes(b.id))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-    const items = blockedByBeans.map((b) => ({
+    const items = blockedByBeans.map(b => ({
       label: `${this.typeIcon(b.type)} ${b.title}`,
       description: `${b.code} · ${formatLabel(b.type)} · ${formatLabel(b.status)}`,
       bean: b,
-      picked: false
+      picked: false,
     }));
 
     const selected = await vscode.window.showQuickPick(items, {
       canPickMany: true,
       placeHolder: `Select beans to remove from blocked-by`,
-      title: 'Remove Blocked By'
+      title: 'Remove Blocked By',
     });
 
     if (!selected || selected.length === 0) {
       return;
     }
 
-    const idsToRemove = selected.map((s) => s.bean.id);
-    const newBlockedBy = bean.blockedBy.filter((id) => !idsToRemove.includes(id));
+    const idsToRemove = selected.map(s => s.bean.id);
+    const newBlockedBy = bean.blockedBy.filter(id => !idsToRemove.includes(id));
     await this.service.updateBean(bean.id, { blockedBy: newBlockedBy });
     vscode.window.showInformationMessage(`Removed ${selected.length} blocked-by relationships from ${bean.code}`);
     logger.info(`Removed ${selected.length} blocked-by relationships from ${bean.code}`);
@@ -923,7 +926,7 @@ export class BeansCommands {
       const searchText = await vscode.window.showInputBox({
         prompt: 'Search beans by title or body',
         placeHolder: 'Enter search text',
-        title: 'Search All Beans'
+        title: 'Search All Beans',
       });
 
       if (searchText === undefined) {
@@ -935,7 +938,7 @@ export class BeansCommands {
 
       if (!searchText) {
         // Clear search from all panes if empty
-        viewIds.forEach((viewId) => {
+        viewIds.forEach(viewId => {
           const currentFilter = this.filterManager.getFilter(viewId);
           if (currentFilter) {
             const updatedFilter = { ...currentFilter };
@@ -946,11 +949,11 @@ export class BeansCommands {
         vscode.window.showInformationMessage('Search cleared from all panes');
       } else {
         // Apply search to all panes
-        viewIds.forEach((viewId) => {
+        viewIds.forEach(viewId => {
           const currentFilter = this.filterManager.getFilter(viewId) || {};
           this.filterManager.setFilter(viewId, {
             ...currentFilter,
-            text: searchText
+            text: searchText,
           });
         });
         vscode.window.showInformationMessage(`Searching all panes for: "${searchText}"`);
@@ -974,11 +977,11 @@ export class BeansCommands {
           { label: 'Status → Priority → Type → Title', value: 'status-priority-type-title' },
           { label: 'Recently Updated', value: 'updated' },
           { label: 'Recently Created', value: 'created' },
-          { label: 'Bean ID', value: 'id' }
+          { label: 'Bean ID', value: 'id' },
         ],
         {
           placeHolder: 'Select sort mode',
-          title: 'Sort Beans'
+          title: 'Sort Beans',
         }
       );
 
@@ -1012,7 +1015,7 @@ export class BeansCommands {
     const beans = await this.service.listBeans();
 
     // Apply status filter if provided
-    let filteredBeans = statusFilter ? beans.filter((b) => statusFilter.includes(b.status)) : beans;
+    let filteredBeans = statusFilter ? beans.filter(b => statusFilter.includes(b.status)) : beans;
 
     // Hide completed and scrapped beans unless explicitly included
     if (!includeClosedBeans) {
@@ -1021,7 +1024,7 @@ export class BeansCommands {
         .get<boolean>('hideClosedInQuickPick', true);
 
       if (hideClosedInQuickPick && !statusFilter) {
-        filteredBeans = filteredBeans.filter((b) => b.status !== 'completed' && b.status !== 'scrapped');
+        filteredBeans = filteredBeans.filter(b => b.status !== 'completed' && b.status !== 'scrapped');
       }
     }
 
@@ -1030,15 +1033,15 @@ export class BeansCommands {
       return undefined;
     }
 
-    const items = filteredBeans.map((bean) => ({
+    const items = filteredBeans.map(bean => ({
       label: `${bean.code}: ${bean.title}`,
       description: `${bean.type} • ${bean.status}${bean.priority ? ` • ${bean.priority}` : ''}`,
-      bean
+      bean,
     }));
 
     const selected = await vscode.window.showQuickPick(items, {
       placeHolder: prompt,
-      matchOnDescription: true
+      matchOnDescription: true,
     });
 
     return selected?.bean;
@@ -1054,6 +1057,30 @@ export class BeansCommands {
       const message = `Failed to open config: ${(error as Error).message}`;
       logger.error(message, error as Error);
       vscode.window.showErrorMessage(message);
+    }
+  }
+
+  /**
+   * Open user guide documentation
+   */
+  private async openUserGuide(): Promise<void> {
+    // Try to find user-guide.md in the extension's docs folder
+    const extensionPath = this.context.extensionUri;
+    const docPath = vscode.Uri.joinPath(extensionPath, 'docs', 'user-guide.md');
+
+    try {
+      // Open in markdown preview
+      await vscode.commands.executeCommand('markdown.showPreview', docPath);
+    } catch (error) {
+      // Fallback: open as text document
+      try {
+        await vscode.window.showTextDocument(docPath);
+      } catch (openError) {
+        logger.error('Failed to open user guide', openError as Error);
+        vscode.window.showErrorMessage(
+          'Failed to open user guide. The documentation may be missing from the extension.'
+        );
+      }
     }
   }
 }

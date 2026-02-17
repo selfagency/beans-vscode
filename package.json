@@ -66,6 +66,12 @@
         "category": "Beans"
       },
       {
+        "command": "beans.openUserGuide",
+        "title": "Open User Guide",
+        "category": "Beans",
+        "icon": "$(info)"
+      },
+      {
         "command": "beans.showOutput",
         "title": "Show Output",
         "category": "Beans",
@@ -310,6 +316,11 @@
           "command": "beans.showOutput",
           "when": "view == beans.active && beans.initialized",
           "group": "navigation@3"
+        },
+        {
+          "command": "beans.openUserGuide",
+          "when": "view == beans.active",
+          "group": "navigation@4"
         },
         {
           "command": "beans.edit",
