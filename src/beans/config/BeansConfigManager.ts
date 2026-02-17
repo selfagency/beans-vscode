@@ -1,4 +1,5 @@
 import * as fs from 'fs/promises';
+import * as yaml from 'js-yaml';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
@@ -29,7 +30,7 @@ export class BeansConfigManager {
   }
 
   /**
-   * Read and parse .beans.yml config
+   * Read and parse .beans.yml config using js-yaml
    */
   async read(): Promise<BeansConfig | null> {
     try {
@@ -41,10 +42,17 @@ export class BeansConfigManager {
       const document = await vscode.workspace.openTextDocument(configFile[0]);
       const content = document.getText();
 
-      // Basic YAML parsing - VS Code doesn't include a YAML parser by default
-      // For production, consider using js-yaml or similar
-      const config = this.parseBasicYaml(content);
-      return config;
+      // Parse YAML using js-yaml
+      const parsed = yaml.load(content, { schema: yaml.DEFAULT_SCHEMA });
+
+      // Validate that parsed content is an object
+      if (!parsed || typeof parsed !== 'object') {
+        this.logger.warn('.beans.yml parsed to non-object value');
+        return null;
+      }
+
+      // Cast to BeansConfig (assuming the YAML structure matches)
+      return parsed as BeansConfig;
     } catch (error) {
       this.logger.error('Failed to read .beans.yml:', error as Error);
       return null;
@@ -70,54 +78,6 @@ export class BeansConfigManager {
       this.logger.error(message, error as Error);
       vscode.window.showErrorMessage(message);
     }
-  }
-
-  /**
-   * Parse basic YAML content into BeansConfig
-   * This is a simple parser - for production use js-yaml
-   */
-  private parseBasicYaml(content: string): BeansConfig {
-    const config: Partial<BeansConfig> = {};
-    const lines = content.split('\n');
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('#') || trimmed === '') {
-        continue;
-      }
-
-      // Parse statuses array
-      if (trimmed.startsWith('statuses:')) {
-        config.statuses = [];
-        continue;
-      }
-
-      // Parse types array
-      if (trimmed.startsWith('types:')) {
-        config.types = [];
-        continue;
-      }
-
-      // Parse priorities array
-      if (trimmed.startsWith('priorities:')) {
-        config.priorities = [];
-        continue;
-      }
-
-      // Parse array items
-      if (trimmed.startsWith('- ')) {
-        const value = trimmed.substring(2).trim();
-        if (config.statuses && !config.types && !config.priorities) {
-          config.statuses.push(value as any);
-        } else if (config.types && !config.priorities) {
-          config.types.push(value as any);
-        } else if (config.priorities) {
-          config.priorities.push(value as any);
-        }
-      }
-    }
-
-    return config as BeansConfig;
   }
 
   /**

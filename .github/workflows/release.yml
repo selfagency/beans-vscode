@@ -39,7 +39,7 @@ jobs:
 
       - name: Package extension
         run: |
-          pnpm install -g @vscode/vsce
+          npm install -g @vscode/vsce
           vsce package --no-dependencies
 
       - name: Create GitHub Release
@@ -61,7 +61,7 @@ jobs:
       - name: Publish to Open VSX
         if: "!contains(github.ref, '-')"
         run: |
-          pnpm install -g ovsx
+          npm install -g ovsx
           ovsx publish -p ${{ secrets.OVSX_PAT }}
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}

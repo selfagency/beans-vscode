@@ -2,12 +2,66 @@ import * as vscode from 'vscode';
 import { BeansConfigManager } from '../config';
 import { BeansDetailsViewProvider } from '../details';
 import { BeansOutput } from '../logging';
-import { Bean } from '../model';
+import { Bean, BeansCLINotFoundError, BeansJSONParseError, BeansTimeoutError } from '../model';
 import { BeansPreviewProvider } from '../preview';
 import { BeansService } from '../service';
 import { BeansFilterManager, BeanTreeItem } from '../tree';
 
 const logger = BeansOutput.getInstance();
+
+/**
+ * Handle errors from Beans operations with specific error type handling
+ * @param error The error to handle
+ * @param context Description of what operation failed
+ * @param showToUser Whether to show error message to user
+ */
+function handleBeansError(error: unknown, context: string, showToUser: boolean = true): void {
+  if (error instanceof BeansCLINotFoundError) {
+    logger.error(`${context}: Beans CLI not found`, error);
+    if (showToUser) {
+      vscode.window
+        .showErrorMessage('Beans CLI not installed. Please install it first.', 'Install Instructions')
+        .then(selection => {
+          if (selection === 'Install Instructions') {
+            vscode.env.openExternal(vscode.Uri.parse('https://github.com/jfcantinz/beans#installation'));
+          }
+        });
+    }
+  } else if (error instanceof BeansTimeoutError) {
+    logger.error(`${context}: Operation timed out`, error);
+    if (showToUser) {
+      vscode.window.showWarningMessage(
+        'Beans operation timed out. Please try again or check if the workspace is very large.'
+      );
+    }
+  } else if (error instanceof BeansJSONParseError) {
+    logger.error(`${context}: Failed to parse CLI output`, error);
+    if (showToUser) {
+      vscode.window
+        .showErrorMessage(
+          `Failed to parse Beans CLI response. The CLI may have returned unexpected output.`,
+          'Show Output'
+        )
+        .then(selection => {
+          if (selection === 'Show Output') {
+            logger.show();
+          }
+        });
+    }
+  } else if (error instanceof Error) {
+    const message = `${context}: ${error.message}`;
+    logger.error(message, error);
+    if (showToUser) {
+      vscode.window.showErrorMessage(message);
+    }
+  } else {
+    const message = `${context}: An unexpected error occurred`;
+    logger.error(message, new Error(String(error)));
+    if (showToUser) {
+      vscode.window.showErrorMessage(message);
+    }
+  }
+}
 
 /**
  * Format a raw value (e.g., 'in-progress') to a human-readable label (e.g., 'In Progress')
@@ -175,9 +229,7 @@ export class BeansCommands {
 
       logger.info(`Viewed bean ${bean.code} in preview`);
     } catch (error) {
-      const message = `Failed to view bean: ${(error as Error).message}`;
-      logger.error(message, error as Error);
-      vscode.window.showErrorMessage(message);
+      handleBeansError(error, 'Failed to view bean');
     }
   }
 
@@ -254,7 +306,7 @@ export class BeansCommands {
         }
       }
 
-      // TODO: Open bean file in editor (will be enhanced in detail/preview task)
+      // Open bean markdown file in editor
       const workspaceFolders = vscode.workspace.workspaceFolders;
       if (!workspaceFolders) {
         throw new Error('No workspace folder open');

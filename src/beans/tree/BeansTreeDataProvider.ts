@@ -33,6 +33,9 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
   private filterOptions: TreeFilterOptions = {};
   private logger = BeansOutput.getInstance();
 
+  // Performance cache: tracks which beans have in-progress descendants
+  private inProgressDescendantsCache = new Map<string, boolean>();
+
   constructor(
     protected readonly service: BeansService,
     protected readonly statusFilter?: BeanStatus[],
@@ -92,8 +95,8 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
       return this.buildTree();
     } else {
       // Child level - find beans with this parent
-      const children = this.beans.filter((bean) => bean.parent === element.bean.id);
-      return this.sortBeans(children).map((bean) => this.createTreeItem(bean));
+      const children = this.beans.filter(bean => bean.parent === element.bean.id);
+      return this.sortBeans(children).map(bean => this.createTreeItem(bean));
     }
   }
 
@@ -131,7 +134,7 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
 
       // Apply tag filter (client-side since CLI might not support it)
       if (this.filterOptions.tagFilter && this.filterOptions.tagFilter.length > 0) {
-        this.beans = this.beans.filter((bean) => this.filterOptions.tagFilter!.some((tag) => bean.tags.includes(tag)));
+        this.beans = this.beans.filter(bean => this.filterOptions.tagFilter!.some(tag => bean.tags.includes(tag)));
       }
 
       this.logger.debug(`Fetched ${this.beans.length} beans`);
@@ -166,46 +169,68 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
    * where parents may have a different status and wouldn't appear)
    */
   private buildTree(): BeanTreeItem[] {
+    // Clear and rebuild performance cache
+    this.rebuildInProgressCache();
+
     if (this.flatList) {
       // Flat list mode: show all beans at root level, no hierarchy
-      return this.sortBeans(this.beans).map((bean) => this.createTreeItem(bean));
+      return this.sortBeans(this.beans).map(bean => this.createTreeItem(bean));
     }
 
     // Hierarchical mode: only beans whose parent is also in the set (or no parent) at root
-    const beanIds = new Set(this.beans.map((b) => b.id));
-    const rootBeans = this.beans.filter((bean) => !bean.parent || !beanIds.has(bean.parent));
+    const beanIds = new Set(this.beans.map(b => b.id));
+    const rootBeans = this.beans.filter(bean => !bean.parent || !beanIds.has(bean.parent));
 
     // Sort and create tree items
-    return this.sortBeans(rootBeans).map((bean) => this.createTreeItem(bean));
+    return this.sortBeans(rootBeans).map(bean => this.createTreeItem(bean));
+  }
+
+  /**
+   * Rebuild the in-progress descendants cache
+   * This pre-computes which beans have in-progress descendants to avoid O(n²) complexity
+   */
+  private rebuildInProgressCache(): void {
+    this.inProgressDescendantsCache.clear();
+
+    // Find all in-progress beans
+    const inProgressBeans = this.beans.filter(b => b.status === 'in-progress');
+
+    // Mark all ancestors of in-progress beans
+    for (const bean of inProgressBeans) {
+      if (bean.parent) {
+        this.markAncestorsHaveInProgressDescendants(bean.parent);
+      }
+    }
+  }
+
+  /**
+   * Mark a bean and all its ancestors as having in-progress descendants
+   */
+  private markAncestorsHaveInProgressDescendants(beanId: string): void {
+    if (this.inProgressDescendantsCache.has(beanId)) {
+      return; // Already marked
+    }
+
+    this.inProgressDescendantsCache.set(beanId, true);
+
+    // Find parent and recurse
+    const parent = this.beans.find(b => b.id === beanId);
+    if (parent?.parent) {
+      this.markAncestorsHaveInProgressDescendants(parent.parent);
+    }
   }
 
   /**
    * Create tree item for a bean
    */
   private createTreeItem(bean: Bean): BeanTreeItem {
-    const hasChildren = this.beans.some((b) => b.parent === bean.id);
-    const hasInProgressChildren = this.hasInProgressDescendants(bean.id);
+    const hasChildren = this.beans.some(b => b.parent === bean.id);
+    const hasInProgressChildren = this.inProgressDescendantsCache.get(bean.id) ?? false;
     const collapsibleState = hasChildren
       ? vscode.TreeItemCollapsibleState.Collapsed
       : vscode.TreeItemCollapsibleState.None;
 
     return new BeanTreeItem(bean, collapsibleState, hasChildren, hasInProgressChildren);
-  }
-
-  /**
-   * Check if a bean has any in-progress descendants (recursively)
-   */
-  private hasInProgressDescendants(beanId: string): boolean {
-    const children = this.beans.filter((b) => b.parent === beanId);
-    for (const child of children) {
-      if (child.status === 'in-progress') {
-        return true;
-      }
-      if (this.hasInProgressDescendants(child.id)) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /**
@@ -240,7 +265,7 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
       todo: 1,
       draft: 2,
       completed: 3,
-      scrapped: 4
+      scrapped: 4,
     };
 
     const priorityOrder: Record<string, number> = {
@@ -248,7 +273,7 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
       high: 1,
       normal: 2,
       low: 3,
-      deferred: 4
+      deferred: 4,
     };
 
     const typeOrder: Record<string, number> = {
@@ -256,7 +281,7 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
       epic: 1,
       feature: 2,
       bug: 3,
-      task: 4
+      task: 4,
     };
 
     return beans.sort((a, b) => {
@@ -296,7 +321,7 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
       todo: 1,
       draft: 2,
       completed: 3,
-      scrapped: 4
+      scrapped: 4,
     };
 
     const priorityOrder: Record<string, number> = {
@@ -304,7 +329,7 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
       high: 1,
       normal: 2,
       low: 3,
-      deferred: 4
+      deferred: 4,
     };
 
     const typeOrder: Record<string, number> = {
@@ -312,7 +337,7 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
       epic: 1,
       feature: 2,
       bug: 3,
-      task: 4
+      task: 4,
     };
 
     return beans.sort((a, b) => {
@@ -349,7 +374,7 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
       return undefined;
     }
 
-    const parentBean = this.beans.find((b) => b.id === element.bean.parent);
+    const parentBean = this.beans.find(b => b.id === element.bean.parent);
     if (!parentBean) {
       return undefined;
     }
