@@ -553,6 +553,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "vscode-test",
+    "release": "bash ./scripts/release.sh",
     "prepare": "husky"
   },
   "lint-staged": {

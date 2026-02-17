@@ -260,17 +260,17 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     const createdDate = new Date(bean.createdAt).toLocaleDateString();
     const updatedDate = new Date(bean.updatedAt).toLocaleDateString();
 
-    // Parent info: show inline with ID badge
+    // Parent info: show inline with clickable reference
     const parentSpan = this._parentBean
-      ? ` <span class="parent-sep">&middot;</span> <span class="parent-label">Parent</span> <span class="parent-code">${this.escapeHtml(
-          this._parentBean.code
-        )}</span> <span class="parent-title" title="${this.escapeHtml(this._parentBean.title)}">${this.escapeHtml(
+      ? ` <span class="parent-sep">&middot;</span> <span class="parent-label">Parent</span> <a href="#" class="bean-ref parent-ref" data-bean-id="${this.escapeHtml(
+          this._parentBean.id
+        )}"><span class="parent-code">${this.escapeHtml(this._parentBean.code)}</span> <span class="parent-title" title="${this.escapeHtml(
           this._parentBean.title
-        )}</span>`
+        )}">${this.escapeHtml(this._parentBean.title)}</span></a>`
       : bean.parent
-        ? ` <span class="parent-sep">&middot;</span> <span class="parent-label">Parent</span> <span class="parent-code">${this.escapeHtml(
-            bean.parent.split('-').pop() || ''
-          )}</span>`
+        ? ` <span class="parent-sep">&middot;</span> <span class="parent-label">Parent</span> <a href="#" class="bean-ref parent-ref" data-bean-id="${this.escapeHtml(
+            bean.parent
+          )}"><span class="parent-code">${this.escapeHtml(bean.parent.split('-').pop() || bean.parent)}</span></a>`
         : '';
 
     return `<!DOCTYPE html>
@@ -372,6 +372,20 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     }
     .parent-title {
       opacity: 0.7;
+    }
+    .parent-ref {
+      color: var(--vscode-textLink-foreground);
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+    .parent-ref:hover {
+      color: var(--vscode-textLink-activeForeground, var(--vscode-textLink-foreground));
+    }
+    .parent-ref:focus-visible {
+      outline: 1px solid var(--vscode-focusBorder);
+      outline-offset: 2px;
+      border-radius: 2px;
     }
     .metadata {
       display: flex;

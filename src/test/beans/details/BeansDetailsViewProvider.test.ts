@@ -107,9 +107,22 @@ describe('BeansDetailsViewProvider', () => {
     expect(provider.currentBean?.id).toBe(bean.id);
     expect(webview.html).toContain('Bean title');
     expect(webview.html).toContain('Parent bean');
+    expect(webview.html).toContain('class="bean-ref parent-ref"');
+    expect(webview.html).toContain('data-bean-id="beans-vscode-parent"');
     expect(webview.html).toContain('role="img"');
     expect(webview.html).toContain('📋');
     expect(webview.html).not.toContain('id="back-button"');
+  });
+
+  it('renders unresolved parent as clickable reference using parent id', async () => {
+    const bean = makeBean({ parent: 'beans-vscode-parent' });
+    service.showBean.mockResolvedValueOnce(bean).mockRejectedValueOnce(new Error('parent missing'));
+
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
+    await provider.showBean(bean);
+
+    expect(webview.html).toContain('class="bean-ref parent-ref"');
+    expect(webview.html).toContain('data-bean-id="beans-vscode-parent"');
   });
 
   it('auto-links referenced bean ids in markdown body without mutating source markdown', async () => {
@@ -147,6 +160,47 @@ describe('BeansDetailsViewProvider', () => {
 
     await receivedHandler?.({ command: 'goBack' });
     expect(webview.html).toContain('First bean');
+    expect(webview.html).not.toContain('id="back-button"');
+  });
+
+  it('navigates to parent from clickable header reference and supports going back', async () => {
+    const child = makeBean({
+      id: 'beans-vscode-child',
+      code: 'CHILD',
+      title: 'Child bean',
+      parent: 'beans-vscode-parent',
+    });
+    const parent = makeBean({
+      id: 'beans-vscode-parent',
+      code: 'PARENT',
+      title: 'Parent bean',
+      body: 'Top level bean',
+    });
+
+    // showBean(child) -> child + resolved parent, open parent from link -> parent,
+    // goBack -> child + resolved parent again
+    service.showBean
+      .mockResolvedValueOnce(child)
+      .mockResolvedValueOnce(parent)
+      .mockResolvedValueOnce(parent)
+      .mockResolvedValueOnce(child)
+      .mockResolvedValueOnce(parent);
+
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
+    await provider.showBean(child);
+
+    expect(webview.html).toContain('Child bean');
+    expect(webview.html).toContain('class="bean-ref parent-ref"');
+    expect(webview.html).toContain('data-bean-id="beans-vscode-parent"');
+    expect(webview.html).not.toContain('id="back-button"');
+
+    // Simulate clicking the parent link in the webview script by posting same message.
+    await receivedHandler?.({ command: 'openBeanFromReference', beanId: 'beans-vscode-parent' });
+    expect(webview.html).toContain('Parent bean');
+    expect(webview.html).toContain('id="back-button"');
+
+    await receivedHandler?.({ command: 'goBack' });
+    expect(webview.html).toContain('Child bean');
     expect(webview.html).not.toContain('id="back-button"');
   });
 
