@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed generated Copilot instructions artifact path from `.github/instructions/beans.instructions.md` to `.github/instructions/tasks.instructions.md` across init flows, code references, and tests.
+
 ## [1.0.6] - 2026-02-17
 
 **Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.0.5...v1.0.6

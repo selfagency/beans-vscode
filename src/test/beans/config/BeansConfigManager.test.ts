@@ -73,6 +73,7 @@ describe('BeansConfigManager', () => {
             '  id_length: 4',
             '  default_status: todo',
             '  default_type: task',
+            '  created_at: 2026-02-17',
           ].join('\n'),
       } as any);
 
@@ -84,7 +85,9 @@ describe('BeansConfigManager', () => {
         id_length: 4,
         default_status: 'todo',
         default_type: 'task',
+        created_at: expect.any(Date),
       });
+      expect((result as any).created_at).toBeInstanceOf(Date);
     });
 
     it('returns null and logs warning when parsed value is non-object', async () => {

@@ -42,10 +42,11 @@ export class BeansConfigManager {
       const document = await vscode.workspace.openTextDocument(configFile[0]);
       const content = document.getText();
 
-      // Parse YAML using js-yaml with safe schema
-      // CORE_SCHEMA is safer than DEFAULT_SCHEMA (no custom types/functions/eval)
+      // Parse YAML using js-yaml v4's safe default schema.
+      // SAFE_SCHEMA was removed in v4; DEFAULT_SCHEMA is now the default safe baseline
+      // (unsafe JS-specific types require explicit external schema extension).
       const parsed = yaml.load(content, {
-        schema: yaml.CORE_SCHEMA,
+        schema: yaml.DEFAULT_SCHEMA,
         json: false,
       });
 
