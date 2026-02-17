@@ -1,114 +1,61 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
 
 permissions:
   contents: write
 
 jobs:
-  verify-ci:
-    name: Verify CI checks for tag commit
+  detect-tag:
+    name: Detect release tag for CI SHA
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 5
+
+    outputs:
+      release_tag: ${{ steps.tag.outputs.release_tag }}
 
     steps:
-      - name: Validate required CI checks succeeded
+      - name: Resolve tag from successful CI run
+        id: tag
         uses: actions/github-script@v8
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const sha = context.sha;
+            const sha = context.payload.workflow_run.head_sha;
+            const tags = await github.paginate(github.rest.repos.listTags, {
+              owner,
+              repo,
+              per_page: 100,
+            });
 
-            const requiredPrefixes = [
-              'Test on ',
-              'Lint and Format Check',
-              'Test Coverage',
-            ];
+            const match = tags.find(tag => tag.name.startsWith('v') && tag.commit?.sha === sha);
 
-            const failedConclusions = new Set([
-              'failure',
-              'cancelled',
-              'timed_out',
-              'action_required',
-              'stale',
-              'neutral',
-              'skipped',
-            ]);
-
-            const maxAttempts = 120; // ~40 minutes at 20s intervals
-            const delayMs = 20_000;
-
-            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-              const { data } = await github.rest.checks.listForRef({
-                owner,
-                repo,
-                ref: sha,
-                per_page: 100,
-              });
-
-              const runs = data.check_runs || [];
-              const pending: string[] = [];
-              const failures: string[] = [];
-
-              for (const prefix of requiredPrefixes) {
-                const matching = runs.filter(run => run.name.startsWith(prefix));
-
-                if (matching.length === 0) {
-                  pending.push(`Missing required check run(s) with prefix: ${prefix}`);
-                  continue;
-                }
-
-                for (const run of matching) {
-                  if (run.status !== 'completed') {
-                    pending.push(`${run.name} is still ${run.status}`);
-                    continue;
-                  }
-
-                  if (run.conclusion !== 'success') {
-                    if (failedConclusions.has(run.conclusion || '')) {
-                      failures.push(`${run.name} concluded with ${run.conclusion}`);
-                    } else {
-                      pending.push(`${run.name} concluded with ${run.conclusion}; waiting`);
-                    }
-                  }
-                }
-              }
-
-              if (failures.length > 0) {
-                core.setFailed(
-                  `Release blocked: required CI checks failed for ${sha}.\n` + failures.join('\n')
-                );
-                return;
-              }
-
-              if (pending.length === 0) {
-                core.info(`All required CI checks are successful for ${sha}.`);
-                return;
-              }
-
-              core.info(
-                `Attempt ${attempt}/${maxAttempts}: waiting for CI checks on ${sha}.\n` +
-                  pending.join('\n')
-              );
-
-              await new Promise(resolve => setTimeout(resolve, delayMs));
+            if (!match) {
+              core.info(`No release tag found for CI SHA ${sha}; skipping release.`);
+              core.setOutput('release_tag', '');
+              return;
             }
 
-            core.setFailed(`Release blocked: timed out waiting for required CI checks on ${sha}.`);
+            core.info(`Release tag detected: ${match.name} for SHA ${sha}`);
+            core.setOutput('release_tag', match.name);
 
   release:
     name: Build and Release
-    needs: verify-ci
+    needs: detect-tag
+    if: needs.detect-tag.outputs.release_tag != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.detect-tag.outputs.release_tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -132,6 +79,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.detect-tag.outputs.release_tag }}
           files: "beans-vscode.vsix"
           generate_release_notes: true
           draft: false
@@ -140,13 +88,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to VS Code Marketplace
-        if: "!contains(github.ref, '-')"
+        if: "!contains(needs.detect-tag.outputs.release_tag, '-')"
         run: vsce publish --packagePath beans-vscode.vsix -p ${{ secrets.VSCE_PAT }}
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
       - name: Publish to Open VSX
-        if: "!contains(github.ref, '-')"
+        if: "!contains(needs.detect-tag.outputs.release_tag, '-')"
         run: |
           npm install -g ovsx
           ovsx publish beans-vscode.vsix -p ${{ secrets.OVSX_PAT }}
