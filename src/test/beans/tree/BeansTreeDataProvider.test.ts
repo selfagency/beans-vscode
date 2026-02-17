@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
-import { BeansTreeDataProvider } from '../../../beans/tree/BeansTreeDataProvider';
-import { BeansService } from '../../../beans/service/BeansService';
 import { Bean, BeanStatus, BeanType } from '../../../beans/model';
+import { BeansService } from '../../../beans/service/BeansService';
+import { BeansTreeDataProvider } from '../../../beans/tree/BeansTreeDataProvider';
 import { BeanTreeItem } from '../../../beans/tree/BeanTreeItem';
 
 // Mock vscode
@@ -369,6 +369,25 @@ describe('BeansTreeDataProvider', () => {
   describe('In-Progress Descendants Cache', () => {
     beforeEach(() => {
       provider = new BeansTreeDataProvider(service);
+    });
+
+    it('should rebuild hasChildren cache on each tree build', async () => {
+      mockBeans = [
+        createBean('bean-1', 'Parent', 'todo'),
+        { ...createBean('bean-2', 'Child', 'todo'), parent: 'bean-1' },
+      ];
+
+      let rootChildren = await provider.getChildren();
+      expect(rootChildren[0].hasChildren).toBe(true);
+      expect(rootChildren[0].collapsibleState).toBe(vscode.TreeItemCollapsibleState.Collapsed);
+
+      // Remove child and rebuild
+      mockBeans = [createBean('bean-1', 'Parent', 'todo')];
+      provider.refresh();
+
+      rootChildren = await provider.getChildren();
+      expect(rootChildren[0].hasChildren).toBe(false);
+      expect(rootChildren[0].collapsibleState).toBe(vscode.TreeItemCollapsibleState.None);
     });
 
     it('should mark ancestors of in-progress beans', async () => {

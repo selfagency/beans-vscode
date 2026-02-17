@@ -36,6 +36,9 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
   // Performance cache: tracks which beans have in-progress descendants
   private inProgressDescendantsCache = new Map<string, boolean>();
 
+  // Performance cache: parent id -> direct children
+  private childrenByParentCache = new Map<string, Bean[]>();
+
   constructor(
     protected readonly service: BeansService,
     protected readonly statusFilter?: BeanStatus[],
@@ -94,8 +97,8 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
       await this.fetchBeans();
       return this.buildTree();
     } else {
-      // Child level - find beans with this parent
-      const children = this.beans.filter(bean => bean.parent === element.bean.id);
+      // Child level - O(1) lookup from parent->children cache
+      const children = this.childrenByParentCache.get(element.bean.id) ?? [];
       return this.sortBeans(children).map(bean => this.createTreeItem(bean));
     }
   }
@@ -169,8 +172,8 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
    * where parents may have a different status and wouldn't appear)
    */
   private buildTree(): BeanTreeItem[] {
-    // Clear and rebuild performance cache
-    this.rebuildInProgressCache();
+    // Clear and rebuild performance caches
+    this.rebuildCaches();
 
     if (this.flatList) {
       // Flat list mode: show all beans at root level, no hierarchy
@@ -186,11 +189,26 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
   }
 
   /**
-   * Rebuild the in-progress descendants cache
-   * This pre-computes which beans have in-progress descendants to avoid O(n²) complexity
+   * Rebuild performance caches used while constructing tree items.
+   * - inProgressDescendantsCache: O(1) lookup for in-progress descendant markers
+   * - childrenByParentCache: O(1) lookup for direct children and hasChildren checks
    */
-  private rebuildInProgressCache(): void {
+  private rebuildCaches(): void {
     this.inProgressDescendantsCache.clear();
+    this.childrenByParentCache.clear();
+
+    for (const bean of this.beans) {
+      if (!bean.parent) {
+        continue;
+      }
+
+      const children = this.childrenByParentCache.get(bean.parent);
+      if (children) {
+        children.push(bean);
+      } else {
+        this.childrenByParentCache.set(bean.parent, [bean]);
+      }
+    }
 
     // Build id->bean map for O(1) lookups
     const beanMap = new Map<string, Bean>();
@@ -223,7 +241,7 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
    * Create tree item for a bean
    */
   private createTreeItem(bean: Bean): BeanTreeItem {
-    const hasChildren = this.beans.some(b => b.parent === bean.id);
+    const hasChildren = this.childrenByParentCache.has(bean.id);
     const hasInProgressChildren = this.inProgressDescendantsCache.get(bean.id) ?? false;
     const collapsibleState = hasChildren
       ? vscode.TreeItemCollapsibleState.Collapsed
