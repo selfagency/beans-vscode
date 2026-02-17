@@ -4,13 +4,13 @@ import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
 import {
   Bean,
+  BeanPriority,
   BeansCLINotFoundError,
   BeansConfig,
   BeansJSONParseError,
-  BeansTimeoutError,
   BeanStatus,
+  BeansTimeoutError,
   BeanType,
-  BeanPriority,
 } from '../model';
 
 const execFileAsync = promisify(execFile);
