@@ -94,6 +94,35 @@ export class BeansService {
   }
 
   /**
+   * Apply local filtering for cached beans in offline mode.
+   */
+  private filterBeans(beans: Bean[], options?: { status?: string[]; type?: string[]; search?: string }): Bean[] {
+    return beans.filter(bean => {
+      if (options?.status?.length && !options.status.includes(bean.status)) {
+        return false;
+      }
+
+      if (options?.type?.length && !options.type.includes(bean.type)) {
+        return false;
+      }
+
+      if (options?.search) {
+        const query = options.search.toLowerCase();
+        const haystack = [bean.id, bean.code, bean.slug, bean.title, bean.body, ...(bean.tags || [])]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        if (!haystack.includes(query)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }
+
+  /**
    * Clear the beans cache
    */
   clearCache(): void {
@@ -388,39 +417,6 @@ export class BeansService {
   }
 
   /**
-   * Filter beans based on provided options
-   * Used for offline mode to apply same filters as CLI
-   */
-  private filterBeans(beans: Bean[], options?: { status?: string[]; type?: string[]; search?: string }): Bean[] {
-    if (!options) {
-      return beans;
-    }
-
-    let filtered = beans;
-
-    // Filter by status
-    if (options.status && options.status.length > 0) {
-      filtered = filtered.filter(bean => options.status!.includes(bean.status));
-    }
-
-    // Filter by type
-    if (options.type && options.type.length > 0) {
-      filtered = filtered.filter(bean => options.type!.includes(bean.type));
-    }
-
-    // Filter by search (search in title and body)
-    if (options.search) {
-      const searchLower = options.search.toLowerCase();
-      filtered = filtered.filter(
-        bean =>
-          bean.title.toLowerCase().includes(searchLower) || (bean.body && bean.body.toLowerCase().includes(searchLower))
-      );
-    }
-
-    return filtered;
-  }
-
-  /**
    * Normalize bean data from CLI to ensure required fields exist.
    * CLI outputs snake_case (created_at, updated_at, blocked_by, parent_id, blocking_ids, blocked_by_ids).
    * We map to camelCase model fields and derive the short 'code' from the ID.
@@ -466,7 +462,8 @@ export class BeansService {
       tags: bean.tags || [],
       parent: bean.parent || bean.parentId || bean.parent_id,
       blocking: bean.blocking || bean.blockingIds || bean.blocking_ids || [],
-      blockedBy: bean.blocked_by || bean.blockedByIds || bean.blocked_by_ids || [],
+      // Prefer canonical *_ids fields when both canonical and legacy keys are present.
+      blockedBy: bean.blockedBy || bean.blockedByIds || bean.blocked_by_ids || bean.blocked_by || [],
       createdAt,
       updatedAt,
       etag: bean.etag,
