@@ -61,14 +61,14 @@ RUN ARCH=\$(uname -m) && \\
     elif [ "\$ARCH" = "aarch64" ]; then \\
         GOARCH="arm64"; \\
         EXPECTED_SHA256="${GO_SHA256_ARM64}"; \\
-RUN ARCH=\$(uname -m) && \
-    if [ "\$ARCH" = "x86_64" ]; then GOARCH="amd64"; \
-    elif [ "\$ARCH" = "aarch64" ]; then GOARCH="arm64"; \
-    else echo "Unsupported architecture: \$ARCH" && exit 1; fi && \
-    apt-get update && apt-get install -y curl jq git wget && \
-    wget -q https://go.dev/dl/go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \
-    tar -C /usr/local -xzf go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \
-    rm go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \
+    else \\
+        echo "Unsupported architecture: \$ARCH" && exit 1; \\
+    fi && \\
+    apt-get update && apt-get install -y curl jq git wget && \\
+    wget -q https://go.dev/dl/go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
+    echo "\$EXPECTED_SHA256  go${GO_VERSION}.linux-\${GOARCH}.tar.gz" | sha256sum -c - || { echo "ERROR: Go tarball checksum verification failed. Possible tampering detected."; exit 1; } && \\
+    tar -C /usr/local -xzf go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
+    rm go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
     rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/usr/local/go/bin:/root/go/bin:\${PATH}"
