@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Added a `Create Bean` title action button to the Draft pane in the Beans sidebar.
+- Added a `Copilot: Start Work on Bean` title action button in the Details pane for the selected bean.
+- Added auto-linking for issue-id references in Details markdown content so referenced beans open directly in the Details pane.
+- Added contextual Details back navigation that appears only after following an internal issue reference.
+
+### Fixed
+
+- Various bug fixes and test updates from branch `fixes/worktree-20260217`.
+- Restored the Details pane title icon rendering by switching from codicon-font dependency to resilient inline icons.
+- Fixed CI pnpm cache setup failures by adding the required `packages` field to `pnpm-workspace.yaml`.
+- Fixed TypeScript compile errors in `BeansCommands` by aligning Copilot command attempt typing with VS Code `Thenable` return types.
+- Fixed PR conversation cleanup workflow to resolve unresolved review threads on all closed PRs instead of only Copilot-authored PRs.
+
+### Changed
+
+- Minor improvements to tree/workspace handling and developer tooling; see commit for details.
+- Updated initial Beans sidebar layout defaults so `Search` and `Draft` start collapsed, giving more room to `Active` and `Details` on first launch.
+- CI workflow optimized for cost/performance by enabling pnpm caching and consolidating Linux-only lint/typecheck into the matrix test job.
+- Remote compatibility workflow optimized with a representative matrix (`include`), explicit job timeouts, and on-demand execution of the heavy VS Code integration packaging check.
+- Issue-to-bean workflow hardened by using Go-based Beans CLI installation (without `sudo`) and argument-array process execution in script automation.
+
 ## [1.0.4] - 2026-02-17
 
 ### Fixed

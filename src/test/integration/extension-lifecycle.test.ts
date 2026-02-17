@@ -44,7 +44,7 @@ const logger = vi.hoisted(() => ({
 
 const configFns = vi.hoisted(() => ({
   buildBeansCopilotInstructions: vi.fn((prime: string) => `instructions:${prime}`),
-  writeBeansCopilotInstructions: vi.fn(async () => '/ws/.github/instructions/beans.instructions.md'),
+  writeBeansCopilotInstructions: vi.fn(async () => '/ws/.github/instructions/tasks.instructions.md'),
   buildBeansCopilotSkill: vi.fn((prime: string) => `skill:${prime}`),
   writeBeansCopilotSkill: vi.fn(async () => '/ws/.github/skills/beans/SKILL.md'),
   removeBeansCopilotSkill: vi.fn(async () => undefined),

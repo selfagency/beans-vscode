@@ -90,6 +90,7 @@ describe('Command Registration', () => {
       'beans.view',
       'beans.create',
       'beans.edit',
+      'beans.copilotStartWork',
       'beans.setStatus',
       'beans.reopenCompleted',
       'beans.reopenScrapped',
@@ -133,6 +134,11 @@ describe('Command Registration', () => {
   it('should register edit command', () => {
     commands.registerAll();
     expect(registeredCommands.has('beans.edit')).toBe(true);
+  });
+
+  it('should register copilot start-work command', () => {
+    commands.registerAll();
+    expect(registeredCommands.has('beans.copilotStartWork')).toBe(true);
   });
 
   it('should register status management commands', () => {

@@ -157,6 +157,7 @@ export class BeansCommands {
     this.registerCommand('beans.view', this.viewBean.bind(this));
     this.registerCommand('beans.create', this.createBean.bind(this));
     this.registerCommand('beans.edit', this.editBean.bind(this));
+    this.registerCommand('beans.copilotStartWork', this.copilotStartWork.bind(this));
 
     // Status management
     this.registerCommand('beans.setStatus', this.setStatus.bind(this));
@@ -193,6 +194,99 @@ export class BeansCommands {
     this.registerCommand('beans.openUserGuide', this.openUserGuide.bind(this));
 
     logger.info('All Beans commands registered');
+  }
+
+  /**
+   * Open Copilot Chat with a focused prompt to assess and start work on a bean.
+   */
+  private async copilotStartWork(arg?: Bean | BeanTreeItem): Promise<void> {
+    try {
+      let bean = await this.resolveBeanAsync(arg);
+      if (!bean) {
+        bean = this.detailsProvider?.currentBean;
+      }
+      if (!bean) {
+        bean = await this.pickBean('Select bean to start work with Copilot');
+        if (!bean) {
+          return;
+        }
+      }
+
+      // Prefer full details (body, relationships) when composing prompt.
+      const fullBean = await this.service.showBean(bean.id).catch(() => bean!);
+      const prompt = this.buildCopilotStartWorkPrompt(fullBean);
+
+      // Best-effort open Copilot Chat with prompt. Command signatures vary across VS Code builds.
+      const attempts: Array<() => PromiseLike<unknown>> = [
+        () => vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt }),
+        () => vscode.commands.executeCommand('workbench.action.chat.open', prompt),
+        () => vscode.commands.executeCommand('workbench.action.chat.new', { query: prompt }),
+        () => vscode.commands.executeCommand('workbench.action.chat.openToSide', { query: prompt }),
+      ];
+
+      let opened = false;
+      for (const attempt of attempts) {
+        try {
+          await attempt();
+          opened = true;
+          break;
+        } catch {
+          // Try next known command shape.
+        }
+      }
+
+      if (!opened) {
+        await vscode.env.clipboard.writeText(prompt);
+        const choice = await vscode.window.showInformationMessage(
+          'Copilot Chat was not opened automatically. Prompt copied to clipboard.',
+          'Open Chat'
+        );
+        if (choice === 'Open Chat') {
+          try {
+            await vscode.commands.executeCommand('workbench.action.chat.open');
+          } catch {
+            // No-op fallback.
+          }
+        }
+      }
+
+      logger.info(`Sent bean ${fullBean.code} to Copilot for start-work guidance`);
+    } catch (error) {
+      const message = `Failed to open Copilot start-work prompt: ${(error as Error).message}`;
+      logger.error(message, error as Error);
+      vscode.window.showErrorMessage(message);
+    }
+  }
+
+  private buildCopilotStartWorkPrompt(bean: Bean): string {
+    const tags = bean.tags && bean.tags.length > 0 ? bean.tags.join(', ') : 'none';
+    const blocking = bean.blocking && bean.blocking.length > 0 ? bean.blocking.join(', ') : 'none';
+    const blockedBy = bean.blockedBy && bean.blockedBy.length > 0 ? bean.blockedBy.join(', ') : 'none';
+    const body = bean.body?.trim() ? bean.body.trim() : '(no description)';
+
+    return [
+      `@beans Please examine this bean and help start work on it.`,
+      '',
+      `Bean ID: ${bean.id}`,
+      `Code: ${bean.code}`,
+      `Title: ${bean.title}`,
+      `Status: ${bean.status}`,
+      `Type: ${bean.type}`,
+      `Priority: ${bean.priority ?? 'none'}`,
+      `Parent: ${bean.parent ?? 'none'}`,
+      `Tags: ${tags}`,
+      `Blocking: ${blocking}`,
+      `Blocked by: ${blockedBy}`,
+      '',
+      'Description / notes:',
+      body,
+      '',
+      'Tasks:',
+      '1) Assess current status and summarize what is already done vs. remaining.',
+      '2) Check if there are existing plans/todos in this bean or related beans.',
+      '3) Propose a concrete implementation plan.',
+      '4) Begin working on the first step and suggest the exact code changes to make now.',
+    ].join('\n');
   }
 
   /**

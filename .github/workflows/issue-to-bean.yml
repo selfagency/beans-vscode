@@ -48,22 +48,22 @@ jobs:
 
       - name: Checkout repository
         if: steps.check-permission.outputs.has-permission == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Node.js
+      - name: Setup Go
         if: steps.check-permission.outputs.has-permission == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-go@v5
         with:
-          node-version: "22"
+          go-version: "1.23.x"
 
       - name: Install Beans CLI
         if: steps.check-permission.outputs.has-permission == 'true'
         run: |
-          curl -fsSL https://github.com/hmans/beans/releases/latest/download/beans_$(uname -s)_$(uname -m).tar.gz | tar xz
-          sudo mv beans /usr/local/bin/
-          beans --version
+          go install github.com/hmans/beans@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          "$(go env GOPATH)/bin/beans" version
 
       - name: Initialize Beans if needed
         if: steps.check-permission.outputs.has-permission == 'true'
@@ -85,8 +85,7 @@ jobs:
           ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
         with:
           script: |
-            const { execSync } = require('child_process');
-            const fs = require('fs');
+            const { execFileSync } = require('child_process');
 
             // Determine bean type from labels
             const labels = context.payload.issue.labels.map(l => l.name);
@@ -117,17 +116,24 @@ jobs:
             // Create description with link to original issue
             const description = `${body}\n\n---\n\n**Original Issue:** ${url}\n**Reported by:** @${author}\n**GitHub Issue:** #${issueNumber}`;
 
-            // Escape strings for shell
-            const escapeShell = (str) => {
-              return str.replace(/'/g, "'\\''");
-            };
-
-            // Create the bean
-            const cmd = `beans create --json '${escapeShell(title)}' -t ${beanType} -p ${priority} -s todo -d '${escapeShell(description)}'`;
+            // Create the bean using arg arrays (avoid shell interpolation)
+            const args = [
+              'create',
+              '--json',
+              title,
+              '-t',
+              beanType,
+              '-p',
+              priority,
+              '-s',
+              'todo',
+              '-d',
+              description,
+            ];
 
             let beanId;
             try {
-              const output = execSync(cmd, { encoding: 'utf-8' });
+              const output = execFileSync('beans', args, { encoding: 'utf-8' });
               const result = JSON.parse(output);
               beanId = result.id || result.code;
               console.log(`Created bean: ${beanId}`);

@@ -3,6 +3,12 @@ import { BeansOutput } from '../logging';
 import { Bean } from '../model';
 import { BeansService } from '../service';
 
+type DetailsWebviewMessage = {
+  command?: 'updateBean' | 'openBeanFromReference' | 'goBack';
+  updates?: unknown;
+  beanId?: unknown;
+};
+
 /**
  * Webview view provider for displaying bean details in the sidebar
  */
@@ -11,6 +17,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private _currentBean?: Bean;
   private _parentBean?: Bean;
+  private readonly _navigationHistory: string[] = [];
   private readonly logger = BeansOutput.getInstance();
 
   /** The currently displayed bean (used by view/title edit command). */
@@ -33,19 +40,24 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   ): void {
     this._view = webviewView;
 
-    // Include codicons dist folder so the webview can load the font
-    const codiconsUri = vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist');
-
     webviewView.webview.options = {
       enableScripts: true,
-      localResourceRoots: [this.extensionUri, codiconsUri],
+      localResourceRoots: [this.extensionUri],
     };
 
     // Handle messages from webview
-    webviewView.webview.onDidReceiveMessage(async message => {
+    webviewView.webview.onDidReceiveMessage(async (message: DetailsWebviewMessage) => {
       switch (message.command) {
         case 'updateBean':
           await this.handleBeanUpdate(message.updates);
+          break;
+        case 'openBeanFromReference':
+          if (typeof message.beanId === 'string') {
+            await this.openBeanFromReference(message.beanId);
+          }
+          break;
+        case 'goBack':
+          await this.goBack();
           break;
       }
     });
@@ -95,6 +107,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
    * Fetches full bean data including body field
    */
   public async showBean(bean: Bean): Promise<void> {
+    this._navigationHistory.length = 0;
     try {
       // Fetch full bean data including body field
       const fullBean = await this.service.showBean(bean.id);
@@ -131,6 +144,8 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
    */
   public clear(): void {
     this._currentBean = undefined;
+    this._parentBean = undefined;
+    this._navigationHistory.length = 0;
     void vscode.commands.executeCommand('setContext', 'beans.hasSelectedBean', false);
     if (this._view) {
       this._view.webview.html = this.getEmptyHtml();
@@ -198,11 +213,12 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     const nonce = this.getNonce();
     const tagsBadges = bean.tags?.map(tag => this.renderBadge(tag, 'tag')).join('') || '';
     const iconName = this.getIconName(bean);
-
-    // Generate codicon CSS URI for the webview
-    const codiconCssUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
-    );
+    const iconGlyph = this.getIconGlyph(iconName);
+    const iconLabel = this.getIconLabel(bean);
+    const showBackButton = this._navigationHistory.length > 0;
+    const backButtonHtml = showBackButton
+      ? '<button type="button" id="back-button" class="back-button" aria-label="Back to previous bean">← Back</button>'
+      : '';
     const csp = [
       "default-src 'none'",
       `img-src ${webview.cspSource} data: https:`,
@@ -238,7 +254,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 
     // Render body with basic markdown
     const bodyHtml = bean.body
-      ? this.renderMarkdown(bean.body)
+      ? this.renderMarkdown(bean.body, bean.id)
       : '<p style="color: var(--vscode-descriptionForeground);">No description</p>';
 
     const createdDate = new Date(bean.createdAt).toLocaleDateString();
@@ -264,7 +280,6 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="${csp}">
   <title>Bean Details</title>
-  <link href="${codiconCssUri}" rel="stylesheet" />
   <style>
     body {
       padding: 0;
@@ -283,6 +298,25 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       align-items: flex-start;
       gap: 8px;
       margin-bottom: 12px;
+    }
+    .back-button {
+      border: 1px solid var(--vscode-button-border, transparent);
+      background: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
+      color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      line-height: 1.5;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .back-button:hover {
+      background: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground));
+    }
+    .back-button:focus-visible {
+      outline: 1px solid var(--vscode-focusBorder);
+      outline-offset: 1px;
     }
     .title-icon {
       font-size: 16px;
@@ -463,6 +497,20 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       border-left: 3px solid var(--vscode-textBlockQuote-border);
       color: var(--vscode-textBlockQuote-foreground);
     }
+    .body-content .bean-ref {
+      color: var(--vscode-textLink-foreground);
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+    .body-content .bean-ref:hover {
+      color: var(--vscode-textLink-activeForeground, var(--vscode-textLink-foreground));
+    }
+    .body-content .bean-ref:focus-visible {
+      outline: 1px solid var(--vscode-focusBorder);
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
     .timestamp {
       font-size: 11px;
       color: var(--vscode-descriptionForeground);
@@ -473,7 +521,8 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 <body>
   <div class="header">
     <div class="title-row">
-      <span class="codicon codicon-${iconName} title-icon"></span>
+      ${backButtonHtml}
+      <span class="title-icon" role="img" aria-label="${this.escapeHtml(iconLabel)}">${this.escapeHtml(iconGlyph)}</span>
       <h1 class="title">${this.escapeHtml(bean.title)}</h1>
     </div>
     <div class="bean-id">
@@ -540,6 +589,32 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
         updates: updates
       });
     }
+
+    document.addEventListener('click', event => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      const beanReference = target.closest('a.bean-ref');
+      if (beanReference instanceof Element) {
+        event.preventDefault();
+        const beanId = beanReference.getAttribute('data-bean-id');
+        if (beanId) {
+          vscode.postMessage({
+            command: 'openBeanFromReference',
+            beanId,
+          });
+        }
+        return;
+      }
+
+      const backButton = target.closest('#back-button');
+      if (backButton instanceof Element) {
+        event.preventDefault();
+        vscode.postMessage({ command: 'goBack' });
+      }
+    });
   </script>
 </body>
 </html>`;
@@ -555,7 +630,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   /**
    * Basic markdown rendering
    */
-  private renderMarkdown(text: string): string {
+  private renderMarkdown(text: string, currentBeanId?: string): string {
     if (!text) {
       return '';
     }
@@ -595,7 +670,49 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     // Clean up empty paragraphs
     html = html.replace(/<p><\/p>/g, '');
 
+    html = this.autoLinkBeanReferences(html, currentBeanId);
+
     return html;
+  }
+
+  private autoLinkBeanReferences(html: string, currentBeanId?: string): string {
+    const tokenPattern = /(<[^>]+>|[^<]+)/g;
+    const beanIdPattern = /\b([a-z][a-z0-9-]*-\d+)\b/gi;
+    let inAnchor = false;
+    let inCode = false;
+    let inPre = false;
+
+    return html.replace(tokenPattern, token => {
+      if (token.startsWith('<')) {
+        const tag = token.toLowerCase();
+        if (/^<a(?:\s|>)/.test(tag) && !/^<\/a>/.test(tag)) {
+          inAnchor = true;
+        } else if (/^<\/a>/.test(tag)) {
+          inAnchor = false;
+        } else if (/^<pre(?:\s|>)/.test(tag) && !/^<\/pre>/.test(tag)) {
+          inPre = true;
+        } else if (/^<\/pre>/.test(tag)) {
+          inPre = false;
+        } else if (/^<code(?:\s|>)/.test(tag) && !/^<\/code>/.test(tag)) {
+          inCode = true;
+        } else if (/^<\/code>/.test(tag)) {
+          inCode = false;
+        }
+        return token;
+      }
+
+      if (inAnchor || inCode || inPre) {
+        return token;
+      }
+
+      return token.replace(beanIdPattern, matchedId => {
+        if (currentBeanId && matchedId.toLowerCase() === currentBeanId.toLowerCase()) {
+          return matchedId;
+        }
+        const safeId = this.escapeHtml(matchedId);
+        return `<a href="#" class="bean-ref" data-bean-id="${safeId}">${safeId}</a>`;
+      });
+    });
   }
 
   /**
@@ -631,6 +748,62 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     }
 
     return undefined;
+  }
+
+  private async openBeanFromReference(beanId: string): Promise<void> {
+    if (!this._currentBean || this._currentBean.id === beanId) {
+      return;
+    }
+
+    this._navigationHistory.push(this._currentBean.id);
+    const opened = await this.showBeanById(beanId);
+    if (!opened) {
+      this._navigationHistory.pop();
+      if (this._currentBean) {
+        this.updateView(this._currentBean);
+      }
+    }
+  }
+
+  private async goBack(): Promise<void> {
+    const previousBeanId = this._navigationHistory.pop();
+    if (!previousBeanId) {
+      return;
+    }
+
+    const opened = await this.showBeanById(previousBeanId);
+    if (!opened) {
+      this._navigationHistory.push(previousBeanId);
+      if (this._currentBean) {
+        this.updateView(this._currentBean);
+      }
+    }
+  }
+
+  private async showBeanById(beanId: string): Promise<boolean> {
+    try {
+      const fullBean = await this.service.showBean(beanId);
+      this._currentBean = fullBean;
+      await vscode.commands.executeCommand('setContext', 'beans.hasSelectedBean', true);
+
+      this._parentBean = undefined;
+      if (fullBean.parent) {
+        try {
+          this._parentBean = await this.service.showBean(fullBean.parent);
+        } catch {
+          // Parent may not be resolvable; ignore
+        }
+      }
+
+      if (this._view) {
+        this.updateView(fullBean);
+      }
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to fetch bean details for ${beanId}`, error as Error);
+      vscode.window.showErrorMessage(`Failed to open bean ${beanId}: ${(error as Error).message}`);
+      return false;
+    }
   }
 
   private getNonce(): string {
@@ -673,5 +846,34 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       default:
         return 'issues';
     }
+  }
+
+  /**
+   * Use resilient inline glyphs for title icons (no external codicon font dependency).
+   */
+  private getIconGlyph(iconName: string): string {
+    switch (iconName) {
+      case 'issue-closed':
+        return '✅';
+      case 'issue-draft':
+        return '📝';
+      case 'error':
+        return '🗑️';
+      case 'milestone':
+        return '🏁';
+      case 'zap':
+        return '⚡';
+      case 'lightbulb':
+        return '💡';
+      case 'bug':
+        return '🐛';
+      case 'issues':
+      default:
+        return '📋';
+    }
+  }
+
+  private getIconLabel(bean: Bean): string {
+    return `${bean.type} ${bean.status} bean`;
   }
 }

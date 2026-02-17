@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Resolve on closed Copilot PR or audit closed PRs
+      - name: Resolve on closed PR or audit closed PRs
         uses: actions/github-script@v7
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -41,13 +41,6 @@ jobs:
             const maxPrs = Number.isFinite(maxPrsInput) && maxPrsInput > 0
               ? Math.min(maxPrsInput, 100)
               : 30;
-
-            const isCopilotAuthor = (login) => {
-              if (!login) {
-                return false;
-              }
-              return /copilot/i.test(login);
-            };
 
             async function fetchUnresolvedThreadIds(prNumber) {
               const unresolved = [];
@@ -112,32 +105,26 @@ jobs:
             if (eventName === 'pull_request_target' && eventAction === 'closed') {
               const pr = context.payload.pull_request;
               const prNumber = pr?.number;
-              const prAuthor = pr?.user?.login;
 
               if (!prNumber) {
                 core.setFailed('Missing PR number from event payload.');
                 return;
               }
 
-              if (!isCopilotAuthor(prAuthor)) {
-                core.info(`PR #${prNumber} author '${prAuthor}' is not Copilot-related. Skipping.`);
-                return;
-              }
-
               const unresolved = await fetchUnresolvedThreadIds(prNumber);
 
               if (unresolved.length === 0) {
-                core.info(`No unresolved review conversations found on closed Copilot PR #${prNumber}.`);
+                core.info(`No unresolved review conversations found on closed PR #${prNumber}.`);
                 return;
               }
 
-              core.info(`Resolving ${unresolved.length} unresolved conversation(s) on closed Copilot PR #${prNumber}...`);
+              core.info(`Resolving ${unresolved.length} unresolved conversation(s) on closed PR #${prNumber}...`);
               for (const threadId of unresolved) {
                 await resolveThread(threadId);
               }
 
               core.summary
-                .addHeading('Copilot PR conversation cleanup complete')
+                .addHeading('PR conversation cleanup complete')
                 .addRaw(`Resolved ${unresolved.length} conversation(s) on PR #${prNumber}.`)
                 .write();
 
@@ -169,7 +156,6 @@ jobs:
                   rows.push([
                     `#${pr.number}`,
                     pr.user?.login ?? 'unknown',
-                    isCopilotAuthor(pr.user?.login) ? 'yes' : 'no',
                     String(unresolved.length)
                   ]);
                 }
@@ -195,7 +181,6 @@ jobs:
                   [
                     { data: 'PR', header: true },
                     { data: 'Author', header: true },
-                    { data: 'Copilot-like author', header: true },
                     { data: 'Unresolved conversations', header: true }
                   ],
                   ...rows

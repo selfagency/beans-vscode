@@ -98,6 +98,13 @@
         "when": "beans.initialized"
       },
       {
+        "command": "beans.copilotStartWork",
+        "title": "Copilot: Start Work on Bean",
+        "category": "Beans",
+        "icon": "$(copilot)",
+        "when": "beans.initialized"
+      },
+      {
         "command": "beans.setStatus",
         "title": "Set Status",
         "category": "Beans",
@@ -262,7 +269,7 @@
           "name": "Search",
           "icon": "$(search)",
           "when": "beans.initialized",
-          "visibility": "visible"
+          "visibility": "collapsed"
         },
         {
           "icon": "$(issue-opened)",
@@ -274,7 +281,8 @@
           "icon": "$(issue-draft)",
           "id": "beans.draft",
           "name": "Draft",
-          "when": "beans.initialized"
+          "when": "beans.initialized",
+          "visibility": "collapsed"
         },
         {
           "icon": "$(issue-closed)",
@@ -308,6 +316,11 @@
           "group": "navigation@1"
         },
         {
+          "command": "beans.create",
+          "when": "view == beans.draft && beans.initialized",
+          "group": "navigation@1"
+        },
+        {
           "command": "beans.refresh",
           "when": "view == beans.active && beans.initialized",
           "group": "navigation@2"
@@ -326,6 +339,11 @@
           "command": "beans.edit",
           "when": "view == beans.details && beans.hasSelectedBean",
           "group": "navigation"
+        },
+        {
+          "command": "beans.copilotStartWork",
+          "when": "view == beans.details && beans.hasSelectedBean",
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [
