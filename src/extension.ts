@@ -13,7 +13,7 @@ import {
 import { BeansDetailsViewProvider } from './beans/details';
 import { BeansOutput } from './beans/logging';
 import { BeansMcpIntegration } from './beans/mcp';
-import { Bean, BeansCLINotFoundError } from './beans/model';
+import { Bean, BeansCLINotFoundError, BeanType } from './beans/model';
 import { BeansPreviewProvider } from './beans/preview';
 import { BeansSearchViewProvider } from './beans/search';
 import { BeansService } from './beans/service';
@@ -393,7 +393,7 @@ function registerTreeViews(
         ? {
             searchFilter: filter.text,
             tagFilter: filter.tags,
-            typeFilter: filter.types as any,
+            typeFilter: filter.types as BeanType[] | undefined,
             // Note: priorities not yet supported in TreeFilterOptions
           }
         : {};
