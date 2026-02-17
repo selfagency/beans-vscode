@@ -1,0 +1,208 @@
+name: Copilot PR Conversation Cleanup
+
+on:
+  pull_request_target:
+    types: [opened, closed]
+  workflow_dispatch:
+    inputs:
+      max_prs:
+        description: "Maximum number of closed PRs to inspect"
+        required: false
+        default: "30"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: copilot-pr-conversation-cleanup-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Resolve/Audit PR Conversations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Resolve on closed Copilot PR or audit closed PRs
+        uses: actions/github-script@v7
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action || '' }}
+          MAX_PRS_INPUT: ${{ github.event.inputs.max_prs || '30' }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const eventName = process.env.EVENT_NAME;
+            const eventAction = process.env.EVENT_ACTION;
+            const maxPrsInput = Number.parseInt(process.env.MAX_PRS_INPUT || '30', 10);
+            const maxPrs = Number.isFinite(maxPrsInput) && maxPrsInput > 0
+              ? Math.min(maxPrsInput, 100)
+              : 30;
+
+            const isCopilotAuthor = (login) => {
+              if (!login) {
+                return false;
+              }
+              return /copilot/i.test(login);
+            };
+
+            async function fetchUnresolvedThreadIds(prNumber) {
+              const unresolved = [];
+              let cursor = null;
+              let hasNextPage = true;
+
+              while (hasNextPage) {
+                const result = await github.graphql(
+                  `
+                  query($owner: String!, $repo: String!, $prNumber: Int!, $cursor: String) {
+                    repository(owner: $owner, name: $repo) {
+                      pullRequest(number: $prNumber) {
+                        reviewThreads(first: 100, after: $cursor) {
+                          nodes {
+                            id
+                            isResolved
+                          }
+                          pageInfo {
+                            hasNextPage
+                            endCursor
+                          }
+                        }
+                      }
+                    }
+                  }
+                  `,
+                  { owner, repo, prNumber, cursor }
+                );
+
+                const reviewThreads = result?.repository?.pullRequest?.reviewThreads;
+                const nodes = reviewThreads?.nodes ?? [];
+
+                for (const thread of nodes) {
+                  if (!thread.isResolved) {
+                    unresolved.push(thread.id);
+                  }
+                }
+
+                hasNextPage = Boolean(reviewThreads?.pageInfo?.hasNextPage);
+                cursor = reviewThreads?.pageInfo?.endCursor ?? null;
+              }
+
+              return unresolved;
+            }
+
+            async function resolveThread(threadId) {
+              await github.graphql(
+                `
+                mutation($threadId: ID!) {
+                  resolveReviewThread(input: { threadId: $threadId }) {
+                    thread {
+                      id
+                      isResolved
+                    }
+                  }
+                }
+                `,
+                { threadId }
+              );
+            }
+
+            if (eventName === 'pull_request_target' && eventAction === 'closed') {
+              const pr = context.payload.pull_request;
+              const prNumber = pr?.number;
+              const prAuthor = pr?.user?.login;
+
+              if (!prNumber) {
+                core.setFailed('Missing PR number from event payload.');
+                return;
+              }
+
+              if (!isCopilotAuthor(prAuthor)) {
+                core.info(`PR #${prNumber} author '${prAuthor}' is not Copilot-related. Skipping.`);
+                return;
+              }
+
+              const unresolved = await fetchUnresolvedThreadIds(prNumber);
+
+              if (unresolved.length === 0) {
+                core.info(`No unresolved review conversations found on closed Copilot PR #${prNumber}.`);
+                return;
+              }
+
+              core.info(`Resolving ${unresolved.length} unresolved conversation(s) on closed Copilot PR #${prNumber}...`);
+              for (const threadId of unresolved) {
+                await resolveThread(threadId);
+              }
+
+              core.summary
+                .addHeading('Copilot PR conversation cleanup complete')
+                .addRaw(`Resolved ${unresolved.length} conversation(s) on PR #${prNumber}.`)
+                .write();
+
+              return;
+            }
+
+            if (
+              (eventName === 'pull_request_target' && eventAction === 'opened') ||
+              eventName === 'workflow_dispatch'
+            ) {
+              core.info(`Auditing up to ${maxPrs} closed PR(s) for unresolved review conversations...`);
+
+              const { data: closedPrs } = await github.rest.pulls.list({
+                owner,
+                repo,
+                state: 'closed',
+                sort: 'updated',
+                direction: 'desc',
+                per_page: maxPrs
+              });
+
+              let totalOpenConversations = 0;
+              const rows = [];
+
+              for (const pr of closedPrs) {
+                const unresolved = await fetchUnresolvedThreadIds(pr.number);
+                if (unresolved.length > 0) {
+                  totalOpenConversations += unresolved.length;
+                  rows.push([
+                    `#${pr.number}`,
+                    pr.user?.login ?? 'unknown',
+                    isCopilotAuthor(pr.user?.login) ? 'yes' : 'no',
+                    String(unresolved.length)
+                  ]);
+                }
+              }
+
+              if (rows.length === 0) {
+                core.info('No unresolved review conversations found on scanned closed PRs.');
+                core.summary
+                  .addHeading('Closed PR conversation audit')
+                  .addRaw(`Scanned ${closedPrs.length} closed PR(s). Found 0 unresolved conversation(s).`)
+                  .write();
+                return;
+              }
+
+              core.warning(
+                `Found ${totalOpenConversations} unresolved conversation(s) across ${rows.length} closed PR(s).`
+              );
+
+              core.summary
+                .addHeading('Closed PR conversation audit')
+                .addRaw(`Scanned ${closedPrs.length} closed PR(s). Found ${totalOpenConversations} unresolved conversation(s) across ${rows.length} PR(s).`)
+                .addTable([
+                  [
+                    { data: 'PR', header: true },
+                    { data: 'Author', header: true },
+                    { data: 'Copilot-like author', header: true },
+                    { data: 'Unresolved conversations', header: true }
+                  ],
+                  ...rows
+                ])
+                .write();
+
+              return;
+            }
+
+            core.info(`Event '${eventName}' action '${eventAction}' is not handled.`);
