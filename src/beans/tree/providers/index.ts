@@ -14,16 +14,17 @@ export class ActiveBeansProvider extends BeansTreeDataProvider {
   protected override async augmentBeans(beans: Bean[]): Promise<Bean[]> {
     // Fetch ALL beans to build a lookup of draft IDs
     const allBeans = await this.service.listBeans();
-    const draftIds = new Set(allBeans.filter((b) => b.status === 'draft').map((b) => b.id));
+    const draftIds = new Set(allBeans.filter(b => b.status === 'draft').map(b => b.id));
+    const beanById = new Map(allBeans.map(b => [b.id, b]));
 
     // Exclude active beans whose parent is a draft (direct or transitive)
-    return beans.filter((bean) => {
+    return beans.filter(bean => {
       let current: Bean | undefined = bean;
       while (current?.parent) {
         if (draftIds.has(current.parent)) {
           return false;
         }
-        current = allBeans.find((b) => b.id === current!.parent);
+        current = beanById.get(current.parent);
       }
       return true;
     });
@@ -53,14 +54,14 @@ export class DraftBeansProvider extends BeansTreeDataProvider {
 
   protected override async augmentBeans(beans: Bean[]): Promise<Bean[]> {
     // beans = all draft beans. Now fetch children of drafts that aren't drafts themselves.
-    const draftIds = new Set(beans.map((b) => b.id));
+    const draftIds = new Set(beans.map(b => b.id));
 
     // Fetch active + completed + scrapped beans to find children of drafts
     const otherBeans = await this.service.listBeans({
-      status: ['todo', 'in-progress', 'completed', 'scrapped']
+      status: ['todo', 'in-progress', 'completed', 'scrapped'],
     });
 
-    const childrenOfDrafts = otherBeans.filter((b) => b.parent && draftIds.has(b.parent));
+    const childrenOfDrafts = otherBeans.filter(b => b.parent && draftIds.has(b.parent));
 
     return [...beans, ...childrenOfDrafts];
   }

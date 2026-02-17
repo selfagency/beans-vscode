@@ -4,7 +4,10 @@
 export abstract class BeansError extends Error {
   abstract readonly code: string;
 
-  constructor(message: string, public readonly cause?: Error) {
+  constructor(
+    message: string,
+    public readonly cause?: Error
+  ) {
     super(message);
     this.name = this.constructor.name;
 
@@ -43,7 +46,11 @@ export class BeansConfigMissingError extends BeansError {
 export class BeansJSONParseError extends BeansError {
   readonly code = 'JSON_PARSE_ERROR';
 
-  constructor(message: string, public readonly output: string, cause?: Error) {
+  constructor(
+    message: string,
+    public readonly output: string,
+    cause?: Error
+  ) {
     super(message, cause);
   }
 }
@@ -65,7 +72,11 @@ export class BeansIntegrityCheckFailedError extends BeansError {
 export class BeansConcurrencyError extends BeansError {
   readonly code = 'CONCURRENCY_ERROR';
 
-  constructor(message: string, public readonly currentEtag: string, cause?: Error) {
+  constructor(
+    message: string,
+    public readonly currentEtag: string,
+    cause?: Error
+  ) {
     super(message, cause);
   }
 }

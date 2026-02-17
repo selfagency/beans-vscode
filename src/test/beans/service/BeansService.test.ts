@@ -541,6 +541,36 @@ describe('BeansService', () => {
       await service.updateBean('test-abc1', { parent: 'parent-123' });
     });
 
+    it('clears parent relationship explicitly', async () => {
+      const mockBean = {
+        id: 'test-abc1',
+        title: 'Test',
+        slug: 'test',
+        path: 'beans/test.md',
+        body: '',
+        status: 'todo',
+        type: 'task',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-02T00:00:00Z',
+        etag: 'etag1',
+      };
+
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        expect(args).toContain('--parent');
+        const parentFlagIndex = args.indexOf('--parent');
+        expect(args[parentFlagIndex + 1]).toBe('');
+        callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
+      });
+
+      await service.updateBean('test-abc1', { clearParent: true });
+    });
+
+    it('rejects updates that set and clear parent simultaneously', async () => {
+      await expect(service.updateBean('test-abc1', { parent: 'parent-123', clearParent: true })).rejects.toThrow(
+        'Cannot set parent and clear parent in the same update'
+      );
+    });
+
     it('updates blocking relationships', async () => {
       const mockBean = {
         id: 'test-abc1',

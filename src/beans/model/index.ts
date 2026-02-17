@@ -20,5 +20,5 @@ export {
   BeansPermissionError,
   BeansTimeoutError,
   getUserMessage,
-  isBeansError
+  isBeansError,
 } from './errors';

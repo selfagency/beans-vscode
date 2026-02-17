@@ -105,7 +105,7 @@ export class BeansPreviewProvider implements vscode.TextDocumentContentProvider 
 
     // Tags
     if (bean.tags.length > 0) {
-      lines.push(`**Tags:** ${bean.tags.map((t) => `\`${t}\``).join(', ')}`);
+      lines.push(`**Tags:** ${bean.tags.map(t => `\`${t}\``).join(', ')}`);
       lines.push('');
     }
 

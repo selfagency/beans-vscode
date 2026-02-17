@@ -9,8 +9,8 @@ describe('buildBeansChatSystemPrompt', () => {
         title: 'Implement chat integration',
         status: 'in-progress',
         type: 'task',
-        priority: 'high'
-      } as any
+        priority: 'high',
+      } as any,
     ]);
 
     expect(prompt).toContain('Only help with Beans issue-tracker workflows');

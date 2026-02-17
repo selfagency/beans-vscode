@@ -5,8 +5,8 @@ import { BeansOutput } from '../logging';
 import {
   Bean,
   BeansCLINotFoundError,
-  BeansConfigMissingError,
   BeansConcurrencyError,
+  BeansConfigMissingError,
   BeansIntegrityCheckFailedError,
   BeansJSONParseError,
   BeansPermissionError,
@@ -710,7 +710,7 @@ export class BeansCommands {
         return;
       }
 
-      await this.service.updateBean(bean.id, { parent: undefined });
+      await this.service.updateBean(bean.id, { clearParent: true });
       vscode.window.showInformationMessage(`Removed parent from ${bean.code}`);
       logger.info(`Removed parent from bean ${bean.code}`);
 

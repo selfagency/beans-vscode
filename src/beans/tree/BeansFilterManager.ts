@@ -58,7 +58,7 @@ export class BeansFilterManager {
   public clearAllFilters(): void {
     const viewIds = Array.from(this.filters.keys());
     this.filters.clear();
-    viewIds.forEach((viewId) => this._onDidChangeFilter.fire(viewId));
+    viewIds.forEach(viewId => this._onDidChangeFilter.fire(viewId));
   }
 
   /**
@@ -114,11 +114,11 @@ export class BeansFilterManager {
         { label: 'Filter by Tags', value: 'tags' },
         { label: 'Filter by Type', value: 'types' },
         { label: 'Filter by Priority', value: 'priorities' },
-        { label: 'Clear All Filters', value: 'clear' }
+        { label: 'Clear All Filters', value: 'clear' },
       ],
       {
         placeHolder: 'Select filter type',
-        title: 'Bean Filters'
+        title: 'Bean Filters',
       }
     );
 
@@ -137,7 +137,7 @@ export class BeansFilterManager {
         const text = await vscode.window.showInputBox({
           prompt: 'Enter search text',
           placeHolder: 'Search in title and body',
-          value: currentFilter?.text
+          value: currentFilter?.text,
         });
         if (text !== undefined) {
           newFilter.text = text || undefined;
@@ -148,14 +148,14 @@ export class BeansFilterManager {
         const tagsInput = await vscode.window.showInputBox({
           prompt: 'Enter tags (comma-separated)',
           placeHolder: 'e.g., frontend, bug',
-          value: currentFilter?.tags?.join(', ')
+          value: currentFilter?.tags?.join(', '),
         });
         if (tagsInput !== undefined) {
           newFilter.tags = tagsInput
             ? tagsInput
                 .split(',')
-                .map((t) => t.trim())
-                .filter((t) => t.length > 0)
+                .map(t => t.trim())
+                .filter(t => t.length > 0)
             : undefined;
         }
         break;
@@ -164,7 +164,7 @@ export class BeansFilterManager {
         const types = await vscode.window.showQuickPick(['milestone', 'epic', 'feature', 'bug', 'task'], {
           canPickMany: true,
           placeHolder: 'Select types to include',
-          title: 'Filter by Type'
+          title: 'Filter by Type',
         });
         if (types !== undefined) {
           newFilter.types = types.length > 0 ? types : undefined;
@@ -175,7 +175,7 @@ export class BeansFilterManager {
         const priorities = await vscode.window.showQuickPick(['critical', 'high', 'normal', 'low', 'deferred'], {
           canPickMany: true,
           placeHolder: 'Select priorities to include',
-          title: 'Filter by Priority'
+          title: 'Filter by Priority',
         });
         if (priorities !== undefined) {
           newFilter.priorities = priorities.length > 0 ? priorities : undefined;

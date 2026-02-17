@@ -26,7 +26,7 @@ describe('Tree Population', () => {
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-02'),
     etag: 'e1',
-    ...overrides
+    ...overrides,
   });
 
   beforeEach(() => {
@@ -64,7 +64,7 @@ describe('Tree Population', () => {
   it('should populate tree with active beans', async () => {
     const mockBeans: Bean[] = [
       makeMockBean({ id: 'bean-1', title: 'Bean 1', status: 'todo' }),
-      makeMockBean({ id: 'bean-2', title: 'Second Task', status: 'todo' })
+      makeMockBean({ id: 'bean-2', title: 'Second Task', status: 'todo' }),
     ];
 
     vi.spyOn(mockService, 'listBeans').mockResolvedValue(mockBeans);
@@ -80,7 +80,7 @@ describe('Tree Population', () => {
   it('should show only active statuses in active provider', async () => {
     const mockBeans: Bean[] = [
       makeMockBean({ id: 'bean-1', status: 'todo' }),
-      makeMockBean({ id: 'bean-2', status: 'in-progress' })
+      makeMockBean({ id: 'bean-2', status: 'in-progress' }),
     ];
 
     vi.spyOn(mockService, 'listBeans').mockResolvedValue(mockBeans);
@@ -89,14 +89,14 @@ describe('Tree Population', () => {
     const items = await activeProvider.getChildren();
 
     // ActiveBeansProvider should only show todo and in-progress beans
-    const statuses = items.map((item) => item.bean.status);
-    expect(statuses.every((s) => s === 'todo' || s === 'in-progress')).toBe(true);
+    const statuses = items.map(item => item.bean.status);
+    expect(statuses.every(s => s === 'todo' || s === 'in-progress')).toBe(true);
   });
 
   it('should show only completed beans in completed provider', async () => {
     const mockBeans: Bean[] = [
       makeMockBean({ id: 'bean-1', status: 'completed' }),
-      makeMockBean({ id: 'bean-2', status: 'completed' })
+      makeMockBean({ id: 'bean-2', status: 'completed' }),
     ];
 
     vi.spyOn(mockService, 'listBeans').mockResolvedValue(mockBeans);
@@ -105,8 +105,8 @@ describe('Tree Population', () => {
     const items = await completedProvider.getChildren();
 
     // CompletedBeansProvider should only show completed beans
-    const statuses = items.map((item) => item.bean.status);
-    expect(statuses.every((s) => s === 'completed')).toBe(true);
+    const statuses = items.map(item => item.bean.status);
+    expect(statuses.every(s => s === 'completed')).toBe(true);
   });
 
   it('should handle parent-child relationships in tree', async () => {
@@ -114,7 +114,7 @@ describe('Tree Population', () => {
       id: 'parent-1',
       title: 'Parent Epic',
       type: 'epic',
-      status: 'in-progress'
+      status: 'in-progress',
     });
 
     const child = makeMockBean({
@@ -122,7 +122,7 @@ describe('Tree Population', () => {
       title: 'Child Task',
       type: 'task',
       status: 'todo',
-      parent: 'parent-1'
+      parent: 'parent-1',
     });
 
     vi.spyOn(mockService, 'listBeans').mockResolvedValue([parent, child]);
@@ -131,7 +131,7 @@ describe('Tree Population', () => {
     const topLevelItems = await activeProvider.getChildren();
 
     // Parent should be at top level
-    const parentItem = topLevelItems.find((item) => item.bean.id === 'parent-1');
+    const parentItem = topLevelItems.find(item => item.bean.id === 'parent-1');
     expect(parentItem).toBeDefined();
 
     // Child should be retrievable under parent
@@ -147,7 +147,7 @@ describe('Tree Population', () => {
       id: 'draft-parent',
       title: 'Draft Epic',
       type: 'epic',
-      status: 'draft'
+      status: 'draft',
     });
 
     const activeChild = makeMockBean({
@@ -155,14 +155,14 @@ describe('Tree Population', () => {
       title: 'Active Child',
       type: 'task',
       status: 'todo',
-      parent: 'draft-parent'
+      parent: 'draft-parent',
     });
 
     const standaloneActive = makeMockBean({
       id: 'standalone',
       title: 'Standalone Task',
       type: 'task',
-      status: 'todo'
+      status: 'todo',
     });
 
     // First call returns active beans, second call returns all beans for lookup
@@ -183,7 +183,7 @@ describe('Tree Population', () => {
       id: 'draft-parent',
       title: 'Draft Epic',
       type: 'epic',
-      status: 'draft'
+      status: 'draft',
     });
 
     const activeChild = makeMockBean({
@@ -191,7 +191,7 @@ describe('Tree Population', () => {
       title: 'Active Child',
       type: 'task',
       status: 'todo',
-      parent: 'draft-parent'
+      parent: 'draft-parent',
     });
 
     // First call returns draft beans, second call returns other beans for augmentation
@@ -214,7 +214,7 @@ describe('Tree Population', () => {
     const initialBeans = [makeMockBean({ id: 'bean-1', title: 'Initial' })];
     const updatedBeans = [
       makeMockBean({ id: 'bean-1', title: 'Updated' }),
-      makeMockBean({ id: 'bean-2', title: 'New Bean' })
+      makeMockBean({ id: 'bean-2', title: 'New Bean' }),
     ];
 
     const listBeansSpy = vi
@@ -241,7 +241,7 @@ describe('Tree Population', () => {
     const mockBeans: Bean[] = [
       makeMockBean({ id: 'bean-1', type: 'bug', status: 'todo' }),
       makeMockBean({ id: 'bean-2', type: 'task', status: 'todo' }),
-      makeMockBean({ id: 'bean-3', type: 'feature', status: 'todo' })
+      makeMockBean({ id: 'bean-3', type: 'feature', status: 'todo' }),
     ];
 
     vi.spyOn(mockService, 'listBeans').mockResolvedValue(mockBeans);

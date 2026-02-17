@@ -630,6 +630,7 @@ export class BeansService {
       type?: string;
       priority?: string;
       parent?: string;
+      clearParent?: boolean;
       blocking?: string[];
       blockedBy?: string[];
     }
@@ -649,6 +650,7 @@ export class BeansService {
       type?: string;
       priority?: string;
       parent?: string;
+      clearParent?: boolean;
       blocking?: string[];
       blockedBy?: string[];
     },
@@ -679,8 +681,17 @@ export class BeansService {
       args.push('-p', updates.priority);
     }
 
+    if (updates.parent !== undefined && updates.clearParent) {
+      throw new Error('Cannot set parent and clear parent in the same update');
+    }
+
     if (updates.parent !== undefined) {
       args.push('--parent', updates.parent);
+    }
+
+    if (updates.clearParent) {
+      // Beans CLI clears parent when --parent is passed with an empty value.
+      args.push('--parent', '');
     }
 
     if (updates.blocking) {
@@ -747,6 +758,7 @@ export class BeansService {
         type?: string;
         priority?: string;
         parent?: string;
+        clearParent?: boolean;
         blocking?: string[];
         blockedBy?: string[];
       };

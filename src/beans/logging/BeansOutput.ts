@@ -16,6 +16,8 @@ export class BeansOutput {
   private outputChannel: vscode.OutputChannel;
   private level: LogLevel = 'info';
   private mirrorFilePath: string | undefined;
+  private mirrorWriteQueue: Promise<void> = Promise.resolve();
+  private mirrorDirReady = false;
 
   private constructor() {
     this.outputChannel = vscode.window.createOutputChannel('Beans', { log: true });
@@ -58,18 +60,22 @@ export class BeansOutput {
   }
 
   private writeMirror(line: string): void {
-    if (!this.mirrorFilePath) {
+    const mirrorFilePath = this.mirrorFilePath;
+    if (!mirrorFilePath) {
       return;
     }
 
-    void (async () => {
-      try {
-        await fs.mkdir(path.dirname(this.mirrorFilePath!), { recursive: true });
-        await fs.appendFile(this.mirrorFilePath!, `${line}\n`, 'utf8');
-      } catch {
+    this.mirrorWriteQueue = this.mirrorWriteQueue
+      .then(async () => {
+        if (!this.mirrorDirReady) {
+          await fs.mkdir(path.dirname(mirrorFilePath), { recursive: true });
+          this.mirrorDirReady = true;
+        }
+        await fs.appendFile(mirrorFilePath, `${line}\n`, 'utf8');
+      })
+      .catch(() => {
         // Swallow mirror errors to avoid interfering with extension logging.
-      }
-    })();
+      });
   }
 
   /**
@@ -127,7 +133,11 @@ export class BeansOutput {
    * Enable mirroring output messages to a workspace file for MCP log access.
    */
   setMirrorFilePath(filePath: string): void {
+    const changed = this.mirrorFilePath !== filePath;
     this.mirrorFilePath = filePath;
+    if (changed) {
+      this.mirrorDirReady = false;
+    }
   }
 
   getMirrorFilePath(): string | undefined {

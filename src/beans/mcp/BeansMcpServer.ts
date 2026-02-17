@@ -1,8 +1,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { execFile } from 'node:child_process';
+import { createReadStream } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
+import { createInterface } from 'node:readline';
 import { promisify } from 'node:util';
 import { z } from 'zod';
 import { buildBeansCopilotInstructions, writeBeansCopilotInstructions } from '../config';
@@ -212,16 +214,27 @@ class BeansCliBackend {
   async readOutputLog(options?: { lines?: number }): Promise<{ path: string; content: string; linesReturned: number }> {
     const outputPath =
       process.env.BEANS_VSCODE_OUTPUT_LOG || join(this.workspaceRoot, '.beans', '.vscode', 'beans-output.log');
-    const content = await readFile(outputPath, 'utf8');
+    const maxLines = options?.lines && options.lines > 0 ? options.lines : 500;
+    const ringBuffer: string[] = [];
 
-    const allLines = content.split(/\r?\n/).filter(line => line.length > 0);
-    const maxLines = options?.lines && options.lines > 0 ? options.lines : allLines.length;
-    const selected = allLines.slice(-maxLines);
+    const stream = createReadStream(outputPath, { encoding: 'utf8' });
+    const rl = createInterface({ input: stream, crlfDelay: Infinity });
+
+    for await (const line of rl) {
+      if (!line) {
+        continue;
+      }
+
+      ringBuffer.push(line);
+      if (ringBuffer.length > maxLines) {
+        ringBuffer.shift();
+      }
+    }
 
     return {
       path: outputPath,
-      content: selected.join('\n'),
-      linesReturned: selected.length,
+      content: ringBuffer.join('\n'),
+      linesReturned: ringBuffer.length,
     };
   }
 

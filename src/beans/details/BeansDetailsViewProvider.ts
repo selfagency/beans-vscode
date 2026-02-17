@@ -18,7 +18,10 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     return this._currentBean;
   }
 
-  constructor(private readonly extensionUri: vscode.Uri, private readonly service: BeansService) {}
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly service: BeansService
+  ) {}
 
   /**
    * Resolve the webview view
@@ -35,11 +38,11 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.options = {
       enableScripts: true,
-      localResourceRoots: [this.extensionUri, codiconsUri]
+      localResourceRoots: [this.extensionUri, codiconsUri],
     };
 
     // Handle messages from webview
-    webviewView.webview.onDidReceiveMessage(async (message) => {
+    webviewView.webview.onDidReceiveMessage(async message => {
       switch (message.command) {
         case 'updateBean':
           await this.handleBeanUpdate(message.updates);
@@ -150,11 +153,21 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
    * Generate HTML for empty state
    */
   private getEmptyHtml(): string {
+    const nonce = this.getNonce();
+    const csp = [
+      "default-src 'none'",
+      'img-src data:',
+      "style-src 'unsafe-inline'",
+      `script-src 'nonce-${nonce}'`,
+      'font-src data:',
+    ].join('; ');
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="${csp}">
   <title>Bean Details</title>
   <style>
     body {
@@ -182,13 +195,21 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
    * Generate HTML for bean details
    */
   private getBeanHtml(bean: Bean, webview: vscode.Webview): string {
-    const tagsBadges = bean.tags?.map((tag) => this.renderBadge(tag, 'tag')).join('') || '';
+    const nonce = this.getNonce();
+    const tagsBadges = bean.tags?.map(tag => this.renderBadge(tag, 'tag')).join('') || '';
     const iconName = this.getIconName(bean);
 
     // Generate codicon CSS URI for the webview
     const codiconCssUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
     );
+    const csp = [
+      "default-src 'none'",
+      `img-src ${webview.cspSource} data: https:`,
+      `font-src ${webview.cspSource}`,
+      `style-src ${webview.cspSource} 'unsafe-inline'`,
+      `script-src 'nonce-${nonce}'`,
+    ].join('; ');
 
     // Render relationships (blocking / blocked-by only; parent moved to header)
     const blockingSection =
@@ -197,7 +218,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       <div class="section">
         <h3>Blocks</h3>
         <div class="badge-container">
-          ${bean.blocking.map((id) => this.renderBadge(id, 'relationship')).join('')}
+          ${bean.blocking.map(id => this.renderBadge(id, 'relationship')).join('')}
         </div>
       </div>
     `
@@ -209,7 +230,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       <div class="section">
         <h3>Blocked By</h3>
         <div class="badge-container">
-          ${bean.blockedBy.map((id) => this.renderBadge(id, 'relationship')).join('')}
+          ${bean.blockedBy.map(id => this.renderBadge(id, 'relationship')).join('')}
         </div>
       </div>
     `
@@ -231,16 +252,17 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
           this._parentBean.title
         )}</span>`
       : bean.parent
-      ? ` <span class="parent-sep">&middot;</span> <span class="parent-label">Parent</span> <span class="parent-code">${this.escapeHtml(
-          bean.parent.split('-').pop() || ''
-        )}</span>`
-      : '';
+        ? ` <span class="parent-sep">&middot;</span> <span class="parent-label">Parent</span> <span class="parent-code">${this.escapeHtml(
+            bean.parent.split('-').pop() || ''
+          )}</span>`
+        : '';
 
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="${csp}">
   <title>Bean Details</title>
   <link href="${codiconCssUri}" rel="stylesheet" />
   <style>
@@ -507,7 +529,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     ${blockedBySection}
   </div>
 
-  <script>
+  <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
 
     function updateField(field, value) {
@@ -553,8 +575,14 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     html = html.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
     html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
 
-    // Links
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+    // Links (sanitize href to avoid scriptable protocols in webview)
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, linkText: string, href: string) => {
+      const safeHref = this.sanitizeHref(href);
+      if (!safeHref) {
+        return linkText;
+      }
+      return `<a href="${this.escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+    });
 
     // Lists
     html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
@@ -581,6 +609,32 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  /**
+   * Allow only safe URL schemes for markdown links rendered in webview content.
+   */
+  private sanitizeHref(href: string): string | undefined {
+    const trimmed = href.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+
+    // Block control characters and whitespace obfuscation in protocol segment.
+    if (/\s/.test(trimmed) || /[\u0000-\u001F\u007F]/.test(trimmed)) {
+      return undefined;
+    }
+
+    // Explicitly allow common safe absolute schemes only.
+    if (/^https?:\/\//i.test(trimmed) || /^mailto:/i.test(trimmed)) {
+      return trimmed;
+    }
+
+    return undefined;
+  }
+
+  private getNonce(): string {
+    return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
   }
 
   /**

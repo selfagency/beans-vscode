@@ -22,7 +22,7 @@ function makeBean(overrides: Partial<Bean> = {}): Bean {
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-02'),
     etag: 'etag1',
-    ...overrides
+    ...overrides,
   } as Bean;
 }
 

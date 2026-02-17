@@ -38,7 +38,7 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
         const info = this.getServerInfo();
         await vscode.window
           .showInformationMessage(`Beans MCP: ${info.command} ${info.args.join(' ')}`, 'Copy command', 'Open logs')
-          .then(async (selection) => {
+          .then(async selection => {
             if (selection === 'Copy command') {
               await vscode.env.clipboard.writeText(`${info.command} ${info.args.join(' ')}`);
             } else if (selection === 'Open logs') {
@@ -112,9 +112,9 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
       args,
       env: {
         BEANS_VSCODE_MCP: '1',
-        BEANS_VSCODE_OUTPUT_LOG: outputLogPath
+        BEANS_VSCODE_OUTPUT_LOG: outputLogPath,
       },
-      version
+      version,
     };
   }
 }

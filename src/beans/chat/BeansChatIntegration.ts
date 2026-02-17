@@ -9,7 +9,10 @@ const CHAT_PARTICIPANT_ID = 'beans.chat';
 export class BeansChatIntegration {
   private readonly logger = BeansOutput.getInstance();
 
-  constructor(private readonly context: vscode.ExtensionContext, private readonly service: BeansService) {}
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly service: BeansService
+  ) {}
 
   register(): void {
     if (!vscode.chat?.createChatParticipant) {
@@ -26,34 +29,34 @@ export class BeansChatIntegration {
             prompt: 'Summarize active beans',
             label: 'Summarize active beans',
             participant: CHAT_PARTICIPANT_ID,
-            command: 'summary'
+            command: 'summary',
           },
           {
             prompt: 'Show the top-priority issues for this workspace',
             label: 'Top-priority issues',
             participant: CHAT_PARTICIPANT_ID,
-            command: 'priority'
+            command: 'priority',
           },
           {
             prompt: 'Which issues are stale in this workspace?',
             label: 'Stale issues',
             participant: CHAT_PARTICIPANT_ID,
-            command: 'stale'
+            command: 'stale',
           },
           {
             prompt: 'Help me create a new issue',
             label: 'Create a new issue',
             participant: CHAT_PARTICIPANT_ID,
-            command: 'create'
+            command: 'create',
           },
           {
             prompt: 'Help me create an issue-related commit for the current workspace',
             label: 'Issue-related commit',
             participant: CHAT_PARTICIPANT_ID,
-            command: 'commit'
-          }
+            command: 'commit',
+          },
         ];
-      }
+      },
     };
 
     this.context.subscriptions.push(participant);
@@ -105,7 +108,7 @@ export class BeansChatIntegration {
     stream.markdown(`- Completed: **${counts.completed ?? 0}**\n`);
     stream.markdown(`- Scrapped: **${counts.scrapped ?? 0}**\n\n`);
 
-    const inProgress = beans.filter((b) => b.status === 'in-progress').slice(0, 10);
+    const inProgress = beans.filter(b => b.status === 'in-progress').slice(0, 10);
     if (inProgress.length > 0) {
       stream.markdown('### In-progress beans\n');
       for (const bean of inProgress) {
@@ -123,7 +126,7 @@ export class BeansChatIntegration {
         high: 1,
         normal: 2,
         low: 3,
-        deferred: 4
+        deferred: 4,
       };
 
       const statusDiff = statusRank(a.status) - statusRank(b.status);
@@ -182,7 +185,7 @@ export class BeansChatIntegration {
       high: 1,
       normal: 2,
       low: 3,
-      deferred: 4
+      deferred: 4,
     };
 
     const prioritized = [...beans].sort((a, b) => {
@@ -219,7 +222,7 @@ export class BeansChatIntegration {
     const staleMsThreshold = staleDaysThreshold * 24 * 60 * 60 * 1000;
 
     const stale = beans
-      .filter((bean) => nowMs - bean.updatedAt.getTime() >= staleMsThreshold)
+      .filter(bean => nowMs - bean.updatedAt.getTime() >= staleMsThreshold)
       .sort((a, b) => a.updatedAt.getTime() - b.updatedAt.getTime());
 
     stream.markdown(`## Stale issues (${staleDaysThreshold}+ days without updates)\n\n`);

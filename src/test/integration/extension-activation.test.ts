@@ -24,12 +24,12 @@ describe('Extension Activation', () => {
         get: vi.fn(),
         update: vi.fn(),
         keys: vi.fn(() => []),
-        setKeysForSync: vi.fn()
+        setKeysForSync: vi.fn(),
       },
       workspaceState: {
         get: vi.fn(),
         update: vi.fn(),
-        keys: vi.fn(() => [])
+        keys: vi.fn(() => []),
       },
       secrets: {} as any,
       storageUri: vscode.Uri.file('/mock/storage'),
@@ -42,14 +42,14 @@ describe('Extension Activation', () => {
       asAbsolutePath: (path: string) => `/mock/extension/${path}`,
       storagePath: '/mock/storage',
       globalStoragePath: '/mock/globalStorage',
-      logPath: '/mock/log'
+      logPath: '/mock/log',
     };
 
     // Mock workspace folder
     mockWorkspaceFolder = {
       uri: vscode.Uri.file('/mock/workspace'),
       name: 'test-workspace',
-      index: 0
+      index: 0,
     };
   });
 
@@ -74,7 +74,7 @@ describe('Extension Activation', () => {
       }),
       has: vi.fn(),
       inspect: vi.fn(),
-      update: vi.fn()
+      update: vi.fn(),
     } as any);
 
     // Mock file system operations
@@ -109,7 +109,7 @@ describe('Extension Activation', () => {
       }),
       has: vi.fn(),
       inspect: vi.fn(),
-      update: vi.fn()
+      update: vi.fn(),
     } as any);
 
     // Mock no .beans.yml found
@@ -138,7 +138,7 @@ describe('Extension Activation', () => {
       }),
       has: vi.fn(),
       inspect: vi.fn(),
-      update: vi.fn()
+      update: vi.fn(),
     } as any);
 
     // Mock .beans.yml found
@@ -167,7 +167,7 @@ describe('Extension Activation', () => {
       }),
       has: vi.fn(),
       inspect: vi.fn(),
-      update: vi.fn()
+      update: vi.fn(),
     } as any);
 
     vi.spyOn(vscode.workspace, 'findFiles').mockResolvedValue([]);
