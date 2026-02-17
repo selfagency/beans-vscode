@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - Various bug fixes and test updates from branch `fixes/worktree-20260217`.
+- Restored the Details pane title icon rendering by switching from codicon-font dependency to resilient inline icons.
 
 ### Changed
 

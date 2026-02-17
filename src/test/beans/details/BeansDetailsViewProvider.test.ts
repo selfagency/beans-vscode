@@ -81,7 +81,7 @@ describe('BeansDetailsViewProvider', () => {
     provider.resolveWebviewView(view, {} as any, {} as any);
 
     expect(webview.options.enableScripts).toBe(true);
-    expect(webview.options.localResourceRoots).toHaveLength(2);
+    expect(webview.options.localResourceRoots).toHaveLength(1);
     expect(webview.html).toContain('Content-Security-Policy');
     expect(webview.html).toContain('Select a bean to view details');
     expect(mockLogger.debug).toHaveBeenCalledWith('Bean details view resolved');
@@ -102,7 +102,8 @@ describe('BeansDetailsViewProvider', () => {
     expect(provider.currentBean?.id).toBe(bean.id);
     expect(webview.html).toContain('Bean title');
     expect(webview.html).toContain('Parent bean');
-    expect(webview.html).toContain('codicon-issues');
+    expect(webview.html).toContain('role="img"');
+    expect(webview.html).toContain('📋');
   });
 
   it('falls back when full bean fetch fails', async () => {
@@ -148,7 +149,7 @@ describe('BeansDetailsViewProvider', () => {
     expect(executeCommandSpy).toHaveBeenCalledWith('beans.refreshAll');
     expect(infoSpy).toHaveBeenCalledWith('Bean updated successfully');
     expect(webview.html).toContain('After');
-    expect(webview.html).toContain('codicon-bug');
+    expect(webview.html).toContain('🐛');
   });
 
   it('handles update errors from message handler', async () => {

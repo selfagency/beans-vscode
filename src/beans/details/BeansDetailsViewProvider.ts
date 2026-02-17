@@ -33,16 +33,13 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   ): void {
     this._view = webviewView;
 
-    // Include codicons dist folder so the webview can load the font
-    const codiconsUri = vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist');
-
     webviewView.webview.options = {
       enableScripts: true,
-      localResourceRoots: [this.extensionUri, codiconsUri],
+      localResourceRoots: [this.extensionUri],
     };
 
     // Handle messages from webview
-    webviewView.webview.onDidReceiveMessage(async message => {
+    webviewView.webview.onDidReceiveMessage(async (message: { command?: string; updates?: unknown }) => {
       switch (message.command) {
         case 'updateBean':
           await this.handleBeanUpdate(message.updates);
@@ -198,11 +195,8 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     const nonce = this.getNonce();
     const tagsBadges = bean.tags?.map(tag => this.renderBadge(tag, 'tag')).join('') || '';
     const iconName = this.getIconName(bean);
-
-    // Generate codicon CSS URI for the webview
-    const codiconCssUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
-    );
+    const iconGlyph = this.getIconGlyph(iconName);
+    const iconLabel = this.getIconLabel(bean);
     const csp = [
       "default-src 'none'",
       `img-src ${webview.cspSource} data: https:`,
@@ -264,7 +258,6 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="${csp}">
   <title>Bean Details</title>
-  <link href="${codiconCssUri}" rel="stylesheet" />
   <style>
     body {
       padding: 0;
@@ -473,7 +466,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 <body>
   <div class="header">
     <div class="title-row">
-      <span class="codicon codicon-${iconName} title-icon"></span>
+      <span class="title-icon" role="img" aria-label="${this.escapeHtml(iconLabel)}">${this.escapeHtml(iconGlyph)}</span>
       <h1 class="title">${this.escapeHtml(bean.title)}</h1>
     </div>
     <div class="bean-id">
@@ -673,5 +666,34 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       default:
         return 'issues';
     }
+  }
+
+  /**
+   * Use resilient inline glyphs for title icons (no external codicon font dependency).
+   */
+  private getIconGlyph(iconName: string): string {
+    switch (iconName) {
+      case 'issue-closed':
+        return '✅';
+      case 'issue-draft':
+        return '📝';
+      case 'error':
+        return '🗑️';
+      case 'milestone':
+        return '🏁';
+      case 'zap':
+        return '⚡';
+      case 'lightbulb':
+        return '💡';
+      case 'bug':
+        return '🐛';
+      case 'issues':
+      default:
+        return '📋';
+    }
+  }
+
+  private getIconLabel(bean: Bean): string {
+    return `${bean.type} ${bean.status} bean`;
   }
 }
