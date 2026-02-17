@@ -365,14 +365,20 @@ export class BeansService {
         (error as NodeJS.ErrnoException).code === 'ENOENT'
       ) {
         if (this.isCacheValid()) {
-          this.offlineMode = true;
-          this.logger.warn('CLI unavailable, using cached data (offline mode)');
+          // Warn user once when entering offline mode
+          if (!this.offlineMode) {
+            this.offlineMode = true;
+            this.logger.warn('CLI unavailable, using cached data (offline mode)');
+            vscode.window.showWarningMessage('Beans CLI unavailable. Using cached data (may be stale).');
+          }
           return this.filterBeans(this.cachedBeans!, options);
         }
 
         // No valid cache available - rethrow original error to preserve type info
-        this.offlineMode = true;
-        this.logger.error('CLI unavailable and no cached data available');
+        if (!this.offlineMode) {
+          this.offlineMode = true;
+          this.logger.error('CLI unavailable and no cached data available');
+        }
         throw error;
       }
 
