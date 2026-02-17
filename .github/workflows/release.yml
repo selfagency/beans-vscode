@@ -2,7 +2,9 @@ name: Release
 
 on:
   workflow_run:
-    workflows: ["CI", "Remote Compatibility Tests"]
+    # Only trigger when the final integration/remote compatibility workflow completes.
+    # This prevents running the release detector multiple times (once per upstream workflow).
+    workflows: ["Remote Compatibility Tests"]
     types: [completed]
 
 permissions:
@@ -11,7 +13,9 @@ permissions:
 
 concurrency:
   group: release-${{ github.event.workflow_run.head_sha }}
-  cancel-in-progress: false
+  # Cancel any in-progress release detector runs for the same commit so we don't run the
+  # release job multiple times during a rapid sequence of workflow completions.
+  cancel-in-progress: true
 
 jobs:
   detect-tag:
