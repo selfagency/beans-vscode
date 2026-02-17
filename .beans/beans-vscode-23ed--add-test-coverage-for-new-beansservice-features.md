@@ -5,8 +5,8 @@ status: todo
 type: task
 priority: normal
 created_at: 2026-02-17T02:32:49Z
-updated_at: 2026-02-17T07:13:33Z
-parent: beans-vscode-3y36
+updated_at: 2026-02-17T22:51:56Z
+parent: beans-vscode-tkaj
 ---
 
 New BeansService features lack unit test coverage:
