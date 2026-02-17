@@ -233,6 +233,7 @@ jobs:
           # Check if there are changes to commit
           if git diff --quiet -- package.json CHANGELOG.md; then
             echo "No version or changelog changes to commit."
+            echo "SKIP_TAG_MOVE=true" >> $GITHUB_ENV
           else
             git add package.json CHANGELOG.md
             git commit -m "chore(release): update version and changelog for ${{ needs.detect-tag.outputs.release_tag }} [skip ci]"
@@ -243,7 +244,13 @@ jobs:
             echo "Moving tag ${{ needs.detect-tag.outputs.release_tag }} to $NEW_SHA"
             git tag -f ${{ needs.detect-tag.outputs.release_tag }} HEAD
             git push origin ${{ needs.detect-tag.outputs.release_tag }} --force
+            echo "TAG_MOVED=true" >> $GITHUB_ENV
           fi
+      
+      - name: Checkout updated tag for build
+        run: |
+          git fetch origin --tags
+          git checkout ${{ needs.detect-tag.outputs.release_tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
