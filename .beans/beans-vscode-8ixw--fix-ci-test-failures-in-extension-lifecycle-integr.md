@@ -40,3 +40,4 @@ Additional workflow fixes:
 - After committing, tag is moved forward to new commit so package/release uses updated files
 - Removed duplicate version sync step
 - Fixed duplicate changelog in GitHub releases by using pre-generated notes instead of auto-generation
+- Added checkout step after tag movement to ensure build happens from the commit with version bump (commit 6868125)
