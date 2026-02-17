@@ -429,6 +429,15 @@ export class BeansService {
       );
     }
 
+    // Validate additional required fields for Bean interface
+    if (!rawBean.slug || !rawBean.path || !rawBean.body || !rawBean.etag) {
+      throw new BeansJSONParseError(
+        'Bean missing required fields (slug, path, body, or etag)',
+        JSON.stringify(rawBean),
+        new Error('Invalid bean structure')
+      );
+    }
+
     const bean = rawBean;
     // Derive short code from ID: last segment after final hyphen
     const code = bean.code || (bean.id ? bean.id.split('-').pop() : '') || '';
