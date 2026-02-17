@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { execFile } from 'node:child_process';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { z } from 'zod';
 import { buildBeansCopilotInstructions, writeBeansCopilotInstructions } from '../config';
@@ -51,8 +51,9 @@ class BeansCliBackend {
 
     const beansRoot = this.getBeansRoot();
     const target = resolve(beansRoot, cleaned);
+    const relativeTarget = relative(beansRoot, target);
 
-    if (!target.startsWith(`${beansRoot}/`) && target !== beansRoot) {
+    if (relativeTarget.startsWith('..') || isAbsolute(relativeTarget)) {
       throw new Error('Path must stay within .beans directory');
     }
 

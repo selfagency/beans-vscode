@@ -11,6 +11,10 @@ import {
 // Mock fs module
 vi.mock('node:fs/promises');
 
+function normalizeSlashes(value: string): string {
+  return value.replace(/\\/g, '/');
+}
+
 describe('CopilotSkill', () => {
   describe('COPILOT_SKILL_RELATIVE_PATH', () => {
     it('should have correct path structure', () => {
@@ -99,7 +103,9 @@ describe('CopilotSkill', () => {
 
       await writeBeansCopilotSkill('/workspace', 'content');
 
-      expect(mkdirSpy).toHaveBeenCalledWith(expect.stringContaining('.github/skills/beans'), { recursive: true });
+      const mkdirPath = mkdirSpy.mock.calls[0]?.[0] as string;
+      expect(normalizeSlashes(mkdirPath)).toContain('/.github/skills/beans');
+      expect(mkdirSpy).toHaveBeenCalledWith(expect.any(String), { recursive: true });
     });
 
     it('should handle mkdir errors', async () => {
@@ -124,8 +130,8 @@ describe('CopilotSkill', () => {
       const result1 = await writeBeansCopilotSkill('/workspace1', 'content1');
       const result2 = await writeBeansCopilotSkill('/workspace2', 'content2');
 
-      expect(result1).toContain('/workspace1/');
-      expect(result2).toContain('/workspace2/');
+      expect(normalizeSlashes(result1)).toContain('/workspace1/');
+      expect(normalizeSlashes(result2)).toContain('/workspace2/');
       expect(writeFileSpy).toHaveBeenNthCalledWith(1, result1, 'content1', 'utf8');
       expect(writeFileSpy).toHaveBeenNthCalledWith(2, result2, 'content2', 'utf8');
     });
@@ -177,8 +183,12 @@ describe('CopilotSkill', () => {
       await removeBeansCopilotSkill('/workspace1');
       await removeBeansCopilotSkill('/workspace2');
 
-      expect(rmSpy).toHaveBeenNthCalledWith(1, expect.stringContaining('/workspace1/'), { force: true });
-      expect(rmSpy).toHaveBeenNthCalledWith(2, expect.stringContaining('/workspace2/'), { force: true });
+      const firstPath = rmSpy.mock.calls[0]?.[0] as string;
+      const secondPath = rmSpy.mock.calls[1]?.[0] as string;
+      expect(normalizeSlashes(firstPath)).toContain('/workspace1/');
+      expect(normalizeSlashes(secondPath)).toContain('/workspace2/');
+      expect(rmSpy).toHaveBeenNthCalledWith(1, expect.any(String), { force: true });
+      expect(rmSpy).toHaveBeenNthCalledWith(2, expect.any(String), { force: true });
     });
   });
 });
