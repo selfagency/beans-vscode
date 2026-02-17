@@ -66,8 +66,7 @@ Click the `+` icon in the Beans sidebar, enter a title, select a type (task, bug
 - **🤖 AI Integration**: MCP tools, `@beans` chat participant, auto-generated Copilot skills & instructions
 - **🌐 Remote Ready**: Works seamlessly in SSH, WSL, containers, and Codespaces
 - **⚡ Keyboard-First**: Configurable shortcuts for all operations
- Extensively Tested**: Comprehensive automated unit and integration test suite
-- **♿ 
+- **🧪 Extensively Tested**: Comprehensive automated unit and integration test suite
 - **♿ Accessible**: Built following WCAG 2.2 Level AA guidelines
 
 ## Documentation
