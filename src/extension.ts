@@ -253,7 +253,7 @@ async function promptForCLIInstallation(): Promise<void> {
   );
 
   if (result === 'Install Instructions') {
-    vscode.env.openExternal(vscode.Uri.parse('https://github.com/jfcantinz/beans#installation'));
+    vscode.env.openExternal(vscode.Uri.parse('https://github.com/hmans/beans#installation'));
   } else if (result === 'Configure Path') {
     await vscode.commands.executeCommand('workbench.action.openSettings', 'beans.cliPath');
   }
@@ -317,7 +317,7 @@ async function promptForInitialization(
       }
     }
   } else if (result === 'Learn More') {
-    vscode.env.openExternal(vscode.Uri.parse('https://github.com/jfcantinz/beans'));
+    vscode.env.openExternal(vscode.Uri.parse('https://github.com/hmans/beans'));
   } else if (result === 'Not Now') {
     // Remember dismissal for this session
     initPromptDismissed = true;
