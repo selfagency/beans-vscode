@@ -364,7 +364,7 @@ export class BeansService {
         if (this.isCacheValid()) {
           this.offlineMode = true;
           this.logger.warn('CLI unavailable, using cached data (offline mode)');
-          return this.cachedBeans!;
+          return this.filterBeans(this.cachedBeans!, options);
         }
 
         // No valid cache available
@@ -378,6 +378,39 @@ export class BeansService {
       // For other errors, just throw
       throw error;
     }
+  }
+
+  /**
+   * Filter beans based on provided options
+   * Used for offline mode to apply same filters as CLI
+   */
+  private filterBeans(beans: Bean[], options?: { status?: string[]; type?: string[]; search?: string }): Bean[] {
+    if (!options) {
+      return beans;
+    }
+
+    let filtered = beans;
+
+    // Filter by status
+    if (options.status && options.status.length > 0) {
+      filtered = filtered.filter(bean => options.status!.includes(bean.status));
+    }
+
+    // Filter by type
+    if (options.type && options.type.length > 0) {
+      filtered = filtered.filter(bean => options.type!.includes(bean.type));
+    }
+
+    // Filter by search (search in title and body)
+    if (options.search) {
+      const searchLower = options.search.toLowerCase();
+      filtered = filtered.filter(
+        bean =>
+          bean.title.toLowerCase().includes(searchLower) || (bean.body && bean.body.toLowerCase().includes(searchLower))
+      );
+    }
+
+    return filtered;
   }
 
   /**
