@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-02-17
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.0.5...v1.0.6
+
+_Source: changes from v1.0.5 to v1.0.6._
+
+
 ## [1.0.5] - 2026-02-17
 
 ### Added
