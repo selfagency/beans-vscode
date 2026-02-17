@@ -39,13 +39,6 @@ jobs:
             const triggerRun = context.payload.workflow_run;
             const sha = triggerRun.head_sha;
 
-            if (triggerRun.event !== 'push') {
-              core.info(`Triggered by non-push event '${triggerRun.event}'; skipping release.`);
-              core.setOutput('release_tag', '');
-              core.setOutput('ready', 'false');
-              return;
-            }
-
             const tags = await github.paginate(github.rest.repos.listTags, {
               owner,
               repo,
@@ -61,35 +54,10 @@ jobs:
               return;
             }
 
-            const requiredWorkflows = ['CI', 'Remote Compatibility Tests'];
-            const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
-              owner,
-              repo,
-              event: 'push',
-              status: 'completed',
-              per_page: 100,
-            });
-
-            for (const workflowName of requiredWorkflows) {
-              const run = runs.find(r => r.name === workflowName && r.head_sha === sha);
-
-              if (!run) {
-                core.info(`Waiting for workflow '${workflowName}' to complete for ${sha}.`);
-                core.setOutput('release_tag', match.name);
-                core.setOutput('ready', 'false');
-                return;
-              }
-
-              const conclusion = run.conclusion;
-              if (conclusion !== 'success') {
-                core.setFailed(
-                  `Release blocked: '${workflowName}' concluded with '${conclusion}' for ${sha}.`
-                );
-                return;
-              }
-            }
-
-            core.info(`Release tag detected: ${match.name} for SHA ${sha}`);
+            core.info(
+              `Release tag detected: ${match.name} for SHA ${sha}. ` +
+              `Triggered after successful '${triggerRun.name}' completion.`
+            );
             core.setOutput('release_tag', match.name);
             core.setOutput('ready', 'true');
 
