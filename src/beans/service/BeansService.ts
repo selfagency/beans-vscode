@@ -433,6 +433,7 @@ export class BeansService {
    * Normalize bean data from CLI to ensure required fields exist.
    * CLI outputs snake_case (created_at, updated_at, blocked_by, parent_id, blocking_ids, blocked_by_ids).
    * We map to camelCase model fields and derive the short 'code' from the ID.
+   * For relationship arrays, canonical `*_ids` keys are preferred over legacy keys.
    * @throws BeansJSONParseError if bean is missing required fields
    */
   private normalizeBean(rawBean: RawBeanFromCLI): Bean {
@@ -462,6 +463,7 @@ export class BeansService {
       tags: bean.tags || [],
       parent: bean.parent || bean.parentId || bean.parent_id,
       blocking: bean.blocking || bean.blockingIds || bean.blocking_ids || [],
+      // Prefer canonical *_ids fields when both canonical and legacy keys are present.
       blockedBy: bean.blockedBy || bean.blockedByIds || bean.blocked_by_ids || bean.blocked_by || [],
       createdAt: this.parseDateValue(bean.createdAt || bean.created_at),
       updatedAt: this.parseDateValue(bean.updatedAt || bean.updated_at),
