@@ -23,9 +23,29 @@ vi.mock('vscode', () => {
     }),
   };
 
+  const mockOutputChannel = {
+    appendLine: vi.fn(),
+    append: vi.fn(),
+    clear: vi.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
+    dispose: vi.fn(),
+  };
+
   return {
     workspace: {
       getConfiguration: vi.fn(() => mockConfig),
+    },
+    window: {
+      createOutputChannel: vi.fn(() => mockOutputChannel),
+    },
+    LogLevel: {
+      Trace: 0,
+      Debug: 1,
+      Info: 2,
+      Warning: 3,
+      Error: 4,
+      Off: 5,
     },
   };
 });
@@ -131,7 +151,7 @@ describe('BeansService', () => {
     });
 
     it('applies status filters', async () => {
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('--status');
         expect(args).toContain('todo');
         callback(null, { stdout: JSON.stringify(mockBeanData), stderr: '' });
@@ -141,7 +161,7 @@ describe('BeansService', () => {
     });
 
     it('applies type filters', async () => {
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('--type');
         expect(args).toContain('task');
         callback(null, { stdout: JSON.stringify(mockBeanData), stderr: '' });
@@ -151,7 +171,7 @@ describe('BeansService', () => {
     });
 
     it('applies search filter', async () => {
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('--search');
         expect(args).toContain('test');
         callback(null, { stdout: JSON.stringify(mockBeanData), stderr: '' });
@@ -247,7 +267,7 @@ describe('BeansService', () => {
         etag: 'etag1',
       };
 
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('show');
         expect(args).toContain('test-abc1');
         callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
@@ -274,7 +294,7 @@ describe('BeansService', () => {
         etag: 'etag1',
       };
 
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('create');
         expect(args).toContain('New Bean');
         expect(args).toContain('-t');
@@ -306,7 +326,7 @@ describe('BeansService', () => {
         etag: 'etag1',
       };
 
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('-s');
         expect(args).toContain('in-progress');
         expect(args).toContain('-p');
@@ -373,7 +393,7 @@ describe('BeansService', () => {
         etag: 'etag1',
       };
 
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('update');
         expect(args).toContain('test-abc1');
         expect(args).toContain('-s');
@@ -399,7 +419,7 @@ describe('BeansService', () => {
         etag: 'etag1',
       };
 
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('-s');
         expect(args).toContain('in-progress');
         expect(args).toContain('-t');
@@ -431,7 +451,7 @@ describe('BeansService', () => {
         etag: 'etag1',
       };
 
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('--parent');
         expect(args).toContain('parent-123');
         callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
@@ -455,7 +475,7 @@ describe('BeansService', () => {
         etag: 'etag1',
       };
 
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('--blocking');
         expect(args).toContain('block-1,block-2');
         callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
@@ -471,7 +491,7 @@ describe('BeansService', () => {
 
   describe('deleteBean', () => {
     it('deletes a bean by ID', async () => {
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('delete');
         expect(args).toContain('test-abc1');
         callback(null, { stdout: '{}', stderr: '' });
@@ -544,7 +564,7 @@ describe('BeansService', () => {
     });
 
     it('batch updates multiple beans', async () => {
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         const id = args[args.indexOf('update') + 2];
         const mockBean = {
           id,
@@ -586,7 +606,7 @@ describe('BeansService', () => {
 
   describe('init', () => {
     it('initializes workspace without options', async () => {
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('init');
         callback(null, { stdout: '{}', stderr: '' });
       });
@@ -595,7 +615,7 @@ describe('BeansService', () => {
     });
 
     it('initializes workspace with options', async () => {
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('--prefix');
         expect(args).toContain('custom');
         expect(args).toContain('--default-type');
@@ -609,7 +629,7 @@ describe('BeansService', () => {
 
   describe('prime', () => {
     it('returns guidance text', async () => {
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('prime');
         callback(null, { stdout: 'Guidance text here\n', stderr: '' });
       });
