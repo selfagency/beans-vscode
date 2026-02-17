@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Restored the Details pane title icon rendering by switching from codicon-font dependency to resilient inline icons.
 - Fixed CI pnpm cache setup failures by adding the required `packages` field to `pnpm-workspace.yaml`.
 - Fixed TypeScript compile errors in `BeansCommands` by aligning Copilot command attempt typing with VS Code `Thenable` return types.
+- Fixed PR conversation cleanup workflow to resolve unresolved review threads on all closed PRs instead of only Copilot-authored PRs.
 
 ### Changed
 
