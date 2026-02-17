@@ -360,7 +360,14 @@ describe('Extension lifecycle coverage', () => {
   it('covers init prompt initialize, not-now dismissal, and learn-more branches', async () => {
     state.initialized = false;
 
-    state.showInfoQueue.push('Initialize', 'Generate now');
+    vi.spyOn(vscode.window, 'showInformationMessage').mockImplementation(async (message: string) => {
+      if (message.includes('Generate the Copilot instructions file for this workspace now?')) {
+        return 'Generate now' as any;
+      }
+      return state.showInfoQueue.shift() as any;
+    });
+
+    state.showInfoQueue.push('Initialize');
     await activate(makeContext());
     await vi.waitFor(() => {
       expect(configFns.buildBeansCopilotInstructions).toHaveBeenCalled();
