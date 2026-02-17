@@ -20,49 +20,133 @@ fi
 
 TAG="v${VERSION}"
 
-if ! command -v gh >/dev/null 2>&1; then
-  echo "❌ GitHub CLI (gh) is required."
+GH_BIN=""
+
+if command -v gh >/dev/null 2>&1; then
+  GH_BIN="$(command -v gh)"
+elif command -v gh.exe >/dev/null 2>&1; then
+  GH_BIN="$(command -v gh.exe)"
+elif [[ "${OS:-}" == "Windows_NT" ]] && command -v where.exe >/dev/null 2>&1; then
+  GH_BIN="$(where.exe gh 2>/dev/null | tr -d '\r' | head -n1 || true)"
+fi
+
+if [[ -z "$GH_BIN" ]]; then
+  echo "❌ GitHub CLI (gh) is required and was not found in this Bash environment PATH."
+  echo "   Tip (Windows + Git Bash): ensure GitHub CLI is installed and available to Git Bash PATH, or run from a shell where 'gh' resolves."
   exit 1
 fi
 
-if ! gh auth status >/dev/null 2>&1; then
-  echo "❌ GitHub CLI is not authenticated. Run: gh auth login"
+# On Windows Git Bash, HOME is often /home/<user> and APPDATA may be unset.
+# gh.exe then fails to find existing auth from Windows profile. Bridge GH_CONFIG_DIR.
+if [[ -z "${GH_CONFIG_DIR:-}" ]]; then
+  APPDATA_WIN="${APPDATA:-}"
+
+  if [[ -n "$APPDATA_WIN" ]]; then
+    if command -v cygpath >/dev/null 2>&1; then
+      APPDATA_UNIX="$(cygpath -u "$APPDATA_WIN" 2>/dev/null || true)"
+      if [[ -n "$APPDATA_UNIX" ]]; then
+        export GH_CONFIG_DIR="$APPDATA_UNIX/GitHub CLI"
+      fi
+    fi
+
+    if [[ -z "${GH_CONFIG_DIR:-}" ]]; then
+      export GH_CONFIG_DIR="${APPDATA_WIN}\\GitHub CLI"
+    fi
+  fi
+fi
+
+if [[ -z "${GH_CONFIG_DIR:-}" ]]; then
+  for hosts_file in \
+    /mnt/c/Users/*/AppData/Roaming/'GitHub CLI'/hosts.yml \
+    /c/Users/*/AppData/Roaming/'GitHub CLI'/hosts.yml; do
+    if [[ -f "$hosts_file" ]]; then
+      export GH_CONFIG_DIR="$(dirname "$hosts_file")"
+      break
+    fi
+  done
+fi
+
+GIT_BIN=""
+
+if command -v git >/dev/null 2>&1; then
+  GIT_BIN="$(command -v git)"
+elif command -v git.exe >/dev/null 2>&1; then
+  GIT_BIN="$(command -v git.exe)"
+elif [[ "${OS:-}" == "Windows_NT" ]] && command -v where.exe >/dev/null 2>&1; then
+  GIT_BIN="$(where.exe git 2>/dev/null | tr -d '\r' | head -n1 || true)"
+fi
+
+if [[ -z "$GIT_BIN" ]]; then
+  echo "❌ Git CLI is required and was not found in this Bash environment PATH."
+  echo "   Tip (Windows + Git Bash): install Git for Windows and ensure git.exe is available to Git Bash PATH."
   exit 1
 fi
 
-if [[ -n "$(git status --porcelain)" ]]; then
+if ! "$GH_BIN" auth status >/dev/null 2>&1; then
+  if [[ -n "${GH_TOKEN:-}" || -n "${GITHUB_TOKEN:-}" ]]; then
+    echo "ℹ️ gh auth status failed in this shell, but GH_TOKEN/GITHUB_TOKEN is set; continuing with token auth."
+  elif "$GH_BIN" api user --jq '.login' >/dev/null 2>&1; then
+    echo "ℹ️ gh auth status failed in this shell, but API auth succeeded; continuing."
+  else
+    # Windows Git Bash fallback: pull token from PowerShell gh session if available.
+    if command -v powershell.exe >/dev/null 2>&1; then
+      PS_GH_TOKEN="$(powershell.exe -NoProfile -Command "gh auth token 2>\$null" 2>/dev/null | tr -d '\r' | tail -n1 || true)"
+      if [[ -n "$PS_GH_TOKEN" ]]; then
+        export GH_TOKEN="$PS_GH_TOKEN"
+        if "$GH_BIN" api user --jq '.login' >/dev/null 2>&1; then
+          echo "ℹ️ Loaded GH_TOKEN from PowerShell gh auth token; continuing."
+        else
+          echo "❌ Retrieved token from PowerShell, but GitHub API auth still failed in this Bash environment."
+          exit 1
+        fi
+      else
+        echo "❌ GitHub CLI is not authenticated in this Bash environment."
+        echo "   Run: gh auth login"
+        echo "   Or set GH_TOKEN (or GITHUB_TOKEN) before running release."
+        exit 1
+      fi
+    else
+      echo "❌ GitHub CLI is not authenticated in this Bash environment."
+      echo "   Run: gh auth login"
+      echo "   Or set GH_TOKEN (or GITHUB_TOKEN) before running release."
+      exit 1
+    fi
+  fi
+fi
+
+if [[ -n "$("$GIT_BIN" status --porcelain)" ]]; then
   echo "❌ Working tree is not clean. Commit or stash changes first."
   exit 1
 fi
 
-CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+CURRENT_BRANCH="$("$GIT_BIN" rev-parse --abbrev-ref HEAD)"
 if [[ "$CURRENT_BRANCH" != "main" ]]; then
   echo "❌ This script must run from 'main'. Current branch: $CURRENT_BRANCH"
   exit 1
 fi
 
 echo "🔄 Fetching latest refs..."
-git fetch origin main --tags
+"$GIT_BIN" fetch origin main --tags
 
 echo "🔄 Fast-forwarding local main..."
-git pull --ff-only origin main
+"$GIT_BIN" pull --ff-only origin main
 
-if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null 2>&1; then
+if "$GIT_BIN" rev-parse -q --verify "refs/tags/${TAG}" >/dev/null 2>&1; then
   echo "❌ Local tag ${TAG} already exists."
   exit 1
 fi
 
-if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+if "$GIT_BIN" ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
   echo "❌ Remote tag ${TAG} already exists."
   exit 1
 fi
 
-REPO="$(gh repo view --json nameWithOwner --jq '.nameWithOwner')"
-PREVIOUS_TAG="$(git tag --list 'v*' --sort=-version:refname | grep -Fxv "$TAG" | head -n1 || true)"
+REPO="$("$GH_BIN" repo view --json nameWithOwner --jq '.nameWithOwner')"
+PREVIOUS_TAG="$("$GIT_BIN" tag --list 'v*' --sort=-version:refname | grep -Fxv "$TAG" | head -n1 || true)"
 
 echo "📝 Generating release notes for ${TAG}..."
 if [[ -n "$PREVIOUS_TAG" ]]; then
-  RELEASE_NOTES="$(gh api \
+  RELEASE_NOTES="$("$GH_BIN" api \
     --method POST \
     "/repos/${REPO}/releases/generate-notes" \
     -f tag_name="$TAG" \
@@ -70,7 +154,7 @@ if [[ -n "$PREVIOUS_TAG" ]]; then
     -f previous_tag_name="$PREVIOUS_TAG" \
     --jq '.body // ""')"
 else
-  RELEASE_NOTES="$(gh api \
+  RELEASE_NOTES="$("$GH_BIN" api \
     --method POST \
     "/repos/${REPO}/releases/generate-notes" \
     -f tag_name="$TAG" \
@@ -128,18 +212,18 @@ fs.writeFileSync(changelogPath, updated);
 console.log(`Updated ${changelogPath} with ${heading}`);
 NODE
 
-if git diff --quiet -- package.json CHANGELOG.md; then
+if "$GIT_BIN" diff --quiet -- package.json CHANGELOG.md; then
   echo "ℹ️ No version/changelog changes detected; nothing to commit."
 else
   echo "📦 Committing release metadata changes..."
-  git add package.json CHANGELOG.md
-  git commit -m "chore(release): update version and changelog for ${TAG} [skip ci]"
+  "$GIT_BIN" add package.json CHANGELOG.md
+  "$GIT_BIN" commit -m "chore(release): update version and changelog for ${TAG} [skip ci]"
 fi
 
 echo "🚀 Pushing main..."
-git push origin main
+"$GIT_BIN" push origin main
 
-HEAD_SHA="$(git rev-parse HEAD)"
+HEAD_SHA="$("$GIT_BIN" rev-parse HEAD)"
 echo "🔎 Waiting for required workflows on ${HEAD_SHA}..."
 
 wait_for_workflow_success() {
@@ -150,7 +234,7 @@ wait_for_workflow_success() {
   start="$(date +%s)"
 
   local workflow_id
-  workflow_id="$(gh api "/repos/${REPO}/actions/workflows" --jq ".workflows[] | select(.name == \"${workflow_name}\") | .id" | head -n1)"
+  workflow_id="$("$GH_BIN" api "/repos/${REPO}/actions/workflows" --jq ".workflows[] | select(.name == \"${workflow_name}\") | .id" | head -n1)"
 
   if [[ -z "$workflow_id" ]]; then
     echo "❌ Required workflow '${workflow_name}' not found in ${REPO}."
@@ -162,9 +246,9 @@ wait_for_workflow_success() {
     local conclusion
     local run_url
 
-    status="$(gh api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?branch=main&head_sha=${HEAD_SHA}&per_page=1" --jq '.workflow_runs[0].status // ""')"
-    conclusion="$(gh api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?branch=main&head_sha=${HEAD_SHA}&per_page=1" --jq '.workflow_runs[0].conclusion // ""')"
-    run_url="$(gh api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?branch=main&head_sha=${HEAD_SHA}&per_page=1" --jq '.workflow_runs[0].html_url // ""')"
+    status="$("$GH_BIN" api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?branch=main&head_sha=${HEAD_SHA}&per_page=1" --jq '.workflow_runs[0].status // ""')"
+    conclusion="$("$GH_BIN" api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?branch=main&head_sha=${HEAD_SHA}&per_page=1" --jq '.workflow_runs[0].conclusion // ""')"
+    run_url="$("$GH_BIN" api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?branch=main&head_sha=${HEAD_SHA}&per_page=1" --jq '.workflow_runs[0].html_url // ""')"
 
     if [[ -z "$status" ]]; then
       echo "⏳ ${workflow_name}: no run yet for ${HEAD_SHA}; waiting..."
@@ -197,7 +281,7 @@ wait_for_workflow_success "CI"
 wait_for_workflow_success "Remote Compatibility Tests"
 
 echo "🏷️ Pushing tag ${TAG}..."
-git tag "$TAG" "$HEAD_SHA"
-git push origin "$TAG"
+"$GIT_BIN" tag "$TAG" "$HEAD_SHA"
+"$GIT_BIN" push origin "$TAG"
 
 echo "✅ Deploy complete: ${TAG} -> ${HEAD_SHA}"
