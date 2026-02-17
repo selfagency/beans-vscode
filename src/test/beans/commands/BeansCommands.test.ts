@@ -365,4 +365,50 @@ describe('BeansCommands', () => {
     expect(service.updateBean).toHaveBeenCalled();
     expect(executeCommand).toHaveBeenCalledWith('beans.refreshAll');
   });
+
+  it('opens Copilot chat using selected prompt template', async () => {
+    const bean = makeBean({ id: 'beans-vscode-55', code: '55', title: 'Fix details action' });
+    service.showBean.mockResolvedValueOnce(bean);
+    showQuickPick.mockResolvedValueOnce({
+      template: {
+        prompt: 'Help me start implementing this bean in the current codebase.',
+      },
+    });
+
+    await (commands as any).copilotStartWork(bean);
+
+    expect(showQuickPick).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ label: "What's the status of this issue?" }),
+        expect.objectContaining({ label: 'Set to in-progress and begin work' }),
+      ]),
+      expect.objectContaining({ title: 'Copilot Prompt' })
+    );
+    expect(executeCommand).toHaveBeenCalledWith('workbench.action.chat.open', {
+      query: 'Help me start implementing this bean in the current codebase.',
+    });
+    expect(writeClipboardText).not.toHaveBeenCalled();
+  });
+
+  it('builds Copilot prompts without @beans participant target', () => {
+    const templates = (commands as any).buildCopilotPromptTemplates(makeBean({ code: '5555' })) as Array<{
+      prompt: string;
+    }>;
+
+    expect(templates.length).toBeGreaterThan(0);
+    templates.forEach(template => {
+      expect(template.prompt).not.toContain('@beans');
+    });
+  });
+
+  it('does nothing when Copilot prompt selection is canceled', async () => {
+    const bean = makeBean({ id: 'beans-vscode-88', code: '88' });
+    service.showBean.mockResolvedValueOnce(bean);
+    showQuickPick.mockResolvedValueOnce(undefined);
+
+    await (commands as any).copilotStartWork(bean);
+
+    expect(executeCommand).not.toHaveBeenCalledWith('workbench.action.chat.open', expect.anything());
+    expect(writeClipboardText).not.toHaveBeenCalled();
+  });
 });

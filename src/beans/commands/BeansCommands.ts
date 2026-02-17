@@ -18,6 +18,19 @@ import { BeansFilterManager, BeanTreeItem } from '../tree';
 
 const logger = BeansOutput.getInstance();
 
+type CopilotPromptTemplate = {
+  id:
+    | 'issue-status'
+    | 'remaining-steps'
+    | 'close-and-commit'
+    | 'export-to-github-issues'
+    | 'set-in-progress-and-begin'
+    | 'flesh-out-specs-and-todos';
+  label: string;
+  detail: string;
+  prompt: string;
+};
+
 /**
  * Handle errors from Beans operations with specific error type handling
  * @param error The error to handle
@@ -214,7 +227,10 @@ export class BeansCommands {
 
       // Prefer full details (body, relationships) when composing prompt.
       const fullBean = await this.service.showBean(bean.id).catch(() => bean!);
-      const prompt = this.buildCopilotStartWorkPrompt(fullBean);
+      const prompt = await this.pickCopilotPrompt(fullBean);
+      if (!prompt) {
+        return;
+      }
 
       // Best-effort open Copilot Chat with prompt. Command signatures vary across VS Code builds.
       const attempts: Array<() => PromiseLike<unknown>> = [
@@ -258,15 +274,13 @@ export class BeansCommands {
     }
   }
 
-  private buildCopilotStartWorkPrompt(bean: Bean): string {
+  private buildCopilotBeanContext(bean: Bean): string {
     const tags = bean.tags && bean.tags.length > 0 ? bean.tags.join(', ') : 'none';
     const blocking = bean.blocking && bean.blocking.length > 0 ? bean.blocking.join(', ') : 'none';
     const blockedBy = bean.blockedBy && bean.blockedBy.length > 0 ? bean.blockedBy.join(', ') : 'none';
     const body = bean.body?.trim() ? bean.body.trim() : '(no description)';
 
     return [
-      `@beans Please examine this bean and help start work on it.`,
-      '',
       `Bean ID: ${bean.id}`,
       `Code: ${bean.code}`,
       `Title: ${bean.title}`,
@@ -280,13 +294,98 @@ export class BeansCommands {
       '',
       'Description / notes:',
       body,
-      '',
-      'Tasks:',
-      '1) Assess current status and summarize what is already done vs. remaining.',
-      '2) Check if there are existing plans/todos in this bean or related beans.',
-      '3) Propose a concrete implementation plan.',
-      '4) Begin working on the first step and suggest the exact code changes to make now.',
     ].join('\n');
+  }
+
+  private buildCopilotPromptTemplates(bean: Bean): CopilotPromptTemplate[] {
+    const context = this.buildCopilotBeanContext(bean);
+
+    return [
+      {
+        id: 'issue-status',
+        label: "What's the status of this issue?",
+        detail: 'Summarize current state and progress at a glance',
+        prompt: [
+          'What is the current status of this issue?',
+          'Summarize what appears done, what is uncertain, and what should be verified next.',
+          '',
+          context,
+        ].join('\n'),
+      },
+      {
+        id: 'remaining-steps',
+        label: 'What steps remain to complete this issue?',
+        detail: 'Identify remaining work and the best execution order',
+        prompt: [
+          'List the remaining steps needed to complete this issue.',
+          'Prioritize them and call out blockers, dependencies, and acceptance criteria gaps.',
+          '',
+          context,
+        ].join('\n'),
+      },
+      {
+        id: 'close-and-commit',
+        label: 'Close this issue and create a related commit',
+        detail: 'Prepare close-out guidance and commit plan from current working copy',
+        prompt: [
+          'Close this issue and create a related commit from the current working copy.',
+          'First confirm whether close criteria are met, then propose commit message(s), staged file grouping, and any final checks.',
+          '',
+          context,
+        ].join('\n'),
+      },
+      {
+        id: 'export-to-github-issues',
+        label: 'Export this issue to GitHub Issues',
+        detail: 'Generate a GitHub issue draft with mapped fields and metadata',
+        prompt: [
+          'Export this issue to GitHub Issues.',
+          'Draft the GitHub issue title/body/labels/assignees/milestone mapping and identify missing information before publishing.',
+          '',
+          context,
+        ].join('\n'),
+      },
+      {
+        id: 'set-in-progress-and-begin',
+        label: 'Set to in-progress and begin work',
+        detail: 'Transition state and start with concrete first implementation actions',
+        prompt: [
+          'Set this issue to in-progress and begin work on it.',
+          'Provide the exact first implementation steps to execute now, including safe validation checkpoints.',
+          '',
+          context,
+        ].join('\n'),
+      },
+      {
+        id: 'flesh-out-specs-and-todos',
+        label: 'Flesh out specs and todos for this issue',
+        detail: 'Expand requirements into clearer specs, tasks, and acceptance criteria',
+        prompt: [
+          "Help me flesh out more detailed specs and todos for this issue's tasks.",
+          'Break the work into actionable checklist items with assumptions, edge cases, and test expectations.',
+          '',
+          context,
+        ].join('\n'),
+      },
+    ];
+  }
+
+  private async pickCopilotPrompt(bean: Bean): Promise<string | undefined> {
+    const templates = this.buildCopilotPromptTemplates(bean);
+    const selected = await vscode.window.showQuickPick(
+      templates.map(template => ({
+        label: template.label,
+        detail: template.detail,
+        template,
+      })),
+      {
+        placeHolder: `Choose a Copilot prompt for ${bean.code}`,
+        title: 'Copilot Prompt',
+        matchOnDetail: true,
+      }
+    );
+
+    return selected?.template.prompt;
   }
 
   /**
