@@ -36,6 +36,7 @@ let detailsProvider: BeansDetailsViewProvider | undefined;
 let mcpIntegration: BeansMcpIntegration | undefined;
 let chatIntegration: BeansChatIntegration | undefined;
 let initPromptDismissed = false; // Track if user dismissed init prompt in this session
+const ARTIFACT_GENERATION_PREF_KEY = 'beans.ai.artifactsGenerationPreference';
 
 /**
  * Extension activation entry point
@@ -127,7 +128,9 @@ export async function activate(context: vscode.ExtensionContext) {
       // Register tree views when initialized
       registerTreeViews(context, beansService, filterManager, detailsProvider);
 
-      await ensureCopilotAiArtifacts(beansService, workspaceFolder.uri.fsPath, aiEnabled);
+      if (await shouldGenerateCopilotInstructionsOnInit(context, aiEnabled)) {
+        await ensureCopilotAiArtifacts(beansService, workspaceFolder.uri.fsPath, aiEnabled);
+      }
     }
 
     // Register config manager
@@ -166,7 +169,7 @@ export async function activate(context: vscode.ExtensionContext) {
           registerTreeViews(context, beansService, filterManager!, detailsProvider!);
 
           const aiEnabledNow = vscode.workspace.getConfiguration('beans').get<boolean>('ai.enabled', true);
-          if (await shouldGenerateCopilotInstructionsOnInit(aiEnabledNow)) {
+          if (await shouldGenerateCopilotInstructionsOnInit(context, aiEnabledNow)) {
             await ensureCopilotAiArtifacts(beansService, workspaceFolder.uri.fsPath, aiEnabledNow);
           }
 
@@ -295,7 +298,7 @@ async function promptForInitialization(
       registerTreeViews(context, service, filterManager!, detailsProvider!);
 
       const aiEnabledNow = vscode.workspace.getConfiguration('beans').get<boolean>('ai.enabled', true);
-      if (await shouldGenerateCopilotInstructionsOnInit(aiEnabledNow)) {
+      if (await shouldGenerateCopilotInstructionsOnInit(context, aiEnabledNow)) {
         await ensureCopilotAiArtifacts(service, workspaceRoot, aiEnabledNow);
       }
 
@@ -328,16 +331,39 @@ async function promptForInitialization(
   }
 }
 
-async function shouldGenerateCopilotInstructionsOnInit(aiEnabled: boolean): Promise<boolean> {
+async function shouldGenerateCopilotInstructionsOnInit(
+  context: vscode.ExtensionContext,
+  aiEnabled: boolean
+): Promise<boolean> {
   if (!aiEnabled) {
+    return false;
+  }
+
+  const preference = context.workspaceState.get<'always' | 'never'>(ARTIFACT_GENERATION_PREF_KEY);
+  if (preference === 'always') {
+    return true;
+  }
+  if (preference === 'never') {
     return false;
   }
 
   const selection = await vscode.window.showInformationMessage(
     'Generate the Copilot instructions file for this workspace now? (Also refreshes the Beans Copilot skill file.)',
     'Generate',
-    'Skip'
+    'Always',
+    'Skip',
+    'Never'
   );
+
+  if (selection === 'Always') {
+    await context.workspaceState.update(ARTIFACT_GENERATION_PREF_KEY, 'always');
+    return true;
+  }
+
+  if (selection === 'Never') {
+    await context.workspaceState.update(ARTIFACT_GENERATION_PREF_KEY, 'never');
+    return false;
+  }
 
   return selection === 'Generate';
 }

@@ -180,6 +180,10 @@ function makeContext(): any {
     extensionUri: vscode.Uri.file('/ext'),
     extensionPath: '/ext',
     extension: { packageJSON: { version: '1.0.0' } },
+    workspaceState: {
+      get: vi.fn(() => undefined),
+      update: vi.fn(async () => undefined),
+    },
   };
 }
 
