@@ -514,9 +514,12 @@ export class BeansCommands {
       });
 
       // Create bean
+      const config = await this.service.getConfig();
+      const defaultStatus = config.statuses?.includes('draft') ? 'draft' : (config.default_status ?? 'draft');
       const bean = await this.service.createBean({
         title: title.trim(),
         type: type as any,
+        status: defaultStatus,
         description: description || undefined,
       });
 

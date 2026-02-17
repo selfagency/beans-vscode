@@ -340,7 +340,7 @@ export class BeansService {
       path: '.beans',
       prefix: 'bean',
       id_length: 4,
-      default_status: 'todo',
+      default_status: 'draft',
       default_type: 'task',
       statuses: ['todo', 'in-progress', 'completed', 'scrapped', 'draft'],
       types: ['milestone', 'epic', 'feature', 'task', 'bug'],

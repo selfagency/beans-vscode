@@ -170,6 +170,7 @@ describe('BeansCommands', () => {
       updateBean: vi.fn(async (id: string, updates: any) => makeBean({ id, ...updates })),
       deleteBean: vi.fn(async () => undefined),
       getConfig: vi.fn(async () => ({
+        default_status: 'draft',
         statuses: ['todo', 'in-progress', 'completed', 'scrapped', 'draft'],
         types: ['milestone', 'epic', 'feature', 'bug', 'task'],
         priorities: ['critical', 'high', 'normal', 'low', 'deferred'],
@@ -245,6 +246,7 @@ describe('BeansCommands', () => {
     expect(service.createBean).toHaveBeenCalledWith({
       title: 'My bean',
       type: 'task',
+      status: 'draft',
       description: 'desc',
     });
     expect(executeCommand).toHaveBeenCalledWith('beans.refreshAll');
