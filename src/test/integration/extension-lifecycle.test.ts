@@ -362,8 +362,10 @@ describe('Extension lifecycle coverage', () => {
 
     state.showInfoQueue.push('Initialize', 'Generate now');
     await activate(makeContext());
-    expect(configFns.buildBeansCopilotInstructions).toHaveBeenCalled();
-    expect(configFns.writeBeansCopilotSkill).toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(configFns.buildBeansCopilotInstructions).toHaveBeenCalled();
+      expect(configFns.writeBeansCopilotSkill).toHaveBeenCalled();
+    });
 
     state.showInfoQueue.push('Learn More');
     await activate(makeContext());
