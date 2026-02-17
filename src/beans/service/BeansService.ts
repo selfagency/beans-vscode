@@ -512,6 +512,86 @@ export class BeansService {
   }
 
   /**
+   * Batch create multiple beans in parallel
+   * Returns array of results with success/failure status for each operation
+   * @param batchData Array of bean creation data
+   * @returns Array of results with bean or error for each operation
+   */
+  async batchCreateBeans(
+    batchData: Array<{
+      title: string;
+      type: string;
+      status?: string;
+      priority?: string;
+      description?: string;
+      parent?: string;
+    }>
+  ): Promise<Array<{ success: true; bean: Bean } | { success: false; error: Error; data: (typeof batchData)[0] }>> {
+    const promises = batchData.map(async data => {
+      try {
+        const bean = await this.createBean(data);
+        return { success: true as const, bean };
+      } catch (error) {
+        return { success: false as const, error: error as Error, data };
+      }
+    });
+
+    return Promise.all(promises);
+  }
+
+  /**
+   * Batch update multiple beans in parallel
+   * Returns array of results with success/failure status for each operation
+   * @param batchUpdates Array of bean ID and update data pairs
+   * @returns Array of results with bean or error for each operation
+   */
+  async batchUpdateBeans(
+    batchUpdates: Array<{
+      id: string;
+      updates: {
+        status?: string;
+        type?: string;
+        priority?: string;
+        parent?: string;
+        blocking?: string[];
+        blockedBy?: string[];
+      };
+    }>
+  ): Promise<Array<{ success: true; bean: Bean } | { success: false; error: Error; id: string }>> {
+    const promises = batchUpdates.map(async ({ id, updates }) => {
+      try {
+        const bean = await this.updateBean(id, updates);
+        return { success: true as const, bean };
+      } catch (error) {
+        return { success: false as const, error: error as Error, id };
+      }
+    });
+
+    return Promise.all(promises);
+  }
+
+  /**
+   * Batch delete multiple beans in parallel
+   * Returns array of results with success/failure status for each operation
+   * @param ids Array of bean IDs to delete
+   * @returns Array of results with success/failure status for each deletion
+   */
+  async batchDeleteBeans(
+    ids: string[]
+  ): Promise<Array<{ success: true; id: string } | { success: false; error: Error; id: string }>> {
+    const promises = ids.map(async id => {
+      try {
+        await this.deleteBean(id);
+        return { success: true as const, id };
+      } catch (error) {
+        return { success: false as const, error: error as Error, id };
+      }
+    });
+
+    return Promise.all(promises);
+  }
+
+  /**
    * Initialize Beans in the current workspace
    */
   async init(options?: { prefix?: string; defaultType?: string; defaultStatus?: string }): Promise<void> {
