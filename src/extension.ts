@@ -1,4 +1,3 @@
-import { access as fsAccess } from 'node:fs/promises';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { BeansChatIntegration } from './beans/chat';
@@ -347,8 +346,8 @@ async function shouldGenerateCopilotInstructionsOnInit(
     return false;
   }
 
-  const instructionsExists = await fileExists(path.join(workspaceRoot, COPILOT_INSTRUCTIONS_RELATIVE_PATH));
-  const skillExists = await fileExists(path.join(workspaceRoot, COPILOT_SKILL_RELATIVE_PATH));
+  const instructionsExists = await workspaceFileExists(workspaceRoot, COPILOT_INSTRUCTIONS_RELATIVE_PATH);
+  const skillExists = await workspaceFileExists(workspaceRoot, COPILOT_SKILL_RELATIVE_PATH);
   if (instructionsExists && skillExists) {
     logger.info('Copilot instruction and skill artifacts already exist; skipping generation prompt');
     return false;
@@ -426,10 +425,15 @@ function triggerCopilotAiArtifactSync(
   })();
 }
 
-async function fileExists(filePath: string): Promise<boolean> {
+async function workspaceFileExists(workspaceRoot: string, relativePath: string): Promise<boolean> {
   try {
-    await fsAccess(filePath);
-    return true;
+    const normalizedRelativePath = relativePath.replace(/\\/g, '/');
+    const matches = await vscode.workspace.findFiles(
+      new vscode.RelativePattern(workspaceRoot, normalizedRelativePath),
+      null,
+      1
+    );
+    return matches.length > 0;
   } catch {
     return false;
   }
