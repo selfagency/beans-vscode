@@ -64,11 +64,11 @@ RUN ARCH=\$(uname -m) && \\
         GOARCH="arm64"; \\
         EXPECTED_SHA256="${GO_SHA256_ARM64}"; \\
     else \\
-        echo "Unsupported architecture: \$ARCH" && exit 1; \\
+        echo "Unsupported architecture: \$ARCH. Supported architectures are: x86_64 (amd64), aarch64 (arm64)" && exit 1; \\
     fi && \\
     apt-get update && apt-get install -y curl jq git wget && \\
     wget -q https://go.dev/dl/go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
-    echo "\$EXPECTED_SHA256  go${GO_VERSION}.linux-\${GOARCH}.tar.gz" | sha256sum -c - || { echo "ERROR: Go tarball checksum verification failed"; exit 1; } && \\
+    echo "\$EXPECTED_SHA256  go${GO_VERSION}.linux-\${GOARCH}.tar.gz" | sha256sum -c - || { echo "ERROR: Go tarball checksum verification failed for go${GO_VERSION}.linux-\${GOARCH}.tar.gz. Expected SHA256: \$EXPECTED_SHA256"; exit 1; } && \\
     tar -C /usr/local -xzf go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
     rm go${GO_VERSION}.linux-\${GOARCH}.tar.gz && \\
     rm -rf /var/lib/apt/lists/*
