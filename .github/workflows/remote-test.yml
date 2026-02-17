@@ -200,7 +200,7 @@ jobs:
                 "version": "latest"
               }
             },
-            "postCreateCommand": "go install github.com/hmans/beans@latest",
+            "postCreateCommand": "echo Devcontainer created",
             "customizations": {
               "vscode": {
                 "settings": {
@@ -220,14 +220,74 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Test devcontainer build
+      - name: Test devcontainer build (push image)
+        if: github.event_name != 'pull_request'
         uses: devcontainers/ci@v0.3
         with:
           configFile: .devcontainer-test/devcontainer.json
           imageName: ghcr.io/${{ github.repository_owner }}/beans-vscode-devcontainer-test
           cacheFrom: ghcr.io/${{ github.repository_owner }}/beans-vscode-devcontainer-test
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           runCmd: |
+            export GIT_TERMINAL_PROMPT=0
+            export GOPROXY=https://proxy.golang.org,direct
+            export GOSUMDB=sum.golang.org
+
+            if ! command -v beans >/dev/null 2>&1; then
+              echo "=== Installing beans CLI (proxy-first, non-interactive) ==="
+              if ! go install github.com/hmans/beans@latest; then
+                echo "Primary install failed; retrying with proxy-only mode"
+                export GOPROXY=https://proxy.golang.org
+                go install github.com/hmans/beans@latest
+              fi
+            fi
+
+            echo "=== Checking beans installation ==="
+            beans version
+
+            echo ""
+            echo "=== Creating clean test directory ==="
+            mkdir -p /tmp/beans-test
+            cd /tmp/beans-test
+            beans init
+
+            echo ""
+            echo "=== Verifying workspace initialized ==="
+            if [ ! -f ".beans.yml" ]; then
+              echo "ERROR: .beans.yml not found"
+              exit 1
+            fi
+
+            echo ""
+            echo "=== Creating and listing beans ==="
+            beans create "DevContainer Test" -t task -s todo
+            beans list --json | jq .
+
+            echo ""
+            echo "✅ DevContainer test passed!"
+
+      - name: Test devcontainer build (no push)
+        if: github.event_name == 'pull_request'
+        uses: devcontainers/ci@v0.3
+        with:
+          configFile: .devcontainer-test/devcontainer.json
+          imageName: ghcr.io/${{ github.repository_owner }}/beans-vscode-devcontainer-test
+          cacheFrom: ghcr.io/${{ github.repository_owner }}/beans-vscode-devcontainer-test
+          push: false
+          runCmd: |
+            export GIT_TERMINAL_PROMPT=0
+            export GOPROXY=https://proxy.golang.org,direct
+            export GOSUMDB=sum.golang.org
+
+            if ! command -v beans >/dev/null 2>&1; then
+              echo "=== Installing beans CLI (proxy-first, non-interactive) ==="
+              if ! go install github.com/hmans/beans@latest; then
+                echo "Primary install failed; retrying with proxy-only mode"
+                export GOPROXY=https://proxy.golang.org
+                go install github.com/hmans/beans@latest
+              fi
+            fi
+
             echo "=== Checking beans installation ==="
             beans version
 
