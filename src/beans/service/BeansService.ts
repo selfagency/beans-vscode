@@ -485,33 +485,36 @@ export class BeansService {
   }
 
   /**
-   * Validate bean type
+   * Validate bean type against workspace configuration
+   * @param type - Type to validate
+   * @param validTypes - Valid types from workspace config
    * @throws Error if type is invalid
    */
-  private validateType(type: string): void {
-    const validTypes: BeanType[] = ['milestone', 'epic', 'feature', 'bug', 'task'];
+  private validateType(type: string, validTypes: BeanType[]): void {
     if (!validTypes.includes(type as BeanType)) {
       throw new Error(`Invalid type: ${type}. Must be one of: ${validTypes.join(', ')}`);
     }
   }
 
   /**
-   * Validate bean status
+   * Validate bean status against workspace configuration
+   * @param status - Status to validate
+   * @param validStatuses - Valid statuses from workspace config
    * @throws Error if status is invalid
    */
-  private validateStatus(status: string): void {
-    const validStatuses: BeanStatus[] = ['todo', 'in-progress', 'completed', 'scrapped', 'draft'];
+  private validateStatus(status: string, validStatuses: BeanStatus[]): void {
     if (!validStatuses.includes(status as BeanStatus)) {
       throw new Error(`Invalid status: ${status}. Must be one of: ${validStatuses.join(', ')}`);
     }
   }
 
   /**
-   * Validate bean priority
+   * Validate bean priority against workspace configuration
+   * @param priority - Priority to validate
+   * @param validPriorities - Valid priorities from workspace config
    * @throws Error if priority is invalid
    */
-  private validatePriority(priority: string): void {
-    const validPriorities: BeanPriority[] = ['critical', 'high', 'normal', 'low', 'deferred'];
+  private validatePriority(priority: string, validPriorities: BeanPriority[]): void {
     if (!validPriorities.includes(priority as BeanPriority)) {
       throw new Error(`Invalid priority: ${priority}. Must be one of: ${validPriorities.join(', ')}`);
     }
@@ -529,14 +532,17 @@ export class BeansService {
     description?: string;
     parent?: string;
   }): Promise<Bean> {
+    // Get workspace config for validation
+    const config = await this.getConfig();
+
     // Validate inputs
     this.validateTitle(data.title);
-    this.validateType(data.type);
+    this.validateType(data.type, config.types ?? []);
     if (data.status) {
-      this.validateStatus(data.status);
+      this.validateStatus(data.status, config.statuses ?? []);
     }
     if (data.priority) {
-      this.validatePriority(data.priority);
+      this.validatePriority(data.priority, config.priorities ?? []);
     }
 
     const args = ['create', '--json', data.title, '-t', data.type];
@@ -576,15 +582,18 @@ export class BeansService {
       blockedBy?: string[];
     }
   ): Promise<Bean> {
+    // Get workspace config for validation
+    const config = await this.getConfig();
+
     // Validate inputs
     if (updates.status) {
-      this.validateStatus(updates.status);
+      this.validateStatus(updates.status, config.statuses ?? []);
     }
     if (updates.type) {
-      this.validateType(updates.type);
+      this.validateType(updates.type, config.types ?? []);
     }
     if (updates.priority) {
-      this.validatePriority(updates.priority);
+      this.validatePriority(updates.priority, config.priorities ?? []);
     }
 
     const args = ['update', '--json', id];
