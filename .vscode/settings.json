@@ -16,6 +16,10 @@
         "git commit": true,
         "printf": true,
         "git restore": true,
-        "awk": true
+        "awk": true,
+        "git fetch": true,
+        "git worktree": true,
+        "git rev-parse": true,
+        "test": true
     }
 }
