@@ -401,12 +401,11 @@ export class BeansService {
           this.logger.warn('CLI unavailable, using cached data (offline mode)');
           return this.filterBeans(this.cachedBeans!, options);
         }
-        // No valid cache available
+
+        // No valid cache available - rethrow original error to preserve type info
         this.offlineMode = true;
         this.logger.error('CLI unavailable and no cached data available');
-        throw new Error(
-          'Beans CLI is not available and no cached data exists. Please ensure Beans CLI is installed and accessible.'
-        );
+        throw error;
       }
       // For other errors, just throw
       throw error;
