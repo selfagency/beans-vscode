@@ -1,11 +1,20 @@
 # Change Log
 
+<!-- markdownlint-disable MD024 -->
+
 All notable changes to the "beans-vscode" extension will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [1.0.1] - 2026-02-17
+
+### Fixed
+
+- Prevented activation/tree fetch failures when `beans list --json` returns partial bean payloads without `slug`, `path`, `body`, or `etag` by applying safe list-mode normalization defaults.
+- Updated release workflow packaging/publish compatibility for current `vsce` behavior so tag-based releases complete successfully.
 
 ### Added
 
@@ -218,6 +227,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Comprehensive architecture documentation
 - Complete commands reference documentation
 - Testing documentation and strategy
+
+<!-- markdownlint-enable MD024 -->
 - Enhanced README with all features
 - Remote compatibility guide
 - CI/CD workflows and automation

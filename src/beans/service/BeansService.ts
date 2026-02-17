@@ -380,7 +380,7 @@ export class BeansService {
       const beans = result || [];
 
       // Normalize bean data to ensure arrays are always arrays
-      const normalizedBeans = beans.map(bean => this.normalizeBean(bean));
+      const normalizedBeans = beans.map(bean => this.normalizeBean(bean, { allowPartial: true }));
 
       // Update cache on successful fetch
       this.updateCache(normalizedBeans);
@@ -425,7 +425,7 @@ export class BeansService {
    * We map to camelCase model fields and derive the short 'code' from the ID.
    * @throws BeansJSONParseError if bean is missing required fields
    */
-  private normalizeBean(rawBean: RawBeanFromCLI): Bean {
+  private normalizeBean(rawBean: RawBeanFromCLI, options?: { allowPartial?: boolean }): Bean {
     // Validate required fields
     if (!rawBean.id || !rawBean.title || !rawBean.status || !rawBean.type) {
       throw new BeansJSONParseError(
@@ -435,16 +435,22 @@ export class BeansService {
       );
     }
 
-    // Validate additional required fields for Bean interface
+    const allowPartial = options?.allowPartial ?? false;
+
+    // Validate additional required fields for full Bean interface payloads.
+    // Some Beans CLI responses (notably `list --json`) can omit content-heavy fields
+    // like `body` and metadata fields like `etag`, so list normalization supports
+    // partial payloads and supplies safe fallbacks.
     if (
-      rawBean.slug === undefined ||
-      rawBean.slug === null ||
-      rawBean.path === undefined ||
-      rawBean.path === null ||
-      rawBean.body === undefined ||
-      rawBean.body === null ||
-      rawBean.etag === undefined ||
-      rawBean.etag === null
+      !allowPartial &&
+      (rawBean.slug === undefined ||
+        rawBean.slug === null ||
+        rawBean.path === undefined ||
+        rawBean.path === null ||
+        rawBean.body === undefined ||
+        rawBean.body === null ||
+        rawBean.etag === undefined ||
+        rawBean.etag === null)
     ) {
       throw new BeansJSONParseError(
         'Bean missing required fields (slug, path, body, or etag)',
@@ -464,10 +470,10 @@ export class BeansService {
     return {
       id: bean.id,
       code,
-      slug: bean.slug,
-      path: bean.path,
+      slug: bean.slug ?? '',
+      path: bean.path ?? '',
       title: bean.title,
-      body: bean.body,
+      body: bean.body ?? '',
       status: bean.status as BeanStatus,
       type: bean.type as BeanType,
       priority: bean.priority as BeanPriority | undefined,
@@ -478,7 +484,7 @@ export class BeansService {
       blockedBy: bean.blockedBy || bean.blockedByIds || bean.blocked_by_ids || bean.blocked_by || [],
       createdAt,
       updatedAt,
-      etag: bean.etag,
+      etag: bean.etag ?? '',
     };
   }
 

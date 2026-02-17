@@ -818,6 +818,37 @@ describe('BeansService', () => {
         vi.useRealTimers();
       }
     });
+
+    it('accepts partial list payloads from CLI and applies safe defaults', async () => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        if (Array.isArray(args) && args.includes('list')) {
+          callback(null, {
+            stdout: JSON.stringify([
+              {
+                id: 'test-abc1',
+                title: 'Test Bean',
+                status: 'todo',
+                type: 'task',
+                // list payload can be partial; intentionally omit slug/path/body/etag
+              },
+            ]),
+            stderr: '',
+          });
+          return;
+        }
+
+        callback(new Error('unexpected command') as any, null);
+      });
+
+      const beans = await service.listBeans();
+
+      expect(beans).toHaveLength(1);
+      expect(beans[0].id).toBe('test-abc1');
+      expect(beans[0].slug).toBe('');
+      expect(beans[0].path).toBe('');
+      expect(beans[0].body).toBe('');
+      expect(beans[0].etag).toBe('');
+    });
   });
 
   describe('request deduplication', () => {
