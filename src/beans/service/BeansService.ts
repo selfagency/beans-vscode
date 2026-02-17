@@ -1,6 +1,7 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
+import { BeansConfigManager } from '../config';
 import { BeansOutput } from '../logging';
 import {
   Bean,
@@ -206,12 +207,15 @@ export class BeansService {
 
   /**
    * Get Beans workspace configuration
-   * Note: This reads from .beans.yml since there's no CLI config command
+   * Reads from .beans.yml via BeansConfigManager and merges with defaults
    */
   async getConfig(): Promise<BeansConfig> {
-    // Return a basic config since there's no CLI command
-    // TODO: Integrate with BeansConfigManager to read actual .beans.yml values
-    return {
+    // Try to read from .beans.yml
+    const configManager = new BeansConfigManager(this.workspaceRoot);
+    const yamlConfig = await configManager.read();
+
+    // Default configuration values
+    const defaults: BeansConfig = {
       path: '.beans',
       prefix: 'bean',
       id_length: 4,
@@ -221,6 +225,9 @@ export class BeansService {
       types: ['milestone', 'epic', 'feature', 'task', 'bug'],
       priorities: ['critical', 'high', 'normal', 'low', 'deferred'],
     };
+
+    // Merge YAML config with defaults
+    return yamlConfig ? { ...defaults, ...yamlConfig } : defaults;
   }
 
   /**

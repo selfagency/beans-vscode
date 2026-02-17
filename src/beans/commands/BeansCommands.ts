@@ -306,7 +306,7 @@ export class BeansCommands {
         }
       }
 
-      // TODO: Open bean file in editor (will be enhanced in detail/preview task)
+      // Open bean markdown file in editor
       const workspaceFolders = vscode.workspace.workspaceFolders;
       if (!workspaceFolders) {
         throw new Error('No workspace folder open');
