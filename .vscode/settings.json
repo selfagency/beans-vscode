@@ -22,5 +22,6 @@
         "git rev-parse": true,
         "test": true,
         "pnpm": true
-    }
+    },
+    "codeQL.createQuery.qlPackLocation": "/Users/daniel/Developer/beans-vscode-fixes"
 }
