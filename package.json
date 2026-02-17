@@ -1,24 +1,12 @@
 {
   "name": "beans-vscode",
   "displayName": "Beans",
-  "description": "VS Code extension for Beans issue tracker with tree views, commands, MCP tools, GitHub Copilot integration, and remote development support",
   "version": "1.0.0",
-  "publisher": "selfagency",
-  "author": {
-    "name": "Daniel Sieradski",
-    "email": "daniel@self.agency",
-    "url": "https://self.agency"
-  },
-  "license": "MIT",
-  "icon": "assets/icon.png",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/selfagency/beans-vscode.git"
-  },
-  "bugs": {
-    "url": "https://github.com/selfagency/beans-vscode/issues"
-  },
-  "homepage": "https://github.com/selfagency/beans-vscode#readme",
+  "description": "VS Code extension for Beans issue tracker with tree views, commands, MCP tools, GitHub Copilot integration, and remote development support",
+  "categories": [
+    "Other",
+    "AI"
+  ],
   "keywords": [
     "beans",
     "issue tracker",
@@ -30,24 +18,81 @@
     "remote development",
     "git-native"
   ],
-  "engines": {
-    "vscode": "^1.109.0"
+  "homepage": "https://github.com/selfagency/beans-vscode#readme",
+  "bugs": {
+    "url": "https://github.com/selfagency/beans-vscode/issues"
   },
-  "categories": [
-    "Other",
-    "AI"
-  ],
-  "extensionKind": [
-    "workspace"
-  ],
-  "activationEvents": [
-    "onStartupFinished",
-    "workspaceContains:.beans",
-    "workspaceContains:.beans.yml",
-    "onChatParticipant:beans.chat"
-  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/selfagency/beans-vscode.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Daniel Sieradski",
+    "email": "daniel@self.agency",
+    "url": "https://self.agency"
+  },
+  "publisher": "selfagency",
   "main": "./dist/extension.js",
+  "scripts": {
+    "vscode:prepublish": "pnpm run package",
+    "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
+    "test": "vitest run",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "test:watch": "vitest",
+    "test:integration": "vscode-test",
+    "prepare": "husky"
+  },
   "contributes": {
+    "chatParticipants": [
+      {
+        "id": "beans.chat",
+        "name": "beans",
+        "fullName": "Beans Assistant",
+        "description": "Help with Beans issue workflows in this workspace",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "summary",
+            "description": "Summarize Beans status in this workspace"
+          },
+          {
+            "name": "priority",
+            "description": "Show top-priority issues in this workspace"
+          },
+          {
+            "name": "stale",
+            "description": "List stale issues that need attention"
+          },
+          {
+            "name": "create",
+            "description": "Guide creating a new issue"
+          },
+          {
+            "name": "next",
+            "description": "Suggest the next bean to work on"
+          },
+          {
+            "name": "search",
+            "description": "Search beans by text"
+          },
+          {
+            "name": "commit",
+            "description": "Guide an issue-related commit for current workspace"
+          }
+        ]
+      }
+    ],
     "commands": [
       {
         "command": "beans.init",
@@ -200,106 +245,101 @@
         "category": "Beans"
       }
     ],
+    "configuration": {
+      "title": "Beans",
+      "properties": {
+        "beans.cliPath": {
+          "type": "string",
+          "default": "beans",
+          "markdownDescription": "Path to `beans` CLI executable. Defaults to `beans` in PATH."
+        },
+        "beans.workspaceRoot": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to Beans workspace folder (containing `.beans` directory). If empty, uses the current workspace root."
+        },
+        "beans.enableOnlyIfInitialized": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only enable the extension if a .beans.yml file is present in the workspace."
+        },
+        "beans.view.displayMode": {
+          "type": "string",
+          "enum": [
+            "separate-panes",
+            "single-pane"
+          ],
+          "default": "separate-panes",
+          "enumDescriptions": [
+            "Show beans in separate panes by status (Active, Completed, Draft, Scrapped)",
+            "Show all beans in a single unified tree with filter controls (coming soon)"
+          ],
+          "description": "Choose how beans are displayed in the sidebar. Requires extension reload to take effect."
+        },
+        "beans.autoInit.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show initialization prompt when opening a workspace without Beans."
+        },
+        "beans.defaultSortMode": {
+          "type": "string",
+          "enum": [
+            "status-priority-type-title",
+            "priority-status-type-title",
+            "updated",
+            "created",
+            "id"
+          ],
+          "default": "status-priority-type-title",
+          "enumDescriptions": [
+            "Sort by status, then priority, then type, then title (TUI default)",
+            "Sort by priority, then status, then type, then title (better for active pane)",
+            "Sort by last updated time",
+            "Sort by creation time",
+            "Sort by bean ID/code"
+          ]
+        },
+        "beans.hideClosedInQuickPick": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hide completed and scrapped beans from command palette quick picks (except explicit reopen commands)."
+        },
+        "beans.logging.level": {
+          "type": "string",
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ],
+          "default": "info",
+          "description": "Logging verbosity for Beans extension output channel."
+        },
+        "beans.ai.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Master switch for AI features (MCP server provider and chat participant integrations)."
+        },
+        "beans.fileWatcher.debounceMs": {
+          "type": "number",
+          "default": 20000,
+          "minimum": 1000,
+          "maximum": 120000,
+          "markdownDescription": "Debounce interval (in milliseconds) for file system watcher. Prevents excessive refreshes when many files change. Default: 20000ms (20 seconds)."
+        },
+        "beans.mcp.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable dynamic MCP server definition provider for Beans commands (effective only when beans.ai.enabled is true)."
+        }
+      }
+    },
     "mcpServerDefinitionProviders": [
       {
         "id": "beans.mcpServers",
         "label": "Beans MCP Servers"
       }
     ],
-    "chatParticipants": [
-      {
-        "id": "beans.chat",
-        "name": "beans",
-        "fullName": "Beans Assistant",
-        "description": "Help with Beans issue workflows in this workspace",
-        "isSticky": true,
-        "commands": [
-          {
-            "name": "summary",
-            "description": "Summarize Beans status in this workspace"
-          },
-          {
-            "name": "priority",
-            "description": "Show top-priority issues in this workspace"
-          },
-          {
-            "name": "stale",
-            "description": "List stale issues that need attention"
-          },
-          {
-            "name": "create",
-            "description": "Guide creating a new issue"
-          },
-          {
-            "name": "next",
-            "description": "Suggest the next bean to work on"
-          },
-          {
-            "name": "search",
-            "description": "Search beans by text"
-          },
-          {
-            "name": "commit",
-            "description": "Guide an issue-related commit for current workspace"
-          }
-        ]
-      }
-    ],
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "beans",
-          "title": "Beans",
-          "icon": "assets/icon.svg"
-        }
-      ]
-    },
-    "views": {
-      "beans": [
-        {
-          "type": "webview",
-          "id": "beans.search",
-          "name": "Search",
-          "icon": "$(search)",
-          "when": "beans.initialized",
-          "visibility": "visible"
-        },
-        {
-          "icon": "$(issue-opened)",
-          "id": "beans.active",
-          "name": "Active",
-          "when": "beans.initialized"
-        },
-        {
-          "icon": "$(issue-draft)",
-          "id": "beans.draft",
-          "name": "Draft",
-          "when": "beans.initialized"
-        },
-        {
-          "icon": "$(issue-closed)",
-          "id": "beans.completed",
-          "name": "Completed",
-          "when": "beans.initialized",
-          "visibility": "collapsed"
-        },
-        {
-          "icon": "$(error)",
-          "id": "beans.scrapped",
-          "name": "Scrapped",
-          "when": "beans.initialized",
-          "visibility": "collapsed"
-        },
-        {
-          "icon": "$(info)",
-          "type": "webview",
-          "id": "beans.details",
-          "name": "Details",
-          "when": "beans.initialized",
-          "visibility": "visible"
-        }
-      ]
-    },
     "menus": {
       "view/title": [
         {
@@ -428,120 +468,79 @@
         }
       ]
     },
-    "configuration": {
-      "title": "Beans",
-      "properties": {
-        "beans.cliPath": {
-          "type": "string",
-          "default": "beans",
-          "markdownDescription": "Path to `beans` CLI executable. Defaults to `beans` in PATH."
+    "views": {
+      "beans": [
+        {
+          "type": "webview",
+          "id": "beans.search",
+          "name": "Search",
+          "icon": "$(search)",
+          "when": "beans.initialized",
+          "visibility": "visible"
         },
-        "beans.workspaceRoot": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "Path to Beans workspace folder (containing `.beans` directory). If empty, uses the current workspace root."
+        {
+          "icon": "$(issue-opened)",
+          "id": "beans.active",
+          "name": "Active",
+          "when": "beans.initialized"
         },
-        "beans.enableOnlyIfInitialized": {
-          "type": "boolean",
-          "default": false,
-          "description": "Only enable the extension if a .beans.yml file is present in the workspace."
+        {
+          "icon": "$(issue-draft)",
+          "id": "beans.draft",
+          "name": "Draft",
+          "when": "beans.initialized"
         },
-        "beans.view.displayMode": {
-          "type": "string",
-          "enum": [
-            "separate-panes",
-            "single-pane"
-          ],
-          "default": "separate-panes",
-          "enumDescriptions": [
-            "Show beans in separate panes by status (Active, Completed, Draft, Scrapped)",
-            "Show all beans in a single unified tree with filter controls (coming soon)"
-          ],
-          "description": "Choose how beans are displayed in the sidebar. Requires extension reload to take effect."
+        {
+          "icon": "$(issue-closed)",
+          "id": "beans.completed",
+          "name": "Completed",
+          "when": "beans.initialized",
+          "visibility": "collapsed"
         },
-        "beans.autoInit.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show initialization prompt when opening a workspace without Beans."
+        {
+          "icon": "$(error)",
+          "id": "beans.scrapped",
+          "name": "Scrapped",
+          "when": "beans.initialized",
+          "visibility": "collapsed"
         },
-        "beans.defaultSortMode": {
-          "type": "string",
-          "enum": [
-            "status-priority-type-title",
-            "priority-status-type-title",
-            "updated",
-            "created",
-            "id"
-          ],
-          "default": "status-priority-type-title",
-          "enumDescriptions": [
-            "Sort by status, then priority, then type, then title (TUI default)",
-            "Sort by priority, then status, then type, then title (better for active pane)",
-            "Sort by last updated time",
-            "Sort by creation time",
-            "Sort by bean ID/code"
-          ]
-        },
-        "beans.hideClosedInQuickPick": {
-          "type": "boolean",
-          "default": true,
-          "description": "Hide completed and scrapped beans from command palette quick picks (except explicit reopen commands)."
-        },
-        "beans.logging.level": {
-          "type": "string",
-          "enum": [
-            "debug",
-            "info",
-            "warn",
-            "error"
-          ],
-          "default": "info",
-          "description": "Logging verbosity for Beans extension output channel."
-        },
-        "beans.ai.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Master switch for AI features (MCP server provider and chat participant integrations)."
-        },
-        "beans.fileWatcher.debounceMs": {
-          "type": "number",
-          "default": 20000,
-          "minimum": 1000,
-          "maximum": 120000,
-          "markdownDescription": "Debounce interval (in milliseconds) for file system watcher. Prevents excessive refreshes when many files change. Default: 20000ms (20 seconds)."
-        },
-        "beans.mcp.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable dynamic MCP server definition provider for Beans commands (effective only when beans.ai.enabled is true)."
+        {
+          "icon": "$(info)",
+          "type": "webview",
+          "id": "beans.details",
+          "name": "Details",
+          "when": "beans.initialized",
+          "visibility": "visible"
         }
-      }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "beans",
+          "title": "Beans",
+          "icon": "assets/icon.svg"
+        }
+      ]
     }
   },
-  "scripts": {
-    "vscode:prepublish": "pnpm run package",
-    "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
-    "watch": "npm-run-all -p watch:*",
-    "watch:esbuild": "node esbuild.js --watch",
-    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-    "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
-    "check-types": "tsc --noEmit",
-    "lint": "eslint src",
-    "lint:fix": "eslint src --fix",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:integration": "vscode-test",
-    "prepare": "husky"
-  },
+  "activationEvents": [
+    "onStartupFinished",
+    "workspaceContains:.beans",
+    "workspaceContains:.beans.yml",
+    "onChatParticipant:beans.chat"
+  ],
   "lint-staged": {
     "src/**/*.ts": [
       "eslint --fix",
       "prettier --write"
     ]
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@vscode/codicons": "^0.0.44",
+    "js-yaml": "^4.1.1",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
@@ -561,10 +560,11 @@
     "typescript-eslint": "^8.56.0",
     "vitest": "^4.0.18"
   },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.26.0",
-    "@vscode/codicons": "^0.0.44",
-    "js-yaml": "^4.1.1",
-    "zod": "^4.3.6"
-  }
+  "engines": {
+    "vscode": "^1.109.0"
+  },
+  "icon": "assets/icon.png",
+  "extensionKind": [
+    "workspace"
+  ]
 }
