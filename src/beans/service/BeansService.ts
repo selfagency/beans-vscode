@@ -56,11 +56,49 @@ export class BeansService {
   private workspaceRoot: string;
   // Request deduplication: tracks in-flight CLI requests to prevent duplicate calls
   private readonly inFlightRequests = new Map<string, Promise<any>>();
+  // Offline mode: cache last successful results for graceful degradation
+  private offlineMode = false;
+  private cachedBeans: Bean[] | null = null;
+  private cacheTimestamp: number | null = null;
+  private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
   constructor(defaultWorkspaceRoot: string) {
     const config = vscode.workspace.getConfiguration('beans');
     this.cliPath = config.get<string>('cliPath', 'beans');
     this.workspaceRoot = config.get<string>('workspaceRoot', '') || defaultWorkspaceRoot;
+  }
+
+  /**
+   * Check if currently in offline mode
+   */
+  isOffline(): boolean {
+    return this.offlineMode;
+  }
+
+  /**
+   * Check if cached data is still valid (within TTL)
+   */
+  private isCacheValid(): boolean {
+    if (!this.cachedBeans || !this.cacheTimestamp) {
+      return false;
+    }
+    return Date.now() - this.cacheTimestamp < this.CACHE_TTL_MS;
+  }
+
+  /**
+   * Update the beans cache
+   */
+  private updateCache(beans: Bean[]): void {
+    this.cachedBeans = beans;
+    this.cacheTimestamp = Date.now();
+  }
+
+  /**
+   * Clear the beans cache
+   */
+  clearCache(): void {
+    this.cachedBeans = null;
+    this.cacheTimestamp = null;
   }
 
   /**
@@ -282,32 +320,64 @@ export class BeansService {
 
   /**
    * List beans with optional filters
+   * Supports offline mode with cached data fallback
    */
   async listBeans(options?: { status?: string[]; type?: string[]; search?: string }): Promise<Bean[]> {
-    const args = ['list', '--json'];
+    try {
+      const args = ['list', '--json'];
 
-    // Status and type filters use repeated flags, not comma-separated values
-    if (options?.status && options.status.length > 0) {
-      for (const status of options.status) {
-        args.push('--status', status);
+      // Status and type filters use repeated flags, not comma-separated values
+      if (options?.status && options.status.length > 0) {
+        for (const status of options.status) {
+          args.push('--status', status);
+        }
       }
-    }
 
-    if (options?.type && options.type.length > 0) {
-      for (const type of options.type) {
-        args.push('--type', type);
+      if (options?.type && options.type.length > 0) {
+        for (const type of options.type) {
+          args.push('--type', type);
+        }
       }
+
+      if (options?.search) {
+        args.push('--search', options.search);
+      }
+
+      const result = await this.execute<RawBeanFromCLI[]>(args);
+      const beans = result || [];
+
+      // Normalize bean data to ensure arrays are always arrays
+      const normalizedBeans = beans.map(bean => this.normalizeBean(bean));
+
+      // Update cache on successful fetch
+      this.updateCache(normalizedBeans);
+      this.offlineMode = false;
+
+      return normalizedBeans;
+    } catch (error) {
+      // If CLI is unavailable and we have valid cached data, use it
+      if (
+        error instanceof BeansCLINotFoundError ||
+        error instanceof BeansTimeoutError ||
+        (error as NodeJS.ErrnoException).code === 'ENOENT'
+      ) {
+        if (this.isCacheValid()) {
+          this.offlineMode = true;
+          this.logger.warn('CLI unavailable, using cached data (offline mode)');
+          return this.cachedBeans!;
+        }
+
+        // No valid cache available
+        this.offlineMode = true;
+        this.logger.error('CLI unavailable and no cached data available');
+        throw new Error(
+          'Beans CLI is not available and no cached data exists. Please ensure Beans CLI is installed and accessible.'
+        );
+      }
+
+      // For other errors, just throw
+      throw error;
     }
-
-    if (options?.search) {
-      args.push('--search', options.search);
-    }
-
-    const result = await this.execute<RawBeanFromCLI[]>(args);
-    const beans = result || [];
-
-    // Normalize bean data to ensure arrays are always arrays
-    return beans.map(bean => this.normalizeBean(bean));
   }
 
   /**
