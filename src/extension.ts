@@ -213,6 +213,12 @@ export async function activate(context: vscode.ExtensionContext) {
           logger.refreshConfig();
           logger.info('Configuration updated');
         }
+
+        if (e.affectsConfiguration('beans.ai.enabled')) {
+          const aiEnabledNow = vscode.workspace.getConfiguration('beans').get<boolean>('ai.enabled', true);
+          void vscode.commands.executeCommand('setContext', 'beans.aiEnabled', aiEnabledNow);
+          logger.info(`AI feature visibility updated: beans.aiEnabled=${aiEnabledNow}`);
+        }
       })
     );
 

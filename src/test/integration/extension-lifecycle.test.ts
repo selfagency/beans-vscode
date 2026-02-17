@@ -336,6 +336,9 @@ describe('Extension lifecycle coverage', () => {
     state.configChangeHandler?.({ affectsConfiguration: (key: string) => key === 'beans' });
     expect(logger.refreshConfig).toHaveBeenCalled();
 
+    state.configChangeHandler?.({ affectsConfiguration: (key: string) => key === 'beans.ai.enabled' });
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('setContext', 'beans.aiEnabled', true);
+
     deactivate();
     expect(logger.dispose).toHaveBeenCalled();
   });

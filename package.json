@@ -101,7 +101,7 @@
         "command": "beans.copilotStartWork",
         "title": "Copilot: Start Work on Bean",
         "category": "Beans",
-        "icon": "$(copilot)",
+        "icon": "$(comment-discussion)",
         "when": "beans.initialized"
       },
       {
@@ -342,7 +342,7 @@
         },
         {
           "command": "beans.copilotStartWork",
-          "when": "view == beans.details && beans.hasSelectedBean",
+          "when": "view == beans.details && beans.hasSelectedBean && beans.aiEnabled",
           "group": "navigation@2"
         }
       ],
