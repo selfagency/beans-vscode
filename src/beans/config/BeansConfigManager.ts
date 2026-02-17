@@ -2,7 +2,6 @@ import * as fs from 'fs/promises';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import * as yaml from 'js-yaml';
 import { BeansOutput } from '../logging';
 import { BeansConfig } from '../model';
 
