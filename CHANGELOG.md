@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-02-17
+
 ### Added
 
 - Added a `Create Bean` title action button to the Draft pane in the Beans sidebar.
@@ -31,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - CI workflow optimized for cost/performance by enabling pnpm caching and consolidating Linux-only lint/typecheck into the matrix test job.
 - Remote compatibility workflow optimized with a representative matrix (`include`), explicit job timeouts, and on-demand execution of the heavy VS Code integration packaging check.
 - Issue-to-bean workflow hardened by using Go-based Beans CLI installation (without `sudo`) and argument-array process execution in script automation.
+- Routine repository housekeeping updates for issue-tracking workflow maintenance.
 
 ## [1.0.4] - 2026-02-17
 
