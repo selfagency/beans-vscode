@@ -36,6 +36,7 @@ let detailsProvider: BeansDetailsViewProvider | undefined;
 let mcpIntegration: BeansMcpIntegration | undefined;
 let chatIntegration: BeansChatIntegration | undefined;
 let initPromptDismissed = false; // Track if user dismissed init prompt in this session
+let aiArtifactSyncInProgress = false;
 const ARTIFACT_GENERATION_PREF_KEY = 'beans.ai.artifactsGenerationPreference';
 
 /**
@@ -127,10 +128,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
       // Register tree views when initialized
       registerTreeViews(context, beansService, filterManager, detailsProvider);
-
-      if (await shouldGenerateCopilotInstructionsOnInit(context, aiEnabled)) {
-        await ensureCopilotAiArtifacts(beansService, workspaceFolder.uri.fsPath, aiEnabled);
-      }
+      triggerCopilotAiArtifactSync(context, beansService, workspaceFolder.uri.fsPath, aiEnabled);
     }
 
     // Register config manager
@@ -169,9 +167,7 @@ export async function activate(context: vscode.ExtensionContext) {
           registerTreeViews(context, beansService, filterManager!, detailsProvider!);
 
           const aiEnabledNow = vscode.workspace.getConfiguration('beans').get<boolean>('ai.enabled', true);
-          if (await shouldGenerateCopilotInstructionsOnInit(context, aiEnabledNow)) {
-            await ensureCopilotAiArtifacts(beansService, workspaceFolder.uri.fsPath, aiEnabledNow);
-          }
+          triggerCopilotAiArtifactSync(context, beansService, workspaceFolder.uri.fsPath, aiEnabledNow);
 
           vscode.window.showInformationMessage('Beans initialized successfully!');
           logger.info('Beans initialized via command');
@@ -298,9 +294,7 @@ async function promptForInitialization(
       registerTreeViews(context, service, filterManager!, detailsProvider!);
 
       const aiEnabledNow = vscode.workspace.getConfiguration('beans').get<boolean>('ai.enabled', true);
-      if (await shouldGenerateCopilotInstructionsOnInit(context, aiEnabledNow)) {
-        await ensureCopilotAiArtifacts(service, workspaceRoot, aiEnabledNow);
-      }
+      triggerCopilotAiArtifactSync(context, service, workspaceRoot, aiEnabledNow);
 
       vscode.window.showInformationMessage('Beans initialized successfully!');
       logger.info('Beans initialized in workspace');
@@ -394,6 +388,31 @@ async function ensureCopilotAiArtifacts(
   } catch (error) {
     logger.warn('Failed to synchronize Copilot AI artifacts from beans prime', error as Error);
   }
+}
+
+function triggerCopilotAiArtifactSync(
+  context: vscode.ExtensionContext,
+  service: BeansService,
+  workspaceRoot: string,
+  aiEnabled: boolean
+): void {
+  if (aiArtifactSyncInProgress) {
+    logger.debug('AI artifact synchronization already in progress; skipping duplicate trigger');
+    return;
+  }
+
+  aiArtifactSyncInProgress = true;
+  void (async () => {
+    try {
+      if (await shouldGenerateCopilotInstructionsOnInit(context, aiEnabled)) {
+        await ensureCopilotAiArtifacts(service, workspaceRoot, aiEnabled);
+      }
+    } catch (error) {
+      logger.warn('AI artifact synchronization failed', error as Error);
+    } finally {
+      aiArtifactSyncInProgress = false;
+    }
+  })();
 }
 
 /**

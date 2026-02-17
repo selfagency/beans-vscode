@@ -100,12 +100,14 @@ describe('BeansSearchViewProvider', () => {
     provider.resolveWebviewView(webviewView, {} as any, {} as any);
 
     expect(webview.options.enableScripts).toBe(true);
-    expect(webview.options.localResourceRoots).toHaveLength(2);
+    expect(webview.options.localResourceRoots).toHaveLength(1);
     expect(webview.html).toContain('Search beans');
     expect(webview.html).toContain('Content-Security-Policy');
     expect(webview.html).toContain('filtersPanel');
     expect(webview.html).toContain('data-group="status"');
-    expect(webview.html).toContain('--vscode-input-foreground');
+    expect(webview.html).toContain('class="search-icon"');
+    expect(webview.html).toContain('<svg class="icon-svg"');
+    expect(webview.html).toContain('--vscode-descriptionForeground');
     expect(mockLogger.debug).toHaveBeenCalledWith('Search view resolved');
     expect(receivedHandler).toBeTypeOf('function');
   });

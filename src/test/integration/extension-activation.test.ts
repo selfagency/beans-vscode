@@ -177,4 +177,38 @@ describe('Extension Activation', () => {
     // Should still activate but without AI components
     expect(mockContext.subscriptions.length).toBeGreaterThan(0);
   });
+
+  it('should not block activation on copilot artifact prompt', async () => {
+    vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue([mockWorkspaceFolder]);
+    vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+      get: vi.fn((key: string, defaultValue?: any) => {
+        if (key === 'enableOnlyIfInitialized') {
+          return false;
+        }
+        if (key === 'ai.enabled') {
+          return true;
+        }
+        if (key === 'cliPath') {
+          return 'beans';
+        }
+        return defaultValue;
+      }),
+      has: vi.fn(),
+      inspect: vi.fn(),
+      update: vi.fn(),
+    } as any);
+
+    vi.spyOn(vscode.workspace, 'findFiles').mockResolvedValue([]);
+
+    // Simulate user not responding to "Generate now / Not now" prompt yet.
+    vi.spyOn(vscode.window, 'showInformationMessage').mockImplementation((() => new Promise(() => {})) as any);
+
+    const outcome = await Promise.race([
+      activate(mockContext).then(() => 'resolved'),
+      new Promise<'timeout'>(resolve => setTimeout(() => resolve('timeout'), 100)),
+    ]);
+
+    expect(outcome).toBe('resolved');
+    expect(mockContext.subscriptions.length).toBeGreaterThan(0);
+  });
 });

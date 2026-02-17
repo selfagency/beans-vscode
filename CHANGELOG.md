@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-02-17
+
+### Fixed
+
+- Restored missing search-bar icons (magnifying glass and filter) in the Search webview.
+- Improved icon rendering resilience by replacing codicon font dependency in the search bar with inline SVG icons.
+- Updated search/filter icon visual treatment for better contrast and consistency:
+  - neutral gray by default,
+  - lighter gray in dark themes,
+  - outline/empty filter icon style.
+- Prevented initialization/create-instructions popups from blocking Beans sidebar activation by moving AI artifact prompt+generation to a non-blocking async path.
+- Added integration regression coverage to ensure activation completes even if the Copilot artifact prompt is left unanswered.
+
+### Changed
+
+- Hardened release workflow trigger/permissions/concurrency logic to ensure tag-based releases only proceed when required workflows succeed.
+
 ## [1.0.3] - 2026-02-17
 
 ### Fixed

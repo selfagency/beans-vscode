@@ -63,11 +63,9 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
   ): void {
     this._view = webviewView;
 
-    const codiconsUri = vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist');
-
     webviewView.webview.options = {
       enableScripts: true,
-      localResourceRoots: [this.extensionUri, codiconsUri],
+      localResourceRoots: [this.extensionUri],
     };
 
     webviewView.webview.onDidReceiveMessage(async message => {
@@ -281,9 +279,6 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
 
   private getHtml(webview: vscode.Webview): string {
     const nonce = this.getNonce();
-    const codiconsUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
-    );
     const csp = [
       "default-src 'none'",
       `font-src ${webview.cspSource}`,
@@ -319,7 +314,6 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
-  <link href="${codiconsUri}" rel="stylesheet" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -345,13 +339,26 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
     .search-icon {
       flex-shrink: 0;
       padding: 0 6px;
-      color: var(--vscode-input-foreground);
+      color: var(--vscode-descriptionForeground);
       font-size: 14px;
       display: flex;
       align-items: center;
     }
     .search-bar:focus-within .search-icon {
-      color: var(--vscode-input-foreground);
+      color: var(--vscode-descriptionForeground);
+    }
+    .icon-svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+      display: block;
+    }
+    .icon-svg-outline {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
     .search-bar input {
       flex: 1;
@@ -371,7 +378,7 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
       background: none;
       border: none;
       border-left: 1px solid var(--vscode-input-border, transparent);
-      color: var(--vscode-input-foreground);
+      color: var(--vscode-descriptionForeground);
       cursor: pointer;
       padding: 4px 6px;
       display: flex;
@@ -385,7 +392,13 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
     .filter-btn.active {
       opacity: 1;
     }
-    .filter-btn.active { color: var(--vscode-textLink-foreground); }
+    .filter-btn.active { color: var(--vscode-descriptionForeground); }
+    .vscode-dark .search-icon,
+    .vscode-dark .search-bar:focus-within .search-icon,
+    .vscode-dark .filter-btn,
+    .vscode-dark .filter-btn.active {
+      color: var(--vscode-input-foreground);
+    }
     .filters-panel {
       display: none;
       margin-bottom: 8px;
@@ -473,7 +486,11 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
 </head>
 <body>
   <div class="search-bar">
-    <span class="search-icon codicon codicon-search" aria-hidden="true"></span>
+    <span class="search-icon" aria-hidden="true">
+      <svg class="icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+        <path d="M11.742 10.344h-.737l-.262-.253a5.5 5.5 0 1 0-.652.652l.253.262v.737L14.5 15.9 15.9 14.5l-4.158-4.156zM6.5 10.344a3.844 3.844 0 1 1 0-7.688 3.844 3.844 0 0 1 0 7.688z"></path>
+      </svg>
+    </span>
     <input
       id="searchInput"
       type="text"
@@ -481,7 +498,9 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
       aria-label="Search beans"
     />
     <button class="filter-btn" id="filtersToggle" aria-expanded="false" aria-controls="filtersPanel" title="Toggle filters" aria-label="Toggle filters">
-      <span class="codicon codicon-filter"></span>
+      <svg class="icon-svg icon-svg-outline" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+        <path d="M2 3h12l-4.5 5.25V12.5l-3-1.8V8.25L2 3z"></path>
+      </svg>
     </button>
   </div>
 
