@@ -612,6 +612,19 @@ jobs:
       - run: pnpm install
       - run: pnpm run compile
       - run: pnpm test
+  
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+      - run: pnpm install
+      - run: pnpm test -- --coverage
+      - uses: actions/upload-artifact@v6
+        with:
+          name: coverage-report
+          path: coverage/
 ```
 
 **Features**:
@@ -620,13 +633,14 @@ jobs:
 - Uses xvfb on Linux for headless testing
 - Uploads test artifacts on failure
 - Reports test results in PR checks
+- Dedicated coverage job generates and uploads coverage reports
 
 #### Test Artifacts
 
-On failure, CI uploads:
+On failure or completion, CI uploads:
 
 - Test output logs
-- Coverage reports (if enabled)
+- Coverage reports (from dedicated coverage job)
 - Extension build artifacts (`.vsix`)
 
 Access via:
