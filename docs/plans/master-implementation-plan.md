@@ -599,7 +599,7 @@ async function promptForCLIInstallation() {
   );
 
   if (result === 'Install Instructions') {
-    vscode.env.openExternal(vscode.Uri.parse('https://github.com/jfcantinz/beans#installation'));
+    vscode.env.openExternal(vscode.Uri.parse('https://github.com/hmans/beans#installation'));
   } else if (result === 'Configure Path') {
     await vscode.commands.executeCommand('workbench.action.openSettings', 'beans.cliPath');
   }
@@ -627,7 +627,7 @@ async function promptForInitialization(service: BeansService) {
       vscode.window.showErrorMessage(`Failed to initialize Beans: ${(error as Error).message}`);
     }
   } else if (result === 'Learn More') {
-    vscode.env.openExternal(vscode.Uri.parse('https://github.com/jfcantinz/beans'));
+    vscode.env.openExternal(vscode.Uri.parse('https://github.com/hmans/beans'));
   }
 }
 

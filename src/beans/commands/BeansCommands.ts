@@ -32,7 +32,7 @@ function handleBeansError(error: unknown, context: string, showToUser: boolean =
         .showErrorMessage('Beans CLI not installed. Please install it first.', 'Install Instructions')
         .then(selection => {
           if (selection === 'Install Instructions') {
-            vscode.env.openExternal(vscode.Uri.parse('https://github.com/jfcantinz/beans#installation'));
+            vscode.env.openExternal(vscode.Uri.parse('https://github.com/hmans/beans#installation'));
           }
         });
     }
@@ -46,7 +46,7 @@ function handleBeansError(error: unknown, context: string, showToUser: boolean =
         )
         .then(selection => {
           if (selection === 'Learn More') {
-            vscode.env.openExternal(vscode.Uri.parse('https://github.com/jfcantinz/beans#configuration'));
+            vscode.env.openExternal(vscode.Uri.parse('https://github.com/hmans/beans#configuration'));
           }
         });
     }
