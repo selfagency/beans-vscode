@@ -227,7 +227,7 @@ jobs:
           configFile: .devcontainer-test/devcontainer.json
           imageName: ghcr.io/${{ github.repository_owner }}/beans-vscode-devcontainer-test
           cacheFrom: ghcr.io/${{ github.repository_owner }}/beans-vscode-devcontainer-test
-          push: true
+          push: 'true'
           runCmd: |
             export GIT_TERMINAL_PROMPT=0
             export GOPROXY=https://proxy.golang.org,direct
@@ -272,8 +272,7 @@ jobs:
         with:
           configFile: .devcontainer-test/devcontainer.json
           imageName: ghcr.io/${{ github.repository_owner }}/beans-vscode-devcontainer-test
-          cacheFrom: ghcr.io/${{ github.repository_owner }}/beans-vscode-devcontainer-test
-          push: false
+          push: 'false'
           runCmd: |
             export GIT_TERMINAL_PROMPT=0
             export GOPROXY=https://proxy.golang.org,direct
