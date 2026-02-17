@@ -55,8 +55,14 @@ export class BeansConfigManager {
         return null;
       }
 
-      // Cast to BeansConfig (assuming the YAML structure matches)
-      return parsed as BeansConfig;
+      // Extract the 'beans' root key to match .beans.yml structure
+      const beansConfig = (parsed as any).beans;
+      if (!beansConfig || typeof beansConfig !== 'object') {
+        this.logger.warn('.beans.yml missing "beans" root key');
+        return null;
+      }
+
+      return beansConfig as BeansConfig;
     } catch (error) {
       this.logger.error('Failed to read .beans.yml:', error as Error);
       return null;
