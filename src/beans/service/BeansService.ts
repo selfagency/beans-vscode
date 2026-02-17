@@ -449,6 +449,10 @@ export class BeansService {
     // Derive short code from ID: last segment after final hyphen
     const code = bean.code || (bean.id ? bean.id.split('-').pop() : '') || '';
 
+    // Parse and validate dates
+    const createdAt = this.parseDate(bean.createdAt || bean.created_at, 'created_at', bean.id);
+    const updatedAt = this.parseDate(bean.updatedAt || bean.updated_at, 'updated_at', bean.id);
+
     return {
       id: bean.id,
       code,
@@ -463,10 +467,27 @@ export class BeansService {
       parent: bean.parent || bean.parentId || bean.parent_id,
       blocking: bean.blocking || bean.blockingIds || bean.blocking_ids || [],
       blockedBy: bean.blocked_by || bean.blockedByIds || bean.blocked_by_ids || [],
-      createdAt: new Date(bean.createdAt || bean.created_at || Date.now()),
-      updatedAt: new Date(bean.updatedAt || bean.updated_at || Date.now()),
+      createdAt,
+      updatedAt,
       etag: bean.etag,
     };
+  }
+
+  /**
+   * Parse and validate a date string, returning current date if invalid
+   */
+  private parseDate(dateValue: string | Date | number | undefined, fieldName: string, beanId: string): Date {
+    if (!dateValue) {
+      return new Date();
+    }
+
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) {
+      this.logger.warn(`Invalid ${fieldName} date for bean ${beanId}: ${dateValue}. Using current date.`);
+      return new Date();
+    }
+
+    return date;
   }
 
   /**
