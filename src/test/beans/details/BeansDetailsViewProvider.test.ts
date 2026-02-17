@@ -47,6 +47,11 @@ function makeBean(overrides: Partial<Bean> = {}): Bean {
 describe('BeansDetailsViewProvider', () => {
   let provider: BeansDetailsViewProvider;
   let service: { showBean: ReturnType<typeof vi.fn>; updateBean: ReturnType<typeof vi.fn> };
+  const resolveContext = {} as vscode.WebviewViewResolveContext<unknown>;
+  const cancellationToken = {
+    isCancellationRequested: false,
+    onCancellationRequested: () => ({ dispose: () => {} }),
+  } as vscode.CancellationToken;
   let receivedHandler: ((message: any) => Promise<void>) | undefined;
   let visibilityHandler: (() => void) | undefined;
   let webview: any;
@@ -78,7 +83,7 @@ describe('BeansDetailsViewProvider', () => {
   });
 
   it('resolves view with empty html when no selected bean', () => {
-    provider.resolveWebviewView(view, {} as any, {} as any);
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
 
     expect(webview.options.enableScripts).toBe(true);
     expect(webview.options.localResourceRoots).toHaveLength(1);
@@ -95,7 +100,7 @@ describe('BeansDetailsViewProvider', () => {
     service.showBean.mockResolvedValueOnce(bean).mockResolvedValueOnce(parent);
     const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand');
 
-    provider.resolveWebviewView(view, {} as any, {} as any);
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
     await provider.showBean(bean);
 
     expect(executeCommandSpy).toHaveBeenCalledWith('setContext', 'beans.hasSelectedBean', true);
@@ -115,7 +120,7 @@ describe('BeansDetailsViewProvider', () => {
     });
     service.showBean.mockResolvedValueOnce(bean);
 
-    provider.resolveWebviewView(view, {} as any, {} as any);
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
     await provider.showBean(bean);
 
     expect(webview.html).toContain('class="bean-ref"');
@@ -131,7 +136,7 @@ describe('BeansDetailsViewProvider', () => {
 
     service.showBean.mockResolvedValueOnce(first).mockResolvedValueOnce(second).mockResolvedValueOnce(first);
 
-    provider.resolveWebviewView(view, {} as any, {} as any);
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
     await provider.showBean(first);
     expect(webview.html).toContain('First bean');
     expect(webview.html).not.toContain('id="back-button"');
@@ -150,7 +155,7 @@ describe('BeansDetailsViewProvider', () => {
     service.showBean.mockRejectedValue(new Error('load failed'));
     const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand');
 
-    provider.resolveWebviewView(view, {} as any, {} as any);
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
     await provider.showBean(partial);
 
     expect(mockLogger.error).toHaveBeenCalledWith('Failed to fetch bean details', expect.any(Error));
@@ -161,7 +166,7 @@ describe('BeansDetailsViewProvider', () => {
 
   it('clears selected bean and resets html/context', () => {
     const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand');
-    provider.resolveWebviewView(view, {} as any, {} as any);
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
 
     (provider as any)._currentBean = makeBean();
     provider.clear();
@@ -180,7 +185,7 @@ describe('BeansDetailsViewProvider', () => {
     const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand');
     const infoSpy = vi.spyOn(vscode.window, 'showInformationMessage');
 
-    provider.resolveWebviewView(view, {} as any, {} as any);
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
     await receivedHandler?.({ command: 'updateBean', updates: { status: 'in-progress' } });
 
     expect(service.updateBean).toHaveBeenCalledWith(bean.id, { status: 'in-progress' });
@@ -196,7 +201,7 @@ describe('BeansDetailsViewProvider', () => {
     service.updateBean.mockRejectedValue(new Error('update failed'));
     const errorSpy = vi.spyOn(vscode.window, 'showErrorMessage');
 
-    provider.resolveWebviewView(view, {} as any, {} as any);
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
     await receivedHandler?.({ command: 'updateBean', updates: { status: 'completed' } });
 
     expect(mockLogger.error).toHaveBeenCalledWith('Failed to update bean', expect.any(Error));
@@ -204,7 +209,7 @@ describe('BeansDetailsViewProvider', () => {
   });
 
   it('updates visible view when visibility changes and bean exists', () => {
-    provider.resolveWebviewView(view, {} as any, {} as any);
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
     (provider as any)._currentBean = makeBean({ title: 'Visible bean' });
 
     visibilityHandler?.();
