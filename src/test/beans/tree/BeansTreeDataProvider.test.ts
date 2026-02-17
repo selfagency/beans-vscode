@@ -101,7 +101,7 @@ describe('BeansTreeDataProvider', () => {
         updatedAt: new Date(),
         etag: 'etag1',
       };
-      const treeItem = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None, false, false);
+      const treeItem = { bean } as unknown as BeanTreeItem;
 
       const result = provider.getTreeItem(treeItem);
 
