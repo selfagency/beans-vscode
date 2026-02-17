@@ -192,31 +192,30 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
   private rebuildInProgressCache(): void {
     this.inProgressDescendantsCache.clear();
 
+    // Build id->bean map for O(1) lookups
+    const beanMap = new Map<string, Bean>();
+    for (const bean of this.beans) {
+      beanMap.set(bean.id, bean);
+    }
+
     // Find all in-progress beans
     const inProgressBeans = this.beans.filter(b => b.status === 'in-progress');
 
-    // Mark all ancestors of in-progress beans
+    // Mark all ancestors of in-progress beans (iterative to avoid stack overflow)
     for (const bean of inProgressBeans) {
-      if (bean.parent) {
-        this.markAncestorsHaveInProgressDescendants(bean.parent);
+      let currentId = bean.parent;
+      while (currentId) {
+        // If already marked, we can stop (all ancestors above are already marked)
+        if (this.inProgressDescendantsCache.has(currentId)) {
+          break;
+        }
+
+        this.inProgressDescendantsCache.set(currentId, true);
+
+        // Move up to parent (O(1) lookup via map)
+        const currentBean = beanMap.get(currentId);
+        currentId = currentBean?.parent;
       }
-    }
-  }
-
-  /**
-   * Mark a bean and all its ancestors as having in-progress descendants
-   */
-  private markAncestorsHaveInProgressDescendants(beanId: string): void {
-    if (this.inProgressDescendantsCache.has(beanId)) {
-      return; // Already marked
-    }
-
-    this.inProgressDescendantsCache.set(beanId, true);
-
-    // Find parent and recurse
-    const parent = this.beans.find(b => b.id === beanId);
-    if (parent?.parent) {
-      this.markAncestorsHaveInProgressDescendants(parent.parent);
     }
   }
 

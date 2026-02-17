@@ -36,8 +36,8 @@ interface RawBeanFromCLI {
   blocking_ids?: string[];
   blockingIds?: string[];
   blocked_by?: string[];
-  blockedBy?: string[];
   blocked_by_ids?: string[];
+  blockedBy?: string[];
   blockedByIds?: string[];
   created_at?: string;
   createdAt?: string;
@@ -92,18 +92,6 @@ export class BeansService {
   private updateCache(beans: Bean[]): void {
     this.cachedBeans = beans;
     this.cacheTimestamp = Date.now();
-  }
-
-  /**
-   * Parse a CLI date field and fall back to "now" when the value is missing or invalid.
-   */
-  private parseDateValue(value?: string): Date {
-    if (!value) {
-      return new Date();
-    }
-
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
   }
 
   /**
@@ -164,10 +152,13 @@ export class BeansService {
   }
 
   /**
-   * Retry helper with exponential backoff for transient failures
+   * Retry helper with exponential backoff for transient failures.
+   *
    * @param fn Function to retry
-   * @param maxRetries Maximum retry attempts (default 3)
-   * @param baseDelay Base delay in ms (default 100ms)
+   * @param maxRetries Maximum number of retries AFTER the initial attempt (default 3).
+   *   This results in up to maxRetries + 1 total attempts (1 initial + maxRetries retries).
+   *   For example, maxRetries=3 means 4 total attempts: 1 initial + 3 retries.
+   * @param baseDelay Base delay in ms between retries (default 100ms), grows exponentially
    * @returns Result from function
    */
   private async withRetry<T>(fn: () => Promise<T>, maxRetries: number = 3, baseDelay: number = 100): Promise<T> {
@@ -404,14 +395,20 @@ export class BeansService {
         (error as NodeJS.ErrnoException).code === 'ENOENT'
       ) {
         if (this.isCacheValid()) {
-          this.offlineMode = true;
-          this.logger.warn('CLI unavailable, using cached data (offline mode)');
+          // Warn user once when entering offline mode
+          if (!this.offlineMode) {
+            this.offlineMode = true;
+            this.logger.warn('CLI unavailable, using cached data (offline mode)');
+            vscode.window.showWarningMessage('Beans CLI unavailable. Using cached data (may be stale).');
+          }
           return this.filterBeans(this.cachedBeans!, options);
         }
 
         // No valid cache available
-        this.offlineMode = true;
-        this.logger.error('CLI unavailable and no cached data available');
+        if (!this.offlineMode) {
+          this.offlineMode = true;
+          this.logger.error('CLI unavailable and no cached data available');
+        }
         throw new Error(
           'Beans CLI is not available and no cached data exists. Please ensure Beans CLI is installed and accessible.'
         );
@@ -426,7 +423,6 @@ export class BeansService {
    * Normalize bean data from CLI to ensure required fields exist.
    * CLI outputs snake_case (created_at, updated_at, blocked_by, parent_id, blocking_ids, blocked_by_ids).
    * We map to camelCase model fields and derive the short 'code' from the ID.
-   * For relationship arrays, canonical `*_ids` keys are preferred over legacy keys.
    * @throws BeansJSONParseError if bean is missing required fields
    */
   private normalizeBean(rawBean: RawBeanFromCLI): Bean {
@@ -439,9 +435,31 @@ export class BeansService {
       );
     }
 
+    // Validate additional required fields for Bean interface
+    if (
+      rawBean.slug === undefined ||
+      rawBean.slug === null ||
+      rawBean.path === undefined ||
+      rawBean.path === null ||
+      rawBean.body === undefined ||
+      rawBean.body === null ||
+      rawBean.etag === undefined ||
+      rawBean.etag === null
+    ) {
+      throw new BeansJSONParseError(
+        'Bean missing required fields (slug, path, body, or etag)',
+        JSON.stringify(rawBean),
+        new Error('Invalid bean structure')
+      );
+    }
+
     const bean = rawBean;
     // Derive short code from ID: last segment after final hyphen
     const code = bean.code || (bean.id ? bean.id.split('-').pop() : '') || '';
+
+    // Parse and validate dates
+    const createdAt = this.parseDate(bean.createdAt || bean.created_at, 'created_at', bean.id);
+    const updatedAt = this.parseDate(bean.updatedAt || bean.updated_at, 'updated_at', bean.id);
 
     return {
       id: bean.id,
@@ -458,10 +476,27 @@ export class BeansService {
       blocking: bean.blocking || bean.blockingIds || bean.blocking_ids || [],
       // Prefer canonical *_ids fields when both canonical and legacy keys are present.
       blockedBy: bean.blockedBy || bean.blockedByIds || bean.blocked_by_ids || bean.blocked_by || [],
-      createdAt: this.parseDateValue(bean.createdAt || bean.created_at),
-      updatedAt: this.parseDateValue(bean.updatedAt || bean.updated_at),
+      createdAt,
+      updatedAt,
       etag: bean.etag,
     };
+  }
+
+  /**
+   * Parse and validate a date string, returning current date if invalid
+   */
+  private parseDate(dateValue: string | Date | number | undefined, fieldName: string, beanId: string): Date {
+    if (!dateValue) {
+      return new Date();
+    }
+
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) {
+      this.logger.warn(`Invalid ${fieldName} date for bean ${beanId}: ${dateValue}. Using current date.`);
+      return new Date();
+    }
+
+    return date;
   }
 
   /**
@@ -486,33 +521,36 @@ export class BeansService {
   }
 
   /**
-   * Validate bean type
+   * Validate bean type against workspace configuration
+   * @param type - Type to validate
+   * @param validTypes - Valid types from workspace config
    * @throws Error if type is invalid
    */
-  private validateType(type: string): void {
-    const validTypes: BeanType[] = ['milestone', 'epic', 'feature', 'bug', 'task'];
+  private validateType(type: string, validTypes: BeanType[]): void {
     if (!validTypes.includes(type as BeanType)) {
       throw new Error(`Invalid type: ${type}. Must be one of: ${validTypes.join(', ')}`);
     }
   }
 
   /**
-   * Validate bean status
+   * Validate bean status against workspace configuration
+   * @param status - Status to validate
+   * @param validStatuses - Valid statuses from workspace config
    * @throws Error if status is invalid
    */
-  private validateStatus(status: string): void {
-    const validStatuses: BeanStatus[] = ['todo', 'in-progress', 'completed', 'scrapped', 'draft'];
+  private validateStatus(status: string, validStatuses: BeanStatus[]): void {
     if (!validStatuses.includes(status as BeanStatus)) {
       throw new Error(`Invalid status: ${status}. Must be one of: ${validStatuses.join(', ')}`);
     }
   }
 
   /**
-   * Validate bean priority
+   * Validate bean priority against workspace configuration
+   * @param priority - Priority to validate
+   * @param validPriorities - Valid priorities from workspace config
    * @throws Error if priority is invalid
    */
-  private validatePriority(priority: string): void {
-    const validPriorities: BeanPriority[] = ['critical', 'high', 'normal', 'low', 'deferred'];
+  private validatePriority(priority: string, validPriorities: BeanPriority[]): void {
     if (!validPriorities.includes(priority as BeanPriority)) {
       throw new Error(`Invalid priority: ${priority}. Must be one of: ${validPriorities.join(', ')}`);
     }
@@ -530,14 +568,33 @@ export class BeansService {
     description?: string;
     parent?: string;
   }): Promise<Bean> {
+    const config = await this.getConfig();
+    return this.createBeanWithConfig(data, config);
+  }
+
+  /**
+   * Create a bean with pre-fetched config (optimized for batch operations)
+   * @private
+   */
+  private async createBeanWithConfig(
+    data: {
+      title: string;
+      type: string;
+      status?: string;
+      priority?: string;
+      description?: string;
+      parent?: string;
+    },
+    config: BeansConfig
+  ): Promise<Bean> {
     // Validate inputs
     this.validateTitle(data.title);
-    this.validateType(data.type);
+    this.validateType(data.type, config.types ?? []);
     if (data.status) {
-      this.validateStatus(data.status);
+      this.validateStatus(data.status, config.statuses ?? []);
     }
     if (data.priority) {
-      this.validatePriority(data.priority);
+      this.validatePriority(data.priority, config.priorities ?? []);
     }
 
     const args = ['create', '--json', data.title, '-t', data.type];
@@ -577,15 +634,35 @@ export class BeansService {
       blockedBy?: string[];
     }
   ): Promise<Bean> {
+    const config = await this.getConfig();
+    return this.updateBeanWithConfig(id, updates, config);
+  }
+
+  /**
+   * Update a bean with pre-fetched config (optimized for batch operations)
+   * @private
+   */
+  private async updateBeanWithConfig(
+    id: string,
+    updates: {
+      status?: string;
+      type?: string;
+      priority?: string;
+      parent?: string;
+      blocking?: string[];
+      blockedBy?: string[];
+    },
+    config: BeansConfig
+  ): Promise<Bean> {
     // Validate inputs
     if (updates.status) {
-      this.validateStatus(updates.status);
+      this.validateStatus(updates.status, config.statuses ?? []);
     }
     if (updates.type) {
-      this.validateType(updates.type);
+      this.validateType(updates.type, config.types ?? []);
     }
     if (updates.priority) {
-      this.validatePriority(updates.priority);
+      this.validatePriority(updates.priority, config.priorities ?? []);
     }
 
     const args = ['update', '--json', id];
@@ -641,9 +718,12 @@ export class BeansService {
       parent?: string;
     }>
   ): Promise<Array<{ success: true; bean: Bean } | { success: false; error: Error; data: (typeof batchData)[0] }>> {
+    // Fetch config once for the entire batch to avoid multiple I/O operations
+    const config = await this.getConfig();
+
     const promises = batchData.map(async data => {
       try {
-        const bean = await this.createBean(data);
+        const bean = await this.createBeanWithConfig(data, config);
         return { success: true as const, bean };
       } catch (error) {
         return { success: false as const, error: error as Error, data };
@@ -672,9 +752,12 @@ export class BeansService {
       };
     }>
   ): Promise<Array<{ success: true; bean: Bean } | { success: false; error: Error; id: string }>> {
+    // Fetch config once for the entire batch to avoid multiple I/O operations
+    const config = await this.getConfig();
+
     const promises = batchUpdates.map(async ({ id, updates }) => {
       try {
-        const bean = await this.updateBean(id, updates);
+        const bean = await this.updateBeanWithConfig(id, updates, config);
         return { success: true as const, bean };
       } catch (error) {
         return { success: false as const, error: error as Error, id };

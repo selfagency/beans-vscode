@@ -38,6 +38,7 @@ vi.mock('vscode', () => {
     },
     window: {
       createOutputChannel: vi.fn(() => mockOutputChannel),
+      showWarningMessage: vi.fn(),
     },
     LogLevel: {
       Trace: 0,

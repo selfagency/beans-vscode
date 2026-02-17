@@ -2,7 +2,16 @@ import * as vscode from 'vscode';
 import { BeansConfigManager } from '../config';
 import { BeansDetailsViewProvider } from '../details';
 import { BeansOutput } from '../logging';
-import { Bean, BeansCLINotFoundError, BeansJSONParseError, BeansTimeoutError } from '../model';
+import {
+  Bean,
+  BeansCLINotFoundError,
+  BeansConfigMissingError,
+  BeansConcurrencyError,
+  BeansIntegrityCheckFailedError,
+  BeansJSONParseError,
+  BeansPermissionError,
+  BeansTimeoutError,
+} from '../model';
 import { BeansPreviewProvider } from '../preview';
 import { BeansService } from '../service';
 import { BeansFilterManager, BeanTreeItem } from '../tree';
@@ -24,6 +33,47 @@ function handleBeansError(error: unknown, context: string, showToUser: boolean =
         .then(selection => {
           if (selection === 'Install Instructions') {
             vscode.env.openExternal(vscode.Uri.parse('https://github.com/jfcantinz/beans#installation'));
+          }
+        });
+    }
+  } else if (error instanceof BeansConfigMissingError) {
+    logger.error(`${context}: Beans configuration missing`, error);
+    if (showToUser) {
+      vscode.window
+        .showErrorMessage(
+          'Beans is not initialized in this workspace. Create a .beans.yml file to get started.',
+          'Learn More'
+        )
+        .then(selection => {
+          if (selection === 'Learn More') {
+            vscode.env.openExternal(vscode.Uri.parse('https://github.com/jfcantinz/beans#configuration'));
+          }
+        });
+    }
+  } else if (error instanceof BeansPermissionError) {
+    logger.error(`${context}: Permission denied`, error);
+    if (showToUser) {
+      vscode.window.showErrorMessage(`Permission denied: ${error.message}. Check file permissions in your workspace.`);
+    }
+  } else if (error instanceof BeansConcurrencyError) {
+    logger.error(`${context}: Concurrent modification detected`, error);
+    if (showToUser) {
+      vscode.window
+        .showWarningMessage('This bean was modified by another process. Please refresh and try again.', 'Refresh')
+        .then(selection => {
+          if (selection === 'Refresh') {
+            vscode.commands.executeCommand('beans.refresh');
+          }
+        });
+    }
+  } else if (error instanceof BeansIntegrityCheckFailedError) {
+    logger.error(`${context}: Integrity check failed`, error);
+    if (showToUser) {
+      vscode.window
+        .showErrorMessage('Bean data integrity check failed. The repository may be corrupted.', 'Show Output')
+        .then(selection => {
+          if (selection === 'Show Output') {
+            logger.show();
           }
         });
     }

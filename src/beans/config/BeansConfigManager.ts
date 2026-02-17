@@ -42,8 +42,12 @@ export class BeansConfigManager {
       const document = await vscode.workspace.openTextDocument(configFile[0]);
       const content = document.getText();
 
-      // Parse YAML using js-yaml
-      const parsed = yaml.load(content, { schema: yaml.DEFAULT_SCHEMA });
+      // Parse YAML using js-yaml with safe schema
+      // CORE_SCHEMA is safer than DEFAULT_SCHEMA (no custom types/functions/eval)
+      const parsed = yaml.load(content, {
+        schema: yaml.CORE_SCHEMA,
+        json: false,
+      });
 
       // Validate that parsed content is an object
       if (!parsed || typeof parsed !== 'object') {
@@ -51,8 +55,16 @@ export class BeansConfigManager {
         return null;
       }
 
-      // Cast to BeansConfig (assuming the YAML structure matches)
-      return parsed as BeansConfig;
+      // Extract the 'beans' root key to match .beans.yml structure
+      // .beans.yml has structure: { beans: { path: '...', types: [...], ... } }
+      const parsedObj = parsed as Record<string, unknown>;
+      const beansConfig = parsedObj.beans;
+      if (!beansConfig || typeof beansConfig !== 'object') {
+        this.logger.warn('.beans.yml missing "beans" root key');
+        return null;
+      }
+
+      return beansConfig as BeansConfig;
     } catch (error) {
       this.logger.error('Failed to read .beans.yml:', error as Error);
       return null;
