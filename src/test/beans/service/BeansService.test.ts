@@ -12,7 +12,7 @@ vi.mock('child_process', () => ({
 // Mock vscode
 vi.mock('vscode', () => {
   const mockConfig = {
-    get: vi.fn((key: string, defaultValue?: any) => {
+    get: vi.fn((key: string, defaultValue?: unknown) => {
       if (key === 'cliPath') {
         return 'beans';
       }
@@ -54,6 +54,19 @@ describe('BeansService', () => {
   let service: BeansService;
   let mockExecFile: ReturnType<typeof vi.fn>;
 
+  function createErrnoError(message: string, code: string): NodeJS.ErrnoException {
+    const error = new Error(message) as NodeJS.ErrnoException;
+    error.code = code;
+    return error;
+  }
+
+  function createTimeoutError(message: string): NodeJS.ErrnoException & { killed: boolean; signal: string } {
+    const error = new Error(message) as NodeJS.ErrnoException & { killed: boolean; signal: string };
+    error.killed = true;
+    error.signal = 'SIGTERM';
+    return error;
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockExecFile = execFile as unknown as ReturnType<typeof vi.fn>;
@@ -83,8 +96,7 @@ describe('BeansService', () => {
 
     it('returns false when CLI is not found (ENOENT)', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        const error: any = new Error('ENOENT');
-        error.code = 'ENOENT';
+        const error = createErrnoError('ENOENT', 'ENOENT');
         callback(error, null);
       });
 
@@ -253,8 +265,7 @@ describe('BeansService', () => {
 
       // Second call fails, should use cache
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        const error: any = new Error('ENOENT');
-        error.code = 'ENOENT';
+        const error = createErrnoError('ENOENT', 'ENOENT');
         callback(error, null);
       });
 
@@ -299,8 +310,7 @@ describe('BeansService', () => {
       await service.listBeans();
 
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        const error: any = new Error('ENOENT');
-        error.code = 'ENOENT';
+        const error = createErrnoError('ENOENT', 'ENOENT');
         callback(error, null);
       });
 
@@ -314,8 +324,7 @@ describe('BeansService', () => {
       service.clearCache();
 
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        const error: any = new Error('ENOENT');
-        error.code = 'ENOENT';
+        const error = createErrnoError('ENOENT', 'ENOENT');
         callback(error, null);
       });
 
@@ -713,8 +722,7 @@ describe('BeansService', () => {
   describe('error handling', () => {
     it('throws BeansCLINotFoundError when CLI not found', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        const error: any = new Error('ENOENT');
-        error.code = 'ENOENT';
+        const error = createErrnoError('ENOENT', 'ENOENT');
         callback(error, null);
       });
 
@@ -723,9 +731,7 @@ describe('BeansService', () => {
 
     it('throws BeansTimeoutError on timeout', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        const error: any = new Error('Timeout');
-        error.killed = true;
-        error.signal = 'SIGTERM';
+        const error = createTimeoutError('Timeout');
         callback(error, null);
       });
 
@@ -847,8 +853,7 @@ describe('BeansService', () => {
 
       // Next call with error should fail (no cache)
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        const error: any = new Error('ENOENT');
-        error.code = 'ENOENT';
+        const error = createErrnoError('ENOENT', 'ENOENT');
         callback(error, null);
       });
 
