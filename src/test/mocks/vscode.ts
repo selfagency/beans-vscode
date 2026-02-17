@@ -1,7 +1,7 @@
 export enum TreeItemCollapsibleState {
   None = 0,
   Collapsed = 1,
-  Expanded = 2
+  Expanded = 2,
 }
 
 export class TreeItem {
@@ -25,7 +25,10 @@ export class ThemeColor {
 }
 
 export class ThemeIcon {
-  constructor(public readonly id: string, public readonly color?: ThemeColor) {}
+  constructor(
+    public readonly id: string,
+    public readonly color?: ThemeColor
+  ) {}
 }
 
 export class MarkdownString {
@@ -98,14 +101,14 @@ class OutputChannel {
 }
 
 export const window = {
-  showInformationMessage: (_message: string): void => {
-    // no-op mock
+  showInformationMessage: (_message: string, ..._items: string[]): Thenable<string | undefined> => {
+    return Promise.resolve(undefined);
   },
-  showErrorMessage: (_message: string): void => {
-    // no-op mock
+  showErrorMessage: (_message: string, ..._items: string[]): Thenable<string | undefined> => {
+    return Promise.resolve(undefined);
   },
-  showWarningMessage: (_message: string): void => {
-    // no-op mock
+  showWarningMessage: (_message: string, ..._items: string[]): Thenable<string | undefined> => {
+    return Promise.resolve(undefined);
   },
   createOutputChannel: (name: string): OutputChannel => {
     return new OutputChannel(name);
@@ -115,7 +118,7 @@ export const window = {
   },
   registerTreeDataProvider: (): { dispose: () => void } => {
     return { dispose: () => {} };
-  }
+  },
 };
 
 export const workspace = {
@@ -124,7 +127,7 @@ export const workspace = {
     get: () => undefined,
     has: () => false,
     inspect: () => undefined,
-    update: () => Promise.resolve()
+    update: () => Promise.resolve(),
   }),
   findFiles: (): Promise<Uri[]> => Promise.resolve([]),
   registerTextDocumentContentProvider: (): { dispose: () => void } => {
@@ -134,26 +137,29 @@ export const workspace = {
     onDidCreate: () => ({ dispose: () => {} }),
     onDidChange: () => ({ dispose: () => {} }),
     onDidDelete: () => ({ dispose: () => {} }),
-    dispose: () => {}
+    dispose: () => {},
   }),
   onDidChangeConfiguration: (): { dispose: () => void } => {
     return { dispose: () => {} };
-  }
+  },
 };
 
 export const commands = {
   registerCommand: (): { dispose: () => void } => {
     return { dispose: () => {} };
   },
-  executeCommand: (): Promise<any> => Promise.resolve()
+  executeCommand: (): Promise<any> => Promise.resolve(),
 };
 
 export const env = {
-  openExternal: (): Promise<boolean> => Promise.resolve(true)
+  openExternal: (): Promise<boolean> => Promise.resolve(true),
 };
 
 export class RelativePattern {
-  constructor(public base: any, public pattern: string) {}
+  constructor(
+    public base: any,
+    public pattern: string
+  ) {}
 }
 
 export class EventEmitter<T> {
@@ -167,7 +173,7 @@ export class EventEmitter<T> {
   }
 
   fire(data: T): void {
-    this.listeners.forEach((listener) => listener(data));
+    this.listeners.forEach(listener => listener(data));
   }
 
   dispose(): void {
