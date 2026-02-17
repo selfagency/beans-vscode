@@ -286,7 +286,18 @@ wait_for_workflow_success "CI"
 wait_for_workflow_success "Remote Compatibility Tests"
 
 echo "🏷️ Pushing tag ${TAG}..."
-"$GIT_BIN" tag "$TAG" "$HEAD_SHA"
+TAG_SUBJECT="Release ${TAG}"
+TAG_BODY="${RELEASE_NOTES}"
+
+if [[ -n "$PREVIOUS_TAG" ]]; then
+  TAG_BODY+=$'\n\n'
+  TAG_BODY+="Source: changes from ${PREVIOUS_TAG} to ${TAG}."
+fi
+
+TAG_BODY+=$'\n\n'
+TAG_BODY+="Target commit: ${HEAD_SHA}"
+
+"$GIT_BIN" tag -a "$TAG" "$HEAD_SHA" -m "$TAG_SUBJECT" -m "$TAG_BODY"
 "$GIT_BIN" push origin "$TAG"
 
 echo "✅ Deploy complete: ${TAG} -> ${HEAD_SHA}"
