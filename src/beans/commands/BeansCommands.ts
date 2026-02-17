@@ -217,7 +217,7 @@ export class BeansCommands {
       const prompt = this.buildCopilotStartWorkPrompt(fullBean);
 
       // Best-effort open Copilot Chat with prompt. Command signatures vary across VS Code builds.
-      const attempts: Array<() => Promise<unknown>> = [
+      const attempts: Array<() => vscode.Thenable<unknown>> = [
         () => vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt }),
         () => vscode.commands.executeCommand('workbench.action.chat.open', prompt),
         () => vscode.commands.executeCommand('workbench.action.chat.new', { query: prompt }),
