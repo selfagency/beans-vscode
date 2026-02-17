@@ -329,10 +329,6 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
       padding: 8px 12px;
     }
 
-    :root {
-      --beans-search-icon-color: var(--vscode-icon-foreground, var(--vscode-foreground));
-    }
-
     /* ---- Search bar ---- */
     .search-bar {
       display: flex;
@@ -349,7 +345,7 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
     .search-icon {
       flex-shrink: 0;
       padding: 0 6px;
-      color: var(--beans-search-icon-color);
+      color: var(--vscode-input-foreground);
       font-size: 14px;
       display: flex;
       align-items: center;
@@ -375,12 +371,12 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
       background: none;
       border: none;
       border-left: 1px solid var(--vscode-input-border, transparent);
-      color: var(--beans-search-icon-color);
+      color: var(--vscode-input-foreground);
       cursor: pointer;
       padding: 4px 6px;
       display: flex;
       align-items: center;
-      opacity: 0.7;
+      opacity: 0.9;
     }
     .filter-btn:hover {
       opacity: 1;

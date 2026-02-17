@@ -62,6 +62,16 @@ describe('BeansFilterManager', () => {
     expect(manager.getFilter('beans.active')).toBeUndefined();
   });
 
+  it('treats null array-like fields as empty filters', () => {
+    manager.setFilter('beans.active', {
+      tags: null as unknown as string[],
+      types: null as unknown as string[],
+      priorities: null as unknown as string[],
+    });
+
+    expect(manager.getFilter('beans.active')).toBeUndefined();
+  });
+
   it('clears all filters and emits per view', () => {
     const changed: string[] = [];
     manager.onDidChangeFilter(viewId => changed.push(viewId));
@@ -88,6 +98,17 @@ describe('BeansFilterManager', () => {
     expect(manager.getFilterDescription('beans.active')).toBe(
       'text:"auth" tags:backend,security types:bug priority:high'
     );
+  });
+
+  it('builds description safely when array-like fields are null', () => {
+    manager.setFilter('beans.active', {
+      text: 'auth',
+      tags: null as unknown as string[],
+      types: null as unknown as string[],
+      priorities: null as unknown as string[],
+    });
+
+    expect(manager.getFilterDescription('beans.active')).toBe('text:"auth"');
   });
 
   it('returns undefined description when no filter is present', () => {

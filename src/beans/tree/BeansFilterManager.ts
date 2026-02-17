@@ -65,12 +65,11 @@ export class BeansFilterManager {
    * Check if filter is empty
    */
   private isEmptyFilter(filter: BeansFilterState): boolean {
-    return (
-      !filter.text &&
-      (!filter.tags || filter.tags.length === 0) &&
-      (!filter.types || filter.types.length === 0) &&
-      (!filter.priorities || filter.priorities.length === 0)
-    );
+    const hasTags = Array.isArray(filter.tags) && filter.tags.length > 0;
+    const hasTypes = Array.isArray(filter.types) && filter.types.length > 0;
+    const hasPriorities = Array.isArray(filter.priorities) && filter.priorities.length > 0;
+
+    return !filter.text && !hasTags && !hasTypes && !hasPriorities;
   }
 
   /**
@@ -88,15 +87,15 @@ export class BeansFilterManager {
       parts.push(`text:"${filter.text}"`);
     }
 
-    if (filter.tags && filter.tags.length > 0) {
+    if (Array.isArray(filter.tags) && filter.tags.length > 0) {
       parts.push(`tags:${filter.tags.join(',')}`);
     }
 
-    if (filter.types && filter.types.length > 0) {
+    if (Array.isArray(filter.types) && filter.types.length > 0) {
       parts.push(`types:${filter.types.join(',')}`);
     }
 
-    if (filter.priorities && filter.priorities.length > 0) {
+    if (Array.isArray(filter.priorities) && filter.priorities.length > 0) {
       parts.push(`priority:${filter.priorities.join(',')}`);
     }
 

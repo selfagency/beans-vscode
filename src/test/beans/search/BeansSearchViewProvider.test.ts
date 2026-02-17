@@ -105,7 +105,7 @@ describe('BeansSearchViewProvider', () => {
     expect(webview.html).toContain('Content-Security-Policy');
     expect(webview.html).toContain('filtersPanel');
     expect(webview.html).toContain('data-group="status"');
-    expect(webview.html).toContain('--vscode-icon-foreground');
+    expect(webview.html).toContain('--vscode-input-foreground');
     expect(mockLogger.debug).toHaveBeenCalledWith('Search view resolved');
     expect(receivedHandler).toBeTypeOf('function');
   });

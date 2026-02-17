@@ -710,10 +710,10 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Filter Beans',
       description: 'Filter beans by status, type, and free-text search.',
       inputSchema: z.object({
-        statuses: z.array(z.string()).optional(),
-        types: z.array(z.string()).optional(),
+        statuses: z.array(z.string()).nullable().optional(),
+        types: z.array(z.string()).nullable().optional(),
         search: z.string().optional(),
-        tags: z.array(z.string()).optional(),
+        tags: z.array(z.string()).nullable().optional(),
       }),
       annotations: {
         readOnlyHint: true,
@@ -728,14 +728,18 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       search,
       tags,
     }: {
-      statuses?: string[];
-      types?: string[];
+      statuses?: string[] | null;
+      types?: string[] | null;
       search?: string;
-      tags?: string[];
+      tags?: string[] | null;
     }) => {
-      let beans = await backend.list({ status: statuses, type: types, search });
-      if (tags && tags.length > 0) {
-        const tagSet = new Set(tags);
+      const normalizedStatuses = Array.isArray(statuses) ? statuses : undefined;
+      const normalizedTypes = Array.isArray(types) ? types : undefined;
+      const normalizedTags = Array.isArray(tags) ? tags : undefined;
+
+      let beans = await backend.list({ status: normalizedStatuses, type: normalizedTypes, search });
+      if (normalizedTags && normalizedTags.length > 0) {
+        const tagSet = new Set(normalizedTags);
         beans = beans.filter(bean => (bean.tags || []).some(tag => tagSet.has(tag)));
       }
       return makeTextAndStructured({ count: beans.length, beans });
@@ -771,8 +775,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       description: 'Sort beans using extension-supported sort modes.',
       inputSchema: z.object({
         mode: z.enum(['status-priority-type-title', 'updated', 'created', 'id']).default('status-priority-type-title'),
-        statuses: z.array(z.string()).optional(),
-        types: z.array(z.string()).optional(),
+        statuses: z.array(z.string()).nullable().optional(),
+        types: z.array(z.string()).nullable().optional(),
         search: z.string().optional(),
       }),
       annotations: {
@@ -789,11 +793,13 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       search,
     }: {
       mode: SortMode;
-      statuses?: string[];
-      types?: string[];
+      statuses?: string[] | null;
+      types?: string[] | null;
       search?: string;
     }) => {
-      const beans = await backend.list({ status: statuses, type: types, search });
+      const normalizedStatuses = Array.isArray(statuses) ? statuses : undefined;
+      const normalizedTypes = Array.isArray(types) ? types : undefined;
+      const beans = await backend.list({ status: normalizedStatuses, type: normalizedTypes, search });
       return makeTextAndStructured({ mode, count: beans.length, beans: sortBeans(beans, mode) });
     }
   );

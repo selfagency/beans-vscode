@@ -177,6 +177,17 @@ describe('BeansMcpServer tool handlers', () => {
 
     const sortResult = await sort({ mode: 'id', statuses: [], types: [], search: '' });
     expect(sortResult.structuredContent.mode).toBe('id');
+
+    const filterWithNulls = await filter({
+      statuses: null,
+      types: ['task'],
+      search: 'bean',
+      tags: null,
+    });
+    expect(filterWithNulls.structuredContent.count).toBeGreaterThanOrEqual(1);
+
+    const sortWithNulls = await sort({ mode: 'id', statuses: null, types: null, search: '' });
+    expect(sortWithNulls.structuredContent.mode).toBe('id');
   });
 
   it('handles reopen and delete guard branches', async () => {
