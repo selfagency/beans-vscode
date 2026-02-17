@@ -160,17 +160,33 @@ jobs:
             core.setOutput('previous_tag', previousTag);
             core.setOutput('notes', notesResponse.data.body ?? '');
 
-      - name: Checkout main for changelog update
+      - name: Checkout main for version and changelog update
         run: |
           git fetch origin main --depth=1
           git checkout -B main origin/main
 
-      - name: Update CHANGELOG.md
+      - name: Update package.json version and CHANGELOG.md
         env:
           RELEASE_TAG: ${{ needs.detect-tag.outputs.release_tag }}
           PREVIOUS_TAG: ${{ steps.changelog_notes.outputs.previous_tag }}
           RELEASE_NOTES: ${{ steps.changelog_notes.outputs.notes }}
         run: |
+          TAG="${{ needs.detect-tag.outputs.release_tag }}"
+          VERSION="${TAG#v}"
+          
+          # Update package.json version
+          cat > /tmp/update-version.cjs <<'NODE'
+          const fs = require('fs');
+          const pkgPath = 'package.json';
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+          pkg.version = process.env.VERSION;
+          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+          
+          VERSION="$VERSION" node /tmp/update-version.cjs
+          echo "package.json version updated to $(node -p "require('./package.json').version")"
+          
+          # Update CHANGELOG.md
           cat > /tmp/update-changelog.cjs <<'NODE'
           const fs = require('fs');
 
@@ -209,22 +225,25 @@ jobs:
 
           node /tmp/update-changelog.cjs
 
-      - name: Commit and push changelog update
+      - name: Commit version and changelog, then move tag
         run: |
-          if git diff --quiet -- CHANGELOG.md; then
-            echo "No changelog changes to commit."
-            exit 0
-          fi
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md
-          git commit -m "docs(changelog): update for ${{ needs.detect-tag.outputs.release_tag }} [skip ci]"
-          git push origin HEAD:main
-
-      - name: Checkout release tag for packaging
-        run: |
-          git checkout --force ${{ needs.detect-tag.outputs.release_tag }}
+          
+          # Check if there are changes to commit
+          if git diff --quiet -- package.json CHANGELOG.md; then
+            echo "No version or changelog changes to commit."
+          else
+            git add package.json CHANGELOG.md
+            git commit -m "chore(release): update version and changelog for ${{ needs.detect-tag.outputs.release_tag }} [skip ci]"
+            git push origin HEAD:main
+            
+            # Move the tag to the new commit
+            NEW_SHA=$(git rev-parse HEAD)
+            echo "Moving tag ${{ needs.detect-tag.outputs.release_tag }} to $NEW_SHA"
+            git tag -f ${{ needs.detect-tag.outputs.release_tag }} HEAD
+            git push origin ${{ needs.detect-tag.outputs.release_tag }} --force
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -235,23 +254,6 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 9
-
-      - name: Sync extension version to release tag
-        run: |
-          TAG="${{ needs.detect-tag.outputs.release_tag }}"
-          VERSION="${TAG#v}"
-          echo "Syncing package.json version to $VERSION from tag $TAG"
-          
-          cat > /tmp/update-version.cjs <<'NODE'
-          const fs = require('fs');
-          const pkgPath = 'package.json';
-          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-          pkg.version = process.env.VERSION;
-          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-          NODE
-          
-          VERSION="$VERSION" node /tmp/update-version.cjs
-          echo "package.json version now $(node -p "require('./package.json').version")"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -267,8 +269,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.detect-tag.outputs.release_tag }}
+          body: ${{ steps.changelog_notes.outputs.notes }}
           files: "beans-vscode.vsix"
-          generate_release_notes: true
           draft: false
           prerelease: false
         env:
