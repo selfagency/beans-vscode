@@ -104,11 +104,88 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ needs.detect-tag.outputs.release_tag }}
+          fetch-depth: 0
+
+      - name: Generate release notes for changelog
+        id: changelog_notes
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const currentTag = '${{ needs.detect-tag.outputs.release_tag }}';
+
+            const tags = await github.paginate(github.rest.repos.listTags, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+
+            const index = tags.findIndex(tag => tag.name === currentTag);
+            const previousTag =
+              index >= 0
+                ? (tags.slice(index + 1).find(tag => tag.name.startsWith('v'))?.name ?? '')
+                : '';
+
+            const notesResponse = await github.rest.repos.generateReleaseNotes({
+              owner,
+              repo,
+              tag_name: currentTag,
+              ...(previousTag ? { previous_tag_name: previousTag } : {}),
+              target_commitish: 'main',
+            });
+
+            core.info(
+              previousTag
+                ? `Generated changelog notes from ${previousTag} to ${currentTag}.`
+                : `Generated changelog notes for ${currentTag} (no previous tag found).`
+            );
+
+            core.setOutput('previous_tag', previousTag);
+            core.setOutput('notes', notesResponse.data.body ?? '');
+
+      - name: Checkout main for changelog update
+        run: |
+          git fetch origin main --depth=1
+          git checkout -B main origin/main
+
+      - name: Update CHANGELOG.md
+        env:
+          RELEASE_TAG: ${{ needs.detect-tag.outputs.release_tag }}
+          PREVIOUS_TAG: ${{ steps.changelog_notes.outputs.previous_tag }}
+          RELEASE_NOTES: ${{ steps.changelog_notes.outputs.notes }}
+        run: |
+          node -e "const fs=require('fs'); const path='CHANGELOG.md'; const releaseTag=(process.env.RELEASE_TAG||'').trim(); const version=releaseTag.replace(/^v/, ''); const previousTag=(process.env.PREVIOUS_TAG||'').trim(); const date=new Date().toISOString().slice(0,10); const heading=`## [${version}] - ${date}`; const sourceLine=previousTag ? `\n\n_Source: changes from ${previousTag} to ${releaseTag}._` : ''; const notesRaw=(process.env.RELEASE_NOTES||'').trim(); const notes=notesRaw || '- No notable changes.'; const section=`\n${heading}\n\n${notes}${sourceLine}\n`; const original=fs.existsSync(path)?fs.readFileSync(path,'utf8'):'# Change Log\n\n## [Unreleased]\n'; if (original.includes(heading)) { console.log('CHANGELOG already contains this release heading; skipping update.'); process.exit(0); } const marker='## [Unreleased]'; const idx=original.indexOf(marker); const updated=idx>=0 ? `${original.slice(0, idx + marker.length)}\n${section}${original.slice(idx + marker.length)}` : `${original}\n${section}`; fs.writeFileSync(path, updated); console.log(`Updated ${path} with ${heading}`);"
+
+      - name: Commit and push changelog update
+        run: |
+          if git diff --quiet -- CHANGELOG.md; then
+            echo "No changelog changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "docs(changelog): update for ${{ needs.detect-tag.outputs.release_tag }} [skip ci]"
+          git push origin HEAD:main
+
+      - name: Checkout release tag for packaging
+        run: |
+          git checkout --force ${{ needs.detect-tag.outputs.release_tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "22"
+
+      - name: Sync extension version to release tag
+        run: |
+          TAG="${{ needs.detect-tag.outputs.release_tag }}"
+          VERSION="${TAG#v}"
+          echo "Syncing package.json version to $VERSION from tag $TAG"
+          VERSION="$VERSION" node -e "const fs=require('fs'); const pkgPath='package.json'; const pkg=JSON.parse(fs.readFileSync(pkgPath,'utf8')); pkg.version=process.env.VERSION; fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\\n');"
+          echo "package.json version now $(node -p \"require('./package.json').version\")"
 
       - name: Install pnpm
         run: npm install -g pnpm@9
