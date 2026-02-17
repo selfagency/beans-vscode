@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { BeansConfigManager } from '../config';
 import { BeansDetailsViewProvider } from '../details';
 import { BeansOutput } from '../logging';
-import { Bean, BeansCLINotFoundError, BeansTimeoutError, BeansJSONParseError } from '../model';
+import { Bean, BeansCLINotFoundError, BeansJSONParseError, BeansTimeoutError } from '../model';
 import { BeansPreviewProvider } from '../preview';
 import { BeansService } from '../service';
 import { BeansFilterManager, BeanTreeItem } from '../tree';
