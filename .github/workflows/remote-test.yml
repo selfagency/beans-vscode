@@ -221,7 +221,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Push image to GHCR for caching (non-PR builds only)
-      # For devcontainers/ci, the 'push' input must be passed as a string ('true'/'false'), not a boolean.
+      # Note: devcontainers/ci@v0.3 'push' parameter accepts 'always', 'never', or 'filter' (not boolean values)
       - name: Test devcontainer build (push image)
         if: github.event_name != 'pull_request'
         uses: devcontainers/ci@v0.3
@@ -229,7 +229,7 @@ jobs:
           configFile: .devcontainer-test/devcontainer.json
           imageName: ghcr.io/${{ github.repository_owner }}/beans-vscode-devcontainer-test
           cacheFrom: ghcr.io/${{ github.repository_owner }}/beans-vscode-devcontainer-test
-          push: 'true'
+          push: always
           runCmd: |
             export GIT_TERMINAL_PROMPT=0
             export GOPROXY=https://proxy.golang.org,direct
@@ -269,14 +269,14 @@ jobs:
             echo "✅ DevContainer test passed!"
 
       # PR builds: no push, no cache (avoid 403 on private GHCR images)
-      # See note above about 'push' needing to be a string value
+      # Note: push parameter accepts 'always', 'never', or 'filter' values
       - name: Test devcontainer build (no push)
         if: github.event_name == 'pull_request'
         uses: devcontainers/ci@v0.3
         with:
           configFile: .devcontainer-test/devcontainer.json
           imageName: ghcr.io/${{ github.repository_owner }}/beans-vscode-devcontainer-test
-          push: 'false'
+          push: never
           runCmd: |
             export GIT_TERMINAL_PROMPT=0
             export GOPROXY=https://proxy.golang.org,direct
