@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Added a `Create Bean` title action button to the Draft pane in the Beans sidebar.
+- Added a `Copilot: Start Work on Bean` title action button in the Details pane for the selected bean.
+
 ### Fixed
 
 - Various bug fixes and test updates from branch `fixes/worktree-20260217`.
@@ -16,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Minor improvements to tree/workspace handling and developer tooling; see commit for details.
+- Updated initial Beans sidebar layout defaults so `Search` and `Draft` start collapsed, giving more room to `Active` and `Details` on first launch.
 - CI workflow optimized for cost/performance by enabling pnpm caching and consolidating Linux-only lint/typecheck into the matrix test job.
 - Remote compatibility workflow optimized with a representative matrix (`include`), explicit job timeouts, and on-demand execution of the heavy VS Code integration packaging check.
 - Issue-to-bean workflow hardened by using Go-based Beans CLI installation (without `sudo`) and argument-array process execution in script automation.

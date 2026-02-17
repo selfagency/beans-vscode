@@ -44,6 +44,15 @@ beans init
 
 ## Core Features
 
+### Sidebar Layout Defaults
+
+On first launch, the sidebar defaults are tuned to prioritize active work:
+
+- `Active` and `Details` are visible by default and take most of the available vertical space.
+- `Search` and `Draft` start collapsed by default.
+
+After first use, VS Code persists your panel expand/collapse state and sizing, so you can resize panes once and keep your preferred layout.
+
 ### Hierarchical Organization
 
 Create structured workflows with parent-child relationships:
