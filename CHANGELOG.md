@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Minor improvements to tree/workspace handling and developer tooling; see commit for details.
+- CI workflow optimized for cost/performance by enabling pnpm caching and consolidating Linux-only lint/typecheck into the matrix test job.
+- Remote compatibility workflow optimized with a representative matrix (`include`), explicit job timeouts, and on-demand execution of the heavy VS Code integration packaging check.
+- Issue-to-bean workflow hardened by using Go-based Beans CLI installation (without `sudo`) and argument-array process execution in script automation.
 
 ## [1.0.4] - 2026-02-17
 

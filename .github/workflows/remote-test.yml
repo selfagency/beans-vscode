@@ -8,22 +8,33 @@ on:
     branches: [main]
   workflow_dispatch: # Allow manual triggering
 
+permissions:
+  contents: read
+
+concurrency:
+  group: remote-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   docker-remote-test:
     name: Docker Remote Test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     strategy:
+      fail-fast: false
       matrix:
-        node-version: ["20", "22"]
-        base-image:
-          - "node:20-alpine"
-          - "node:22-bookworm"
-          - "mcr.microsoft.com/devcontainers/typescript-node:22"
+        include:
+          - node-version: "20"
+            base-image: "node:20-alpine"
+          - node-version: "22"
+            base-image: "node:22-bookworm"
+          - node-version: "22"
+            base-image: "mcr.microsoft.com/devcontainers/typescript-node:22"
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -31,13 +42,13 @@ jobs:
           version: 9
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Compile extension
         run: pnpm run compile
@@ -153,10 +164,11 @@ jobs:
   devcontainer-test:
     name: Dev Container Test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -164,13 +176,13 @@ jobs:
           version: 9
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Compile extension
         run: pnpm run compile
@@ -231,11 +243,13 @@ jobs:
   # Optional: Test with actual VS Code in container
   vscode-integration-test:
     name: VS Code Remote Integration Test
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -243,13 +257,13 @@ jobs:
           version: 9
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Compile and package
         run: |
@@ -281,7 +295,7 @@ jobs:
         run: |
           if [ "${{ needs.docker-remote-test.result }}" != "success" ] || \
              [ "${{ needs.devcontainer-test.result }}" != "success" ] || \
-             [ "${{ needs.vscode-integration-test.result }}" != "success" ]; then
+             [ "${{ needs.vscode-integration-test.result }}" != "success" -a "${{ needs.vscode-integration-test.result }}" != "skipped" ]; then
             echo "❌ Some remote compatibility tests failed"
             exit 1
           fi
