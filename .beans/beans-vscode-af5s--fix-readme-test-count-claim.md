@@ -1,11 +1,11 @@
 ---
 # beans-vscode-af5s
 title: Fix README test count claim
-status: todo
+status: scrapped
 type: task
 priority: low
 created_at: 2026-02-17T02:32:49Z
-updated_at: 2026-02-17T02:32:49Z
+updated_at: 2026-02-17T05:06:02Z
 ---
 
 README claims '43+ unit tests' but the project actually has 127 tests. This is misleading documentation.
@@ -15,3 +15,7 @@ README claims '43+ unit tests' but the project actually has 127 tests. This is m
 **Current:** Mentions '43+ unit tests'
 **Actual:** 127 tests passing
 **Fix:** Update to accurate count or use generic wording like 'comprehensive test suite'
+
+
+
+Duplicate of beans-vscode-lsdr (same README test-count issue), now resolved and closed.
