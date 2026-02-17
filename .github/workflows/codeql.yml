@@ -25,10 +25,10 @@ jobs:
       matrix:
         include:
           - language: javascript-typescript
-            custom-pack: ./codeql/codeql-custom-queries-javascript
+            custom-queries: ./codeql/codeql-custom-queries-javascript/queries
             build-mode: autobuild
           - language: actions
-            custom-pack: ./codeql/codeql-custom-queries-actions
+            custom-queries: ./codeql/codeql-custom-queries-actions/queries
             build-mode: none
 
     steps:
@@ -39,8 +39,7 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
-          queries: security-and-quality
-          packs: ${{ matrix.custom-pack }}
+          queries: security-and-quality,${{ matrix.custom-queries }}
 
       - name: Autobuild
         if: matrix.build-mode == 'autobuild'
