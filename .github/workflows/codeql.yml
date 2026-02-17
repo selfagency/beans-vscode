@@ -3,10 +3,12 @@ name: CodeQL
 on:
   push:
     branches: [main]
+    paths:
+      - "src/**"
   pull_request:
     branches: [main]
-  schedule:
-    - cron: "19 3 * * 1"
+    paths:
+      - "src/**"
   workflow_dispatch:
 
 permissions:

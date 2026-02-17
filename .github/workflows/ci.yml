@@ -3,20 +3,12 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "README.md"
-      - "CHANGELOG.md"
-      - ".github/instructions/**"
-      - ".github/skills/**"
+    paths:
+      - "src/**"
   pull_request:
     branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "README.md"
-      - "CHANGELOG.md"
-      - ".github/instructions/**"
-      - ".github/skills/**"
+    paths:
+      - "src/**"
 
 permissions:
   contents: read
