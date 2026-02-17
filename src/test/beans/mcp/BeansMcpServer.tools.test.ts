@@ -13,7 +13,7 @@ const writeFileMock = vi.hoisted(() => vi.fn());
 const mkdirMock = vi.hoisted(() => vi.fn());
 const rmMock = vi.hoisted(() => vi.fn());
 const buildInstructionsMock = vi.hoisted(() => vi.fn((prime: string) => `generated:${prime}`));
-const writeInstructionsMock = vi.hoisted(() => vi.fn(async () => '/ws/.github/instructions/beans.instructions.md'));
+const writeInstructionsMock = vi.hoisted(() => vi.fn(async () => '/ws/.github/instructions/tasks.instructions.md'));
 
 vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => ({
   McpServer: class MockMcpServer {

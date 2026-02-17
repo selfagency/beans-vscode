@@ -20,6 +20,7 @@
         "git fetch": true,
         "git worktree": true,
         "git rev-parse": true,
-        "test": true
+        "test": true,
+        "pnpm": true
     }
 }

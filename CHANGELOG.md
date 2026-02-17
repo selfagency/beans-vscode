@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Various bug fixes and test updates from branch `fixes/worktree-20260217`.
+
+### Changed
+
+- Minor improvements to tree/workspace handling and developer tooling; see commit for details.
+
 ## [1.0.4] - 2026-02-17
 
 ### Fixed
