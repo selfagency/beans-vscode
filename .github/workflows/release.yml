@@ -12,7 +12,7 @@ jobs:
   verify-ci:
     name: Verify CI checks for tag commit
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 40
 
     steps:
       - name: Validate required CI checks succeeded
@@ -23,50 +23,82 @@ jobs:
             const repo = context.repo.repo;
             const sha = context.sha;
 
-            const { data } = await github.rest.checks.listForRef({
-              owner,
-              repo,
-              ref: sha,
-              per_page: 100,
-            });
-
-            const runs = data.check_runs || [];
             const requiredPrefixes = [
               'Test on ',
               'Lint and Format Check',
               'Test Coverage',
             ];
 
-            const failures = [];
+            const failedConclusions = new Set([
+              'failure',
+              'cancelled',
+              'timed_out',
+              'action_required',
+              'stale',
+              'neutral',
+              'skipped',
+            ]);
 
-            for (const prefix of requiredPrefixes) {
-              const matching = runs.filter(run => run.name.startsWith(prefix));
+            const maxAttempts = 120; // ~40 minutes at 20s intervals
+            const delayMs = 20_000;
 
-              if (matching.length === 0) {
-                failures.push(`Missing required check run(s) with prefix: ${prefix}`);
-                continue;
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              const { data } = await github.rest.checks.listForRef({
+                owner,
+                repo,
+                ref: sha,
+                per_page: 100,
+              });
+
+              const runs = data.check_runs || [];
+              const pending: string[] = [];
+              const failures: string[] = [];
+
+              for (const prefix of requiredPrefixes) {
+                const matching = runs.filter(run => run.name.startsWith(prefix));
+
+                if (matching.length === 0) {
+                  pending.push(`Missing required check run(s) with prefix: ${prefix}`);
+                  continue;
+                }
+
+                for (const run of matching) {
+                  if (run.status !== 'completed') {
+                    pending.push(`${run.name} is still ${run.status}`);
+                    continue;
+                  }
+
+                  if (run.conclusion !== 'success') {
+                    if (failedConclusions.has(run.conclusion || '')) {
+                      failures.push(`${run.name} concluded with ${run.conclusion}`);
+                    } else {
+                      pending.push(`${run.name} concluded with ${run.conclusion}; waiting`);
+                    }
+                  }
+                }
               }
 
-              const nonSuccess = matching.filter(
-                run => run.status !== 'completed' || run.conclusion !== 'success'
-              );
-
-              if (nonSuccess.length > 0) {
-                failures.push(
-                  `Non-success required checks for prefix '${prefix}': ` +
-                    nonSuccess.map(run => `${run.name}(${run.status}/${run.conclusion})`).join(', ')
+              if (failures.length > 0) {
+                core.setFailed(
+                  `Release blocked: required CI checks failed for ${sha}.\n` + failures.join('\n')
                 );
+                return;
               }
-            }
 
-            if (failures.length > 0) {
-              core.setFailed(
-                `Release blocked: required CI checks did not pass for ${sha}.\n` + failures.join('\n')
+              if (pending.length === 0) {
+                core.info(`All required CI checks are successful for ${sha}.`);
+                return;
+              }
+
+              core.info(
+                `Attempt ${attempt}/${maxAttempts}: waiting for CI checks on ${sha}.\n` +
+                  pending.join('\n')
               );
-              return;
+
+              await new Promise(resolve => setTimeout(resolve, delayMs));
             }
 
-            core.info(`All required CI checks are successful for ${sha}.`);
+            core.setFailed(`Release blocked: timed out waiting for required CI checks on ${sha}.`);
 
   release:
     name: Build and Release
