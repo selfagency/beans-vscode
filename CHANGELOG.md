@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Added a `Create Bean` title action button to the Draft pane in the Beans sidebar.
 - Added a `Copilot: Start Work on Bean` title action button in the Details pane for the selected bean.
+- Added auto-linking for issue-id references in Details markdown content so referenced beans open directly in the Details pane.
+- Added contextual Details back navigation that appears only after following an internal issue reference.
 
 ### Fixed
 

@@ -104,6 +104,45 @@ describe('BeansDetailsViewProvider', () => {
     expect(webview.html).toContain('Parent bean');
     expect(webview.html).toContain('role="img"');
     expect(webview.html).toContain('📋');
+    expect(webview.html).not.toContain('id="back-button"');
+  });
+
+  it('auto-links referenced bean ids in markdown body without mutating source markdown', async () => {
+    const bean = makeBean({
+      id: 'beans-vscode-100',
+      code: '100',
+      body: 'Depends on beans-vscode-200 and beans-vscode-300.',
+    });
+    service.showBean.mockResolvedValueOnce(bean);
+
+    provider.resolveWebviewView(view, {} as any, {} as any);
+    await provider.showBean(bean);
+
+    expect(webview.html).toContain('class="bean-ref"');
+    expect(webview.html).toContain('data-bean-id="beans-vscode-200"');
+    expect(webview.html).toContain('data-bean-id="beans-vscode-300"');
+    expect(webview.html).not.toContain('data-bean-id="beans-vscode-100"');
+    expect(bean.body).toBe('Depends on beans-vscode-200 and beans-vscode-300.');
+  });
+
+  it('shows back button only after internal reference navigation and supports going back', async () => {
+    const first = makeBean({ id: 'beans-vscode-10', code: '10', title: 'First bean', body: 'See beans-vscode-20' });
+    const second = makeBean({ id: 'beans-vscode-20', code: '20', title: 'Second bean' });
+
+    service.showBean.mockResolvedValueOnce(first).mockResolvedValueOnce(second).mockResolvedValueOnce(first);
+
+    provider.resolveWebviewView(view, {} as any, {} as any);
+    await provider.showBean(first);
+    expect(webview.html).toContain('First bean');
+    expect(webview.html).not.toContain('id="back-button"');
+
+    await receivedHandler?.({ command: 'openBeanFromReference', beanId: 'beans-vscode-20' });
+    expect(webview.html).toContain('Second bean');
+    expect(webview.html).toContain('id="back-button"');
+
+    await receivedHandler?.({ command: 'goBack' });
+    expect(webview.html).toContain('First bean');
+    expect(webview.html).not.toContain('id="back-button"');
   });
 
   it('falls back when full bean fetch fails', async () => {
