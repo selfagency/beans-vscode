@@ -306,6 +306,39 @@ describe('BeansDetailsViewProvider', () => {
     expect(html).toContain('x');
   });
 
+  it('normalizes escaped newline literals outside fenced code blocks only', () => {
+    const input = [
+      'Goal\\nRename generated instructions.',
+      '',
+      '## Checklist\\n- [ ] Update path',
+      '```md',
+      'literal\\ninside code',
+      '```',
+      'Tail\\nline',
+    ].join('\n');
+
+    const normalized = (provider as any).normalizeEscapedNewlinesOutsideCodeBlocks(input);
+
+    expect(normalized).toContain('Goal\nRename generated instructions.');
+    expect(normalized).toContain('## Checklist\n- [ ] Update path');
+    expect(normalized).toContain('Tail\nline');
+    expect(normalized).toContain('literal\\ninside code');
+  });
+
+  it('renders malformed issue text with proper line breaks in details view', async () => {
+    const malformedBean = makeBean({
+      body: 'Goal\\nRename generated file.\\n\\n## Checklist\\n- [ ] Update constant',
+    });
+    service.showBean.mockResolvedValueOnce(malformedBean);
+
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
+    await provider.showBean(malformedBean);
+
+    expect(webview.html).toContain('Goal');
+    expect(webview.html).toContain('<h2>Checklist</h2>');
+    expect(webview.html).not.toContain('Goal\\nRename generated file');
+  });
+
   it('returns expected icon names by status/type', () => {
     expect((provider as any).getIconName(makeBean({ status: 'completed' }))).toBe('issue-closed');
     expect((provider as any).getIconName(makeBean({ status: 'scrapped' }))).toBe('error');

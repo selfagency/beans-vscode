@@ -649,7 +649,9 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       return '';
     }
 
-    let html = this.escapeHtml(text);
+    const normalizedText = this.normalizeEscapedNewlinesOutsideCodeBlocks(text);
+
+    let html = this.escapeHtml(normalizedText);
 
     // Headers
     html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
@@ -687,6 +689,27 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     html = this.autoLinkBeanReferences(html, currentBeanId);
 
     return html;
+  }
+
+  /**
+   * Convert escaped newline literals ("\\n") to real newlines, but only outside
+   * fenced code blocks so code samples keep literal escape sequences intact.
+   */
+  private normalizeEscapedNewlinesOutsideCodeBlocks(text: string): string {
+    const lines = text.split('\n');
+    let inFence = false;
+
+    const normalizedLines = lines.map(line => {
+      const trimmed = line.trimStart();
+      if (trimmed.startsWith('```')) {
+        inFence = !inFence;
+        return line;
+      }
+
+      return inFence ? line : line.replace(/\\n/g, '\n');
+    });
+
+    return normalizedLines.join('\n');
   }
 
   private autoLinkBeanReferences(html: string, currentBeanId?: string): string {
