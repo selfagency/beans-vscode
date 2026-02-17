@@ -36,6 +36,7 @@ interface RawBeanFromCLI {
   blocking_ids?: string[];
   blockingIds?: string[];
   blocked_by?: string[];
+  blockedBy?: string[];
   blocked_by_ids?: string[];
   blockedByIds?: string[];
   created_at?: string;
@@ -55,7 +56,7 @@ export class BeansService {
   private cliPath: string;
   private workspaceRoot: string;
   // Request deduplication: tracks in-flight CLI requests to prevent duplicate calls
-  private readonly inFlightRequests = new Map<string, Promise<any>>();
+  private readonly inFlightRequests = new Map<string, Promise<unknown>>();
   // Offline mode: cache last successful results for graceful degradation
   private offlineMode = false;
   private cachedBeans: Bean[] | null = null;
@@ -91,6 +92,54 @@ export class BeansService {
   private updateCache(beans: Bean[]): void {
     this.cachedBeans = beans;
     this.cacheTimestamp = Date.now();
+  }
+
+  /**
+   * Parse a CLI date field and fall back to "now" when the value is missing or invalid.
+   */
+  private parseDateValue(value?: string): Date {
+    if (!value) {
+      return new Date();
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  }
+
+  /**
+   * Apply local filtering for cached beans in offline mode.
+   */
+  private filterBeans(beans: Bean[], options?: { status?: string[]; type?: string[]; search?: string }): Bean[] {
+    return beans.filter(bean => {
+      if (options?.status?.length && !options.status.includes(bean.status)) {
+        return false;
+      }
+
+      if (options?.type?.length && !options.type.includes(bean.type)) {
+        return false;
+      }
+
+      if (options?.search) {
+        const query = options.search.toLowerCase();
+        const haystack = [
+          bean.id,
+          bean.code,
+          bean.slug,
+          bean.title,
+          bean.body,
+          ...(bean.tags || []),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        if (!haystack.includes(query)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
   }
 
   /**
@@ -364,7 +413,7 @@ export class BeansService {
         if (this.isCacheValid()) {
           this.offlineMode = true;
           this.logger.warn('CLI unavailable, using cached data (offline mode)');
-          return this.cachedBeans!;
+          return this.filterBeans(this.cachedBeans!, options);
         }
 
         // No valid cache available
@@ -413,9 +462,9 @@ export class BeansService {
       tags: bean.tags || [],
       parent: bean.parent || bean.parentId || bean.parent_id,
       blocking: bean.blocking || bean.blockingIds || bean.blocking_ids || [],
-      blockedBy: bean.blocked_by || bean.blockedByIds || bean.blocked_by_ids || [],
-      createdAt: new Date(bean.createdAt || bean.created_at || Date.now()),
-      updatedAt: new Date(bean.updatedAt || bean.updated_at || Date.now()),
+      blockedBy: bean.blockedBy || bean.blockedByIds || bean.blocked_by_ids || bean.blocked_by || [],
+      createdAt: this.parseDateValue(bean.createdAt || bean.created_at),
+      updatedAt: this.parseDateValue(bean.updatedAt || bean.updated_at),
       etag: bean.etag,
     };
   }

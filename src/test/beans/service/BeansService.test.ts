@@ -207,6 +207,30 @@ describe('BeansService', () => {
       expect(beans[0].blockedBy).toEqual(['blocked-1']);
     });
 
+    it('prioritizes blocked_by_ids over blocked_by when both exist', async () => {
+      const rawBean = {
+        id: 'test-xyz9',
+        title: 'Test',
+        slug: 'test',
+        path: 'beans/test.md',
+        body: '',
+        status: 'todo',
+        type: 'task',
+        blocked_by: ['legacy'],
+        blocked_by_ids: ['preferred'],
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-02T00:00:00Z',
+        etag: 'etag1',
+      };
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(null, { stdout: JSON.stringify([rawBean]), stderr: '' });
+      });
+
+      const beans = await service.listBeans();
+      expect(beans[0].blockedBy).toEqual(['preferred']);
+    });
+
     it('caches successful results', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
         callback(null, { stdout: JSON.stringify(mockBeanData), stderr: '' });
@@ -236,6 +260,53 @@ describe('BeansService', () => {
 
       const beans = await service.listBeans();
       expect(beans).toHaveLength(1);
+      expect(service.isOffline()).toBe(true);
+    });
+
+    it('applies requested filters when serving cached data in offline mode', async () => {
+      const cachedBeans = [
+        {
+          id: 'test-abc1',
+          title: 'Todo Task',
+          slug: 'todo-task',
+          path: 'beans/test-abc1.md',
+          body: 'todo body',
+          status: 'todo',
+          type: 'task',
+          tags: ['frontend'],
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-02T00:00:00Z',
+          etag: 'etag1',
+        },
+        {
+          id: 'test-def2',
+          title: 'Completed Bug',
+          slug: 'completed-bug',
+          path: 'beans/test-def2.md',
+          body: 'done body',
+          status: 'completed',
+          type: 'bug',
+          tags: ['backend'],
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-02T00:00:00Z',
+          etag: 'etag2',
+        },
+      ];
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(null, { stdout: JSON.stringify(cachedBeans), stderr: '' });
+      });
+      await service.listBeans();
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        const error: any = new Error('ENOENT');
+        error.code = 'ENOENT';
+        callback(error, null);
+      });
+
+      const filtered = await service.listBeans({ status: ['todo'], type: ['task'], search: 'todo' });
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0].id).toBe('test-abc1');
       expect(service.isOffline()).toBe(true);
     });
 
@@ -675,6 +746,43 @@ describe('BeansService', () => {
       });
 
       await expect(service.listBeans()).rejects.toThrow(BeansJSONParseError);
+    });
+
+    it('falls back to current time for invalid date values', async () => {
+      vi.useFakeTimers();
+      try {
+        const now = new Date('2026-02-17T00:00:00.000Z');
+        vi.setSystemTime(now);
+
+        mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+          callback(
+            null,
+            {
+              stdout: JSON.stringify([
+                {
+                  id: 'test-abc1',
+                  title: 'Test',
+                  slug: 'test',
+                  path: 'beans/test.md',
+                  body: '',
+                  status: 'todo',
+                  type: 'task',
+                  created_at: 'not-a-date',
+                  updated_at: 'still-not-a-date',
+                  etag: 'etag1',
+                },
+              ]),
+              stderr: '',
+            }
+          );
+        });
+
+        const beans = await service.listBeans();
+        expect(beans[0].createdAt.toISOString()).toBe(now.toISOString());
+        expect(beans[0].updatedAt.toISOString()).toBe(now.toISOString());
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
