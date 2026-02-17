@@ -269,7 +269,7 @@ jobs:
             echo "✅ DevContainer test passed!"
 
       # PR builds: no push, no cache (avoid 403 on private GHCR images)
-      # Note: push must be a string ('true'/'false'), not boolean, to avoid parse errors
+      # See note above about 'push' needing to be a string value
       - name: Test devcontainer build (no push)
         if: github.event_name == 'pull_request'
         uses: devcontainers/ci@v0.3
