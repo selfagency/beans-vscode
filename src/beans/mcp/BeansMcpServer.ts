@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { execFile } from 'node:child_process';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { z } from 'zod';
 import { buildBeansCopilotInstructions, writeBeansCopilotInstructions } from '../config';
@@ -32,12 +32,15 @@ type BeansCliResult<T> = T;
 function makeTextAndStructured<T extends Record<string, unknown>>(value: T) {
   return {
     content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }],
-    structuredContent: value
+    structuredContent: value,
   };
 }
 
 class BeansCliBackend {
-  constructor(private readonly workspaceRoot: string, private readonly cliPath: string) {}
+  constructor(
+    private readonly workspaceRoot: string,
+    private readonly cliPath: string
+  ) {}
 
   private getBeansRoot(): string {
     return resolve(this.workspaceRoot, '.beans');
@@ -51,8 +54,9 @@ class BeansCliBackend {
 
     const beansRoot = this.getBeansRoot();
     const target = resolve(beansRoot, cleaned);
+    const relativeTarget = relative(beansRoot, target);
 
-    if (!target.startsWith(`${beansRoot}/`) && target !== beansRoot) {
+    if (relativeTarget.startsWith('..')) {
       throw new Error('Path must stay within .beans directory');
     }
 
@@ -64,7 +68,7 @@ class BeansCliBackend {
       cwd: this.workspaceRoot,
       env: process.env,
       maxBuffer: 10 * 1024 * 1024,
-      timeout: 30000
+      timeout: 30000,
     });
 
     try {
@@ -83,7 +87,7 @@ class BeansCliBackend {
       cwd: this.workspaceRoot,
       env: process.env,
       maxBuffer: 10 * 1024 * 1024,
-      timeout: 30000
+      timeout: 30000,
     });
 
     return { initialized: true };
@@ -195,7 +199,7 @@ class BeansCliBackend {
       cwd: this.workspaceRoot,
       env: process.env,
       maxBuffer: 10 * 1024 * 1024,
-      timeout: 30000
+      timeout: 30000,
     });
 
     return stdout.trim();
@@ -210,14 +214,14 @@ class BeansCliBackend {
       process.env.BEANS_VSCODE_OUTPUT_LOG || join(this.workspaceRoot, '.beans', '.vscode', 'beans-output.log');
     const content = await readFile(outputPath, 'utf8');
 
-    const allLines = content.split(/\r?\n/).filter((line) => line.length > 0);
+    const allLines = content.split(/\r?\n/).filter(line => line.length > 0);
     const maxLines = options?.lines && options.lines > 0 ? options.lines : allLines.length;
     const selected = allLines.slice(-maxLines);
 
     return {
       path: outputPath,
       content: selected.join('\n'),
-      linesReturned: selected.length
+      linesReturned: selected.length,
     };
   }
 
@@ -244,13 +248,13 @@ class BeansCliBackend {
 
     await writeFile(absolutePath, content, {
       encoding: 'utf8',
-      flag: options?.overwrite ? 'w' : 'wx'
+      flag: options?.overwrite ? 'w' : 'wx',
     });
 
     return {
       path: absolutePath,
       bytes: Buffer.byteLength(content, 'utf8'),
-      created: true
+      created: true,
     };
   }
 
@@ -268,21 +272,21 @@ export function sortBeans(beans: BeanRecord[], mode: SortMode): BeanRecord[] {
     todo: 1,
     draft: 2,
     completed: 3,
-    scrapped: 4
+    scrapped: 4,
   };
   const priorityWeight: Record<string, number> = {
     critical: 0,
     high: 1,
     normal: 2,
     low: 3,
-    deferred: 4
+    deferred: 4,
   };
   const typeWeight: Record<string, number> = {
     milestone: 0,
     epic: 1,
     feature: 2,
     bug: 3,
-    task: 4
+    task: 4,
   };
 
   if (mode === 'updated') {
@@ -344,14 +348,14 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Initialize Beans Workspace',
       description: 'Initialize Beans in the current workspace, equivalent to the extension init command.',
       inputSchema: z.object({
-        prefix: z.string().optional().describe('Optional workspace prefix for bean IDs')
+        prefix: z.string().optional().describe('Optional workspace prefix for bean IDs'),
       }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
         idempotentHint: true,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ prefix }: { prefix?: string }) => {
       const result = await backend.init(prefix);
@@ -369,8 +373,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         readOnlyHint: true,
         destructiveHint: false,
         idempotentHint: true,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async () => {
       const beans = await backend.list();
@@ -388,8 +392,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         readOnlyHint: true,
         destructiveHint: false,
         idempotentHint: true,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ beanId }: { beanId: string }) => makeTextAndStructured({ bean: await backend.show(beanId) })
   );
@@ -405,14 +409,14 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         status: z.string().optional(),
         priority: z.string().optional(),
         description: z.string().optional(),
-        parent: z.string().optional()
+        parent: z.string().optional(),
       }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
         idempotentHint: false,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async (input: {
       title: string;
@@ -437,14 +441,14 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         parent: z.string().optional(),
         clearParent: z.boolean().optional(),
         blocking: z.array(z.string()).optional(),
-        blockedBy: z.array(z.string()).optional()
+        blockedBy: z.array(z.string()).optional(),
       }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
         idempotentHint: false,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({
       beanId,
@@ -471,8 +475,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         readOnlyHint: false,
         destructiveHint: false,
         idempotentHint: false,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ beanId, status }: { beanId: string; status: string }) =>
       makeTextAndStructured({ bean: await backend.update(beanId, { status }) })
@@ -485,14 +489,14 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       description: 'Reopen a completed bean into a non-closed status.',
       inputSchema: z.object({
         beanId: z.string().min(1),
-        targetStatus: z.string().default('todo')
+        targetStatus: z.string().default('todo'),
       }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
         idempotentHint: false,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ beanId, targetStatus }: { beanId: string; targetStatus: string }) => {
       const bean = await backend.show(beanId);
@@ -510,14 +514,14 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       description: 'Reopen a scrapped bean into a non-closed status.',
       inputSchema: z.object({
         beanId: z.string().min(1),
-        targetStatus: z.string().default('todo')
+        targetStatus: z.string().default('todo'),
       }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
         idempotentHint: false,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ beanId, targetStatus }: { beanId: string; targetStatus: string }) => {
       const bean = await backend.show(beanId);
@@ -538,8 +542,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         readOnlyHint: false,
         destructiveHint: false,
         idempotentHint: false,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ beanId, type }: { beanId: string; type: string }) =>
       makeTextAndStructured({ bean: await backend.update(beanId, { type }) })
@@ -555,8 +559,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         readOnlyHint: false,
         destructiveHint: false,
         idempotentHint: false,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ beanId, priority }: { beanId: string; priority: string }) =>
       makeTextAndStructured({ bean: await backend.update(beanId, { priority }) })
@@ -572,8 +576,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         readOnlyHint: false,
         destructiveHint: false,
         idempotentHint: false,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ beanId, parentBeanId }: { beanId: string; parentBeanId: string }) =>
       makeTextAndStructured({ bean: await backend.update(beanId, { parent: parentBeanId }) })
@@ -589,8 +593,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         readOnlyHint: false,
         destructiveHint: false,
         idempotentHint: false,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ beanId }: { beanId: string }) =>
       makeTextAndStructured({ bean: await backend.update(beanId, { clearParent: true }) })
@@ -605,20 +609,20 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         beanId: z.string().min(1),
         relation: z.enum(['blocking', 'blocked_by']),
         operation: z.enum(['add', 'remove']),
-        relatedBeanIds: z.array(z.string().min(1)).min(1)
+        relatedBeanIds: z.array(z.string().min(1)).min(1),
       }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
         idempotentHint: false,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({
       beanId,
       relation,
       operation,
-      relatedBeanIds
+      relatedBeanIds,
     }: {
       beanId: string;
       relation: 'blocking' | 'blocked_by';
@@ -635,7 +639,7 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
           return [...new Set([...current, ...relatedBeanIds])];
         }
         const removeSet = new Set(relatedBeanIds);
-        return current.filter((id) => !removeSet.has(id));
+        return current.filter(id => !removeSet.has(id));
       };
 
       const updates =
@@ -655,8 +659,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         readOnlyHint: true,
         destructiveHint: false,
         idempotentHint: true,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ beanId }: { beanId: string }) => {
       const bean = await backend.show(beanId);
@@ -675,8 +679,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         readOnlyHint: false,
         destructiveHint: true,
         idempotentHint: false,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ beanId, force }: { beanId: string; force: boolean }) => {
       const bean = await backend.show(beanId);
@@ -696,20 +700,20 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         statuses: z.array(z.string()).optional(),
         types: z.array(z.string()).optional(),
         search: z.string().optional(),
-        tags: z.array(z.string()).optional()
+        tags: z.array(z.string()).optional(),
       }),
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
         idempotentHint: true,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({
       statuses,
       types,
       search,
-      tags
+      tags,
     }: {
       statuses?: string[];
       types?: string[];
@@ -719,7 +723,7 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       let beans = await backend.list({ status: statuses, type: types, search });
       if (tags && tags.length > 0) {
         const tagSet = new Set(tags);
-        beans = beans.filter((bean) => (bean.tags || []).some((tag) => tagSet.has(tag)));
+        beans = beans.filter(bean => (bean.tags || []).some(tag => tagSet.has(tag)));
       }
       return makeTextAndStructured({ count: beans.length, beans });
     }
@@ -735,13 +739,13 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         readOnlyHint: true,
         destructiveHint: false,
         idempotentHint: true,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ query, includeClosed }: { query: string; includeClosed: boolean }) => {
       let beans = await backend.list({ search: query });
       if (!includeClosed) {
-        beans = beans.filter((bean) => bean.status !== 'completed' && bean.status !== 'scrapped');
+        beans = beans.filter(bean => bean.status !== 'completed' && bean.status !== 'scrapped');
       }
       return makeTextAndStructured({ query, count: beans.length, beans });
     }
@@ -756,20 +760,20 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         mode: z.enum(['status-priority-type-title', 'updated', 'created', 'id']).default('status-priority-type-title'),
         statuses: z.array(z.string()).optional(),
         types: z.array(z.string()).optional(),
-        search: z.string().optional()
+        search: z.string().optional(),
       }),
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
         idempotentHint: true,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({
       mode,
       statuses,
       types,
-      search
+      search,
     }: {
       mode: SortMode;
       statuses?: string[];
@@ -791,8 +795,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         readOnlyHint: true,
         destructiveHint: false,
         idempotentHint: true,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async () => makeTextAndStructured(await backend.openConfig())
   );
@@ -804,14 +808,14 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       description:
         'Returns generated Copilot/LLM instructions based on `beans prime` and extension/MCP guidance; can optionally write instructions file to workspace.',
       inputSchema: z.object({
-        writeToWorkspaceInstructions: z.boolean().default(false)
+        writeToWorkspaceInstructions: z.boolean().default(false),
       }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
         idempotentHint: true,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ writeToWorkspaceInstructions }: { writeToWorkspaceInstructions: boolean }) => {
       const primeOutput = await backend.prime();
@@ -823,7 +827,7 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       return makeTextAndStructured({
         primeOutput,
         generatedInstructions,
-        instructionsPath
+        instructionsPath,
       });
     }
   );
@@ -834,14 +838,14 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Read Bean File',
       description: 'Read a file directly from the .beans directory.',
       inputSchema: z.object({
-        path: z.string().min(1).describe('Path relative to .beans, e.g. bean-id.md')
+        path: z.string().min(1).describe('Path relative to .beans, e.g. bean-id.md'),
       }),
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
         idempotentHint: true,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ path }: { path: string }) => makeTextAndStructured(await backend.readBeanFile(path))
   );
@@ -853,14 +857,14 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       description: 'Overwrite a file in .beans with new content.',
       inputSchema: z.object({
         path: z.string().min(1).describe('Path relative to .beans'),
-        content: z.string().describe('Complete replacement content')
+        content: z.string().describe('Complete replacement content'),
       }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
         idempotentHint: false,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ path, content }: { path: string; content: string }) =>
       makeTextAndStructured(await backend.editBeanFile(path, content))
@@ -874,14 +878,14 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       inputSchema: z.object({
         path: z.string().min(1).describe('Path relative to .beans'),
         content: z.string().describe('Initial file content'),
-        overwrite: z.boolean().default(false)
+        overwrite: z.boolean().default(false),
       }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
         idempotentHint: false,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ path, content, overwrite }: { path: string; content: string; overwrite: boolean }) =>
       makeTextAndStructured(await backend.createBeanFile(path, content, { overwrite }))
@@ -893,14 +897,14 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Delete Bean File',
       description: 'Delete a file under .beans.',
       inputSchema: z.object({
-        path: z.string().min(1).describe('Path relative to .beans')
+        path: z.string().min(1).describe('Path relative to .beans'),
       }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
         idempotentHint: false,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ path }: { path: string }) => makeTextAndStructured(await backend.deleteBeanFile(path))
   );
@@ -911,14 +915,14 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Read Beans Output Log',
       description: 'Read mirrored output window contents from the extension log mirror file.',
       inputSchema: z.object({
-        lines: z.number().int().min(1).max(5000).optional().describe('Optional number of trailing lines to return')
+        lines: z.number().int().min(1).max(5000).optional().describe('Optional number of trailing lines to return'),
       }),
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
         idempotentHint: true,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async ({ lines }: { lines?: number }) => makeTextAndStructured(await backend.readOutputLog({ lines }))
   );
@@ -933,13 +937,13 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         readOnlyHint: true,
         destructiveHint: false,
         idempotentHint: true,
-        openWorldHint: false
-      }
+        openWorldHint: false,
+      },
     },
     async () =>
       makeTextAndStructured({
         message:
-          'When using VS Code UI, run command `Beans: Show Output` to open extension logs. In MCP mode, rely on tool error outputs and host logs.'
+          'When using VS Code UI, run command `Beans: Show Output` to open extension logs. In MCP mode, rely on tool error outputs and host logs.',
       })
   );
 }
@@ -950,7 +954,7 @@ export async function startBeansMcpServer(argv: string[]): Promise<void> {
 
   const server = new McpServer({
     name: 'beans-mcp-server',
-    version: '0.1.0'
+    version: '0.1.0',
   });
 
   registerTools(server, backend);
@@ -960,7 +964,7 @@ export async function startBeansMcpServer(argv: string[]): Promise<void> {
 }
 
 if (require.main === module) {
-  startBeansMcpServer(process.argv.slice(2)).catch((error) => {
+  startBeansMcpServer(process.argv.slice(2)).catch(error => {
     console.error('[beans-mcp-server] fatal:', error);
     process.exit(1);
   });

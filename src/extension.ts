@@ -8,7 +8,7 @@ import {
   buildBeansCopilotSkill,
   removeBeansCopilotSkill,
   writeBeansCopilotInstructions,
-  writeBeansCopilotSkill
+  writeBeansCopilotSkill,
 } from './beans/config';
 import { BeansDetailsViewProvider } from './beans/details';
 import { BeansOutput } from './beans/logging';
@@ -22,7 +22,7 @@ import {
   ActiveBeansProvider,
   CompletedBeansProvider,
   DraftBeansProvider,
-  ScrappedBeansProvider
+  ScrappedBeansProvider,
 } from './beans/tree/providers';
 
 let beansService: BeansService | undefined;
@@ -207,7 +207,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Watch for configuration changes
     context.subscriptions.push(
-      vscode.workspace.onDidChangeConfiguration((e) => {
+      vscode.workspace.onDidChangeConfiguration(e => {
         if (e.affectsConfiguration('beans')) {
           logger.refreshConfig();
           logger.info('Configuration updated');
@@ -222,8 +222,22 @@ export async function activate(context: vscode.ExtensionContext) {
     // Handle CLI not found error specifically
     if (error instanceof BeansCLINotFoundError) {
       await promptForCLIInstallation();
+    } else if (error instanceof Error) {
+      vscode.window
+        .showErrorMessage(`Beans extension activation failed: ${error.message}`, 'Show Output')
+        .then(selection => {
+          if (selection === 'Show Output') {
+            logger.show();
+          }
+        });
     } else {
-      vscode.window.showErrorMessage(`Beans extension activation failed: ${(error as Error).message}`);
+      vscode.window
+        .showErrorMessage('Beans extension activation failed with an unknown error', 'Show Output')
+        .then(selection => {
+          if (selection === 'Show Output') {
+            logger.show();
+          }
+        });
     }
   }
 }
@@ -288,9 +302,22 @@ async function promptForInitialization(
       vscode.window.showInformationMessage('Beans initialized successfully!');
       logger.info('Beans initialized in workspace');
     } catch (error) {
-      const message = `Failed to initialize Beans: ${(error as Error).message}`;
-      logger.error(message, error as Error);
-      vscode.window.showErrorMessage(message);
+      if (error instanceof Error) {
+        const message = `Failed to initialize Beans: ${error.message}`;
+        logger.error(message, error);
+        vscode.window.showErrorMessage(message, 'Show Output').then(selection => {
+          if (selection === 'Show Output') {
+            logger.show();
+          }
+        });
+      } else {
+        logger.error('Failed to initialize Beans with unknown error', new Error(String(error)));
+        vscode.window.showErrorMessage('Failed to initialize Beans', 'Show Output').then(selection => {
+          if (selection === 'Show Output') {
+            logger.show();
+          }
+        });
+      }
     }
   } else if (result === 'Learn More') {
     vscode.env.openExternal(vscode.Uri.parse('https://github.com/jfcantinz/beans'));
@@ -360,13 +387,13 @@ function registerTreeViews(
 
   // Subscribe to filter changes
   context.subscriptions.push(
-    manager.onDidChangeFilter((viewId) => {
+    manager.onDidChangeFilter(viewId => {
       const filter = manager.getFilter(viewId);
       const filterOptions = filter
         ? {
             searchFilter: filter.text,
             tagFilter: filter.tags,
-            typeFilter: filter.types as any
+            typeFilter: filter.types as any,
             // Note: priorities not yet supported in TreeFilterOptions
           }
         : {};
@@ -394,7 +421,7 @@ function registerTreeViews(
   context.subscriptions.push(
     vscode.commands.registerCommand('beans.openBean', (bean: Bean) => {
       if (bean) {
-        details.showBean(bean).catch((error) => {
+        details.showBean(bean).catch(error => {
           logger.error('Failed to show bean details', error as Error);
         });
       }
@@ -405,64 +432,64 @@ function registerTreeViews(
   const activeTreeView = vscode.window.createTreeView('beans.active', {
     treeDataProvider: activeProvider,
     showCollapseAll: true,
-    dragAndDropController
+    dragAndDropController,
   });
 
   const completedTreeView = vscode.window.createTreeView('beans.completed', {
     treeDataProvider: completedProvider,
     showCollapseAll: true,
-    dragAndDropController
+    dragAndDropController,
   });
 
   const draftTreeView = vscode.window.createTreeView('beans.draft', {
     treeDataProvider: draftProvider,
     showCollapseAll: true,
-    dragAndDropController
+    dragAndDropController,
   });
 
   const scrappedTreeView = vscode.window.createTreeView('beans.scrapped', {
     treeDataProvider: scrappedProvider,
     showCollapseAll: true,
-    dragAndDropController
+    dragAndDropController,
   });
 
   // Subscribe to selection changes to show details
   context.subscriptions.push(
-    activeTreeView.onDidChangeSelection((e) => {
+    activeTreeView.onDidChangeSelection(e => {
       if (e.selection.length > 0) {
         const bean = e.selection[0].bean;
         if (bean) {
-          details.showBean(bean).catch((error) => {
+          details.showBean(bean).catch(error => {
             logger.error('Failed to show bean details', error as Error);
           });
         }
       }
     }),
-    completedTreeView.onDidChangeSelection((e) => {
+    completedTreeView.onDidChangeSelection(e => {
       if (e.selection.length > 0) {
         const bean = e.selection[0].bean;
         if (bean) {
-          details.showBean(bean).catch((error) => {
+          details.showBean(bean).catch(error => {
             logger.error('Failed to show bean details', error as Error);
           });
         }
       }
     }),
-    draftTreeView.onDidChangeSelection((e) => {
+    draftTreeView.onDidChangeSelection(e => {
       if (e.selection.length > 0) {
         const bean = e.selection[0].bean;
         if (bean) {
-          details.showBean(bean).catch((error) => {
+          details.showBean(bean).catch(error => {
             logger.error('Failed to show bean details', error as Error);
           });
         }
       }
     }),
-    scrappedTreeView.onDidChangeSelection((e) => {
+    scrappedTreeView.onDidChangeSelection(e => {
       if (e.selection.length > 0) {
         const bean = e.selection[0].bean;
         if (bean) {
-          details.showBean(bean).catch((error) => {
+          details.showBean(bean).catch(error => {
             logger.error('Failed to show bean details', error as Error);
           });
         }
