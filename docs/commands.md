@@ -22,6 +22,7 @@ The Beans extension provides commands organized into the following categories:
 | ----------------------- | ----------------------------- | ---------- | -------------------- |
 | `beans.init`            | Initialize Beans in workspace | -          | -                    |
 | `beans.refresh`         | Refresh all tree views        | -          | Tree title bar       |
+| `beans.openUserGuide`   | Open user guide               | -          | Tree title bar       |
 | `beans.view`            | View bean details             | -          | Tree items           |
 | `beans.create`          | Create new bean               | -          | Tree title bar       |
 | `beans.edit`            | Edit bean markdown file       | -          | Tree items           |
@@ -116,6 +117,27 @@ Open the `.beans.yml` configuration file in the editor.
 - Opens `.beans.yml` in VS Code editor
 - Provides syntax highlighting for YAML
 - Enables editing of statuses, types, priorities, and other settings
+
+---
+
+### Open User Guide
+
+**Command**: `beans.openUserGuide`
+**Category**: Beans
+**Icon**: `$(info)`
+
+Open the extension user guide documentation in VS Code.
+
+**Usage**:
+
+1. Command Palette: "Beans: Open User Guide"
+2. Or click the info icon in the Beans view title bar
+
+**When to use**:
+
+- Onboarding to the extension workflow
+- Reviewing command and UI behavior
+- Finding links to deeper docs from within VS Code
 
 **Configuration Options**:
 

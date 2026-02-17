@@ -1,59 +1,13 @@
 # Change Log
 
+<!-- markdownlint-disable MD024 -->
+
 All notable changes to the "beans-vscode" extension will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
-
-### Added
-
-- Pre-commit hooks using Husky and lint-staged for automatic linting and formatting
-- Devcontainer configuration (`.devcontainer/devcontainer.json`) for local development
-- Remote compatibility testing infrastructure with Docker and devcontainer tests
-- GitHub Actions workflows for CI, remote testing, and releases
-- GitHub issue templates and PR workflow
-- Dependabot configuration for automated dependency updates
-- Comprehensive remote development support documentation
-- Code formatting with Prettier
-
-### Fixed
-
-- CI test failures and reliability improvements across multiple workflows
-- Broken pnpm lockfile with duplicate package entries
-- Beans CLI installation using `@latest` instead of invalid hardcoded versions
-- Test isolation issues by running tests in clean `/tmp/beans-test` directory
-- VSCE packaging errors with pnpm by adding `--no-dependencies` flag
-- Coverage dependency (`@vitest/coverage-v8`) missing from devDependencies
-- Devcontainer postCreateCommand to use `go install` method
-- Beans CLI version command usage (`beans version` not `beans --version`)
-- Git pre-commit hook configuration (removed redundant `git add`)
-- Go installation in CI using official binaries (Go 1.23.5) instead of distro packages
-- SHA256 checksum verification for Go downloads in test scripts
-- Remote workspace initialization and Beans CLI resolution
-
-### Changed
-
-- Updated `@types/node` from 22.19.11 to 25.2.3
-- Updated `zod` from 3.25.76 to 4.3.6
-- Updated `typescript-eslint` to latest version
-- Updated GitHub Actions: `actions/checkout`, `actions/setup-node`, `actions/upload-artifact` to latest versions
-- Improved CI caching and pnpm installation order
-- Enhanced error handling and messages in CI workflows
-- Improved documentation clarity for CI setup and remote development
-
-### Planned
-
-- Archive view for archived beans
-- Timeline view for bean history
-- Dependency graph visualization
-- Saved filters and filter presets
-- Bean templates for common issue types
-- Rich edit mode with in-editor markdown editing
-- Metrics dashboard for bean lifecycle analytics
-
-## [1.0.0] - 2026-02-16
+## [1.0.0] - 2026-02-17
 
 ### Added
 
@@ -135,6 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - VS Code Test Electron for integration testing
 - Mock VS Code API for rapid test iteration
 - Watch mode for TDD workflow
+- Additional coverage for extension lifecycle, command behavior, MCP tools, and tree in-progress cache behavior
 - Comprehensive error handling and logging
 - Debug configurations for extension and tests
 
@@ -144,36 +99,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - GitHub Actions release workflow (marketplace publishing)
 - Dependabot for automated dependency updates
 - Automated test execution on PR and push
+- Workflow to resolve/audit unresolved review conversations on closed PRs
 - xvfb for headless testing on Linux
 - Test artifact uploads on failure
 - Issue templates (bug, feature, other)
 - PR template with checklist
 - Issue-to-bean workflow for automated bean creation
-
-#### Documentation
-
-- **Architecture Documentation**: Module boundaries, data flow, design decisions
-- **Commands Reference**: Complete command guide with usage patterns and workflows
-- **Testing Documentation**: Testing strategy, running tests, writing tests, CI/CD
-- **Remote Compatibility Guide**: Setup and troubleshooting for remote scenarios
-- **Comprehensive README**: Installation, features, settings, troubleshooting
-- Accessibility note with WCAG 2.2 guidance
-
-### Changed
-
-- N/A (initial release)
-
-### Deprecated
-
-- N/A (initial release)
-
-### Removed
-
-- N/A (initial release)
-
-### Fixed
-
-- N/A (initial release)
 
 ### Security
 
@@ -183,6 +114,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - No hardcoded secrets
 - Workspace content treated as untrusted
 - VS Code secret storage ready for future credentials
+
+### Documentation
+
+- **Architecture Documentation**: Module boundaries, data flow, design decisions
+- **Commands Reference**: Complete command guide with usage patterns and workflows
+- **Testing Documentation**: Testing strategy, running tests, writing tests, CI/CD
+- **Remote Compatibility Guide**: Setup and troubleshooting for remote scenarios
+- **Comprehensive README**: Installation, features, settings, troubleshooting
+- Accessibility note with WCAG 2.2 guidance
+
+### Notes
+
+- Performance improvements in tree in-progress descendant calculations
+- Batch service operations now avoid repeated config fetches
+- Expanded error-handler coverage and more explicit typed error mapping
+- Parent-clearing behavior now uses explicit clear semantics to avoid no-op relationship updates
+- Path traversal hardening in MCP file handling
+- YAML config parsing now reads nested `beans:` root consistently
+- Offline list filtering behavior and typed error handling in service flows
+
+### Deprecated
+
+- N/A (initial release)
+
+### Removed
+
+- N/A (initial release)
 
 ## [0.1.0] - Development Milestones
 
@@ -274,10 +232,6 @@ Thank you to everyone who contributed feedback, testing, and code to make this r
 - Custom keyboard shortcuts require manual configuration
 - Testing documentation has minor markdown linting issues (cosmetic only)
 
-### What's Next
-
-See the **[Unreleased]** section above for planned features in future releases.
-
 ---
 
 For detailed migration guides, troubleshooting, and usage examples, see:
@@ -287,3 +241,5 @@ For detailed migration guides, troubleshooting, and usage examples, see:
 - [Commands Reference](./docs/commands.md)
 - [Testing Documentation](./docs/testing.md)
 - [Remote Compatibility Testing](./docs/remote-compatibility-testing.md)
+
+<!-- markdownlint-enable MD024 -->

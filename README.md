@@ -1,6 +1,6 @@
 # Beans VS Code Extension
 
-**Beautifully integrated Beans issue tracking for VS Code**
+Beautifully integrated Beans issue tracking for VS Code.
 
 Beans is a file-based issue tracker that lives alongside your code. This extension brings the full Beans experience into VS Code with native tree views, AI integration, and powerful workflow automation.
 
