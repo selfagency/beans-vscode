@@ -329,6 +329,7 @@ describe('BeansService', () => {
         callback(error, null);
       });
 
+      await expect(service.listBeans()).rejects.toThrow(BeansCLINotFoundError);
       await expect(service.listBeans()).rejects.toThrow('Beans CLI is not available and no cached data exists');
     });
   });

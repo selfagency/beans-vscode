@@ -409,8 +409,9 @@ export class BeansService {
           this.offlineMode = true;
           this.logger.error('CLI unavailable and no cached data available');
         }
-        throw new Error(
-          'Beans CLI is not available and no cached data exists. Please ensure Beans CLI is installed and accessible.'
+        throw new BeansCLINotFoundError(
+          'Beans CLI is not available and no cached data exists. Please ensure Beans CLI is installed and accessible.',
+          error as Error
         );
       }
 
