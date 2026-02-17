@@ -2,7 +2,7 @@
   "name": "beans-vscode",
   "displayName": "Beans",
   "description": "VS Code extension for Beans issue tracker with tree views, commands, MCP tools, GitHub Copilot integration, and remote development support",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "publisher": "selfagency",
   "author": {
     "name": "Daniel Sieradski",

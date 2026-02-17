@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-02-17
+
+### Fixed
+
+- Aligned MCP tools test mocks with the direct `CopilotInstructions` import path used by the standalone MCP server.
+- Hardened MCP filter/sort handling for nullable list inputs to prevent null-length crashes from client payloads.
+- Hardened filter state handling to safely treat null array-like fields as empty in filter manager logic.
+- Improved search input icon/button contrast in dark themes by using input-foreground color tokens.
+- Added targeted regression coverage for MCP null filter payloads and filter manager null safety.
+
 ## [1.0.2] - 2026-02-17
 
 ### Fixed
