@@ -600,5 +600,6 @@ export function deactivate(): void {
   logger?.info('Deactivating Beans extension');
   mcpIntegration = undefined;
   chatIntegration = undefined;
+  aiArtifactSyncInProgress = false;
   logger?.dispose();
 }

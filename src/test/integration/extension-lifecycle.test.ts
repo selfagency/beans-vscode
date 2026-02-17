@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { BeansCLINotFoundError } from '../../beans/model';
 import { activate, deactivate } from '../../extension';
@@ -60,6 +60,8 @@ vi.mock('../../beans/config', () => ({
   BeansConfigManager: class BeansConfigManager {
     async open(): Promise<void> {}
   },
+  COPILOT_INSTRUCTIONS_RELATIVE_PATH: '.github/instructions/tasks.instructions.md',
+  COPILOT_SKILL_RELATIVE_PATH: '.github/skills/beans/SKILL.md',
   ...configFns,
 }));
 
@@ -289,6 +291,17 @@ describe('Extension lifecycle coverage', () => {
     vi.spyOn(vscode.env, 'openExternal').mockResolvedValue(true);
   });
 
+  afterEach(async () => {
+    // Vitest doesn't expose a way to check if timers are mocked,
+    // so we try to run timer cleanup and catch if timers aren't mocked
+    try {
+      await vi.runAllTimersAsync();
+    } catch {
+      // Real timers are active, no need to advance
+    }
+    vi.useRealTimers();
+  });
+
   it('covers successful activation wiring, filter routing, selection handlers, debounce, and deactivate', async () => {
     await activate(makeContext());
 
@@ -358,6 +371,9 @@ describe('Extension lifecycle coverage', () => {
   });
 
   it('covers init prompt initialize, not-now dismissal, and learn-more branches', async () => {
+    // Use real timers for this test due to complex async flows
+    vi.useRealTimers();
+
     state.initialized = false;
 
     vi.spyOn(vscode.window, 'showInformationMessage').mockImplementation(async (message: string) => {
@@ -367,19 +383,28 @@ describe('Extension lifecycle coverage', () => {
       return state.showInfoQueue.shift() as any;
     });
 
+    // Test Initialize branch
     state.showInfoQueue.push('Initialize');
     await activate(makeContext());
-    await vi.waitFor(() => {
-      expect(configFns.buildBeansCopilotInstructions).toHaveBeenCalled();
-      expect(configFns.writeBeansCopilotSkill).toHaveBeenCalled();
-    });
+    // Wait for async artifact generation to complete
+    // The fire-and-forget async IIFE needs time to execute
+    for (let i = 0; i < 50 && !configFns.buildBeansCopilotInstructions.mock.calls.length; i++) {
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    expect(configFns.buildBeansCopilotInstructions).toHaveBeenCalled();
+    expect(configFns.writeBeansCopilotSkill).toHaveBeenCalled();
+    deactivate();
 
+    // Test Learn More branch
     state.showInfoQueue.push('Learn More');
     await activate(makeContext());
     expect(vscode.env.openExternal).toHaveBeenCalled();
+    deactivate();
 
+    // Test Not Now branch
     state.showInfoQueue.push('Not Now');
     await activate(makeContext());
     expect(logger.info).toHaveBeenCalledWith('User dismissed initialization prompt');
+    deactivate();
   });
 });
