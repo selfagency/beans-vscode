@@ -2,7 +2,7 @@ name: Release
 
 on:
   workflow_run:
-    workflows: ["CI"]
+    workflows: ["Remote Compatibility Tests"]
     types: [completed]
 
 permissions:
@@ -10,13 +10,14 @@ permissions:
 
 jobs:
   detect-tag:
-    name: Detect release tag for CI SHA
+    name: Detect release tag and readiness
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
     outputs:
       release_tag: ${{ steps.tag.outputs.release_tag }}
+      ready: ${{ steps.tag.outputs.ready }}
 
     steps:
       - name: Resolve tag from successful CI run
@@ -38,16 +39,51 @@ jobs:
             if (!match) {
               core.info(`No release tag found for CI SHA ${sha}; skipping release.`);
               core.setOutput('release_tag', '');
+              core.setOutput('ready', 'false');
               return;
+            }
+
+            const requiredWorkflows = ['CI', 'Remote Compatibility Tests'];
+            const requiredResults = new Map();
+
+            for (const workflowName of requiredWorkflows) {
+              const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+                owner,
+                repo,
+                event: 'push',
+                status: 'completed',
+                per_page: 100,
+              });
+
+              const run = runs.find(r => r.name === workflowName && r.head_sha === sha);
+
+              if (!run) {
+                core.info(`Waiting for workflow '${workflowName}' to complete for ${sha}.`);
+                core.setOutput('release_tag', match.name);
+                core.setOutput('ready', 'false');
+                return;
+              }
+
+              requiredResults.set(workflowName, run.conclusion);
+            }
+
+            for (const [workflowName, conclusion] of requiredResults.entries()) {
+              if (conclusion !== 'success') {
+                core.setFailed(
+                  `Release blocked: '${workflowName}' concluded with '${conclusion}' for ${sha}.`
+                );
+                return;
+              }
             }
 
             core.info(`Release tag detected: ${match.name} for SHA ${sha}`);
             core.setOutput('release_tag', match.name);
+            core.setOutput('ready', 'true');
 
   release:
     name: Build and Release
     needs: detect-tag
-    if: needs.detect-tag.outputs.release_tag != ''
+    if: needs.detect-tag.outputs.release_tag != '' && needs.detect-tag.outputs.ready == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
