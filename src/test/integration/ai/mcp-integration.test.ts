@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
+import { BeansOutput } from '../../../beans/logging';
 import { BeansMcpIntegration } from '../../../beans/mcp/BeansMcpIntegration';
 
 describe('MCP Integration', () => {
@@ -17,8 +18,8 @@ describe('MCP Integration', () => {
       extensionPath: '/mock/extension/path',
       extensionUri: vscode.Uri.file('/mock/extension/path'),
       extension: {
-        packageJSON: { version: '0.1.0' }
-      }
+        packageJSON: { version: '0.1.0' },
+      },
     } as any;
 
     // Mock vscode.lm API
@@ -26,7 +27,7 @@ describe('MCP Integration', () => {
       registerMcpServerDefinitionProvider: vi.fn((id: string, provider: any) => {
         registeredProviders.set(id, provider);
         return { dispose: vi.fn() };
-      })
+      }),
     };
 
     // Mock vscode.commands API
@@ -48,10 +49,14 @@ describe('MCP Integration', () => {
           return 'beans';
         }
         return defaultValue;
-      })
+      }),
     } as any);
 
     mcpIntegration = new BeansMcpIntegration(mockContext, '/workspace/root', 'beans');
+
+    if (!(vscode.env as any).clipboard) {
+      (vscode.env as any).clipboard = { writeText: vi.fn() };
+    }
   });
 
   afterEach(() => {
@@ -117,7 +122,7 @@ describe('MCP Integration', () => {
             return true;
           }
           return defaultValue;
-        })
+        }),
       } as any);
 
       const definitions = mcpIntegration.provideMcpServerDefinitions();
@@ -135,7 +140,7 @@ describe('MCP Integration', () => {
             return false;
           }
           return defaultValue;
-        })
+        }),
       } as any);
 
       const definitions = mcpIntegration.provideMcpServerDefinitions();
@@ -172,7 +177,7 @@ describe('MCP Integration', () => {
             return '/custom/beans/path';
           }
           return defaultValue;
-        })
+        }),
       } as any);
 
       const resolved = mcpIntegration.resolveMcpServerDefinition(inputDefinition) as vscode.McpStdioServerDefinition;
@@ -230,6 +235,27 @@ describe('MCP Integration', () => {
       expect(message).toContain(process.execPath);
     });
 
+    it('should copy command when showServerInfo returns "Copy command"', async () => {
+      const writeTextSpy = vi.spyOn((vscode.env as any).clipboard, 'writeText').mockResolvedValue(undefined);
+      vi.spyOn(vscode.window, 'showInformationMessage').mockResolvedValue('Copy command' as any);
+
+      const showServerInfo = registeredCommands.get('beans.mcp.showServerInfo');
+      await showServerInfo?.();
+
+      expect(writeTextSpy).toHaveBeenCalledTimes(1);
+      expect(writeTextSpy).toHaveBeenCalledWith(expect.stringContaining('beans-mcp-server.js'));
+    });
+
+    it('should show logs when showServerInfo returns "Open logs"', async () => {
+      const loggerShowSpy = vi.spyOn(BeansOutput.getInstance(), 'show');
+      vi.spyOn(vscode.window, 'showInformationMessage').mockResolvedValue('Open logs' as any);
+
+      const showServerInfo = registeredCommands.get('beans.mcp.showServerInfo');
+      await showServerInfo?.();
+
+      expect(loggerShowSpy).toHaveBeenCalledTimes(1);
+    });
+
     it('should open settings when openConfig is called', async () => {
       const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
 
@@ -237,6 +263,15 @@ describe('MCP Integration', () => {
       await openConfig?.();
 
       expect(executeCommandSpy).toHaveBeenCalledWith('workbench.action.openSettings', 'mcp');
+    });
+
+    it('should show logs when openLogs command is called', () => {
+      const loggerShowSpy = vi.spyOn(BeansOutput.getInstance(), 'show');
+
+      const openLogs = registeredCommands.get('beans.mcp.openLogs');
+      openLogs?.();
+
+      expect(loggerShowSpy).toHaveBeenCalledTimes(1);
     });
   });
 });
