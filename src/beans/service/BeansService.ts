@@ -567,9 +567,25 @@ export class BeansService {
     description?: string;
     parent?: string;
   }): Promise<Bean> {
-    // Get workspace config for validation
     const config = await this.getConfig();
+    return this.createBeanWithConfig(data, config);
+  }
 
+  /**
+   * Create a bean with pre-fetched config (optimized for batch operations)
+   * @private
+   */
+  private async createBeanWithConfig(
+    data: {
+      title: string;
+      type: string;
+      status?: string;
+      priority?: string;
+      description?: string;
+      parent?: string;
+    },
+    config: BeansConfig
+  ): Promise<Bean> {
     // Validate inputs
     this.validateTitle(data.title);
     this.validateType(data.type, config.types ?? []);
@@ -617,9 +633,26 @@ export class BeansService {
       blockedBy?: string[];
     }
   ): Promise<Bean> {
-    // Get workspace config for validation
     const config = await this.getConfig();
+    return this.updateBeanWithConfig(id, updates, config);
+  }
 
+  /**
+   * Update a bean with pre-fetched config (optimized for batch operations)
+   * @private
+   */
+  private async updateBeanWithConfig(
+    id: string,
+    updates: {
+      status?: string;
+      type?: string;
+      priority?: string;
+      parent?: string;
+      blocking?: string[];
+      blockedBy?: string[];
+    },
+    config: BeansConfig
+  ): Promise<Bean> {
     // Validate inputs
     if (updates.status) {
       this.validateStatus(updates.status, config.statuses ?? []);
@@ -684,9 +717,12 @@ export class BeansService {
       parent?: string;
     }>
   ): Promise<Array<{ success: true; bean: Bean } | { success: false; error: Error; data: (typeof batchData)[0] }>> {
+    // Fetch config once for the entire batch to avoid multiple I/O operations
+    const config = await this.getConfig();
+
     const promises = batchData.map(async data => {
       try {
-        const bean = await this.createBean(data);
+        const bean = await this.createBeanWithConfig(data, config);
         return { success: true as const, bean };
       } catch (error) {
         return { success: false as const, error: error as Error, data };
@@ -715,9 +751,12 @@ export class BeansService {
       };
     }>
   ): Promise<Array<{ success: true; bean: Bean } | { success: false; error: Error; id: string }>> {
+    // Fetch config once for the entire batch to avoid multiple I/O operations
+    const config = await this.getConfig();
+
     const promises = batchUpdates.map(async ({ id, updates }) => {
       try {
-        const bean = await this.updateBean(id, updates);
+        const bean = await this.updateBeanWithConfig(id, updates, config);
         return { success: true as const, bean };
       } catch (error) {
         return { success: false as const, error: error as Error, id };
