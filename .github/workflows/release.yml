@@ -40,7 +40,7 @@ jobs:
       - name: Package extension
         run: |
           npm install -g @vscode/vsce
-          vsce package --no-dependencies --packageManager pnpm --out beans-vscode.vsix
+          vsce package --no-dependencies --out beans-vscode.vsix
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -54,7 +54,7 @@ jobs:
 
       - name: Publish to VS Code Marketplace
         if: "!contains(github.ref, '-')"
-        run: vsce publish --packagePath beans-vscode.vsix --packageManager pnpm -p ${{ secrets.VSCE_PAT }}
+        run: vsce publish --packagePath beans-vscode.vsix -p ${{ secrets.VSCE_PAT }}
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
