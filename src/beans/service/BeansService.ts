@@ -53,6 +53,8 @@ export class BeansService {
   private readonly logger = BeansOutput.getInstance();
   private cliPath: string;
   private workspaceRoot: string;
+  // Request deduplication: tracks in-flight CLI requests to prevent duplicate calls
+  private readonly inFlightRequests = new Map<string, Promise<any>>();
 
   constructor(defaultWorkspaceRoot: string) {
     const config = vscode.workspace.getConfiguration('beans');
@@ -83,53 +85,75 @@ export class BeansService {
   /**
    * Execute beans CLI command with JSON output
    * Security: Uses execFile with argument array to prevent shell injection
+   * Request deduplication: Identical concurrent requests share the same promise
    * @param args Command arguments (don't include 'beans' itself)
    * @returns Parsed JSON response
    */
   private async execute<T>(args: string[]): Promise<T> {
+    // Create a unique key for this request
+    const requestKey = JSON.stringify(args);
+
+    // Check for in-flight request with same key
+    const existingRequest = this.inFlightRequests.get(requestKey);
+    if (existingRequest) {
+      this.logger.debug(`Deduplicating request: ${this.cliPath} ${args.join(' ')}`);
+      return existingRequest as Promise<T>;
+    }
+
+    // Create new request
     this.logger.info(`Executing: ${this.cliPath} ${args.join(' ')}`);
 
-    try {
-      const { stdout, stderr } = await execFileAsync(this.cliPath, args, {
-        cwd: this.workspaceRoot,
-        maxBuffer: 10 * 1024 * 1024, // 10MB
-        timeout: 30000, // 30s
-      });
-
-      // Log CLI output
-      if (stdout) {
-        this.logger.debug(`CLI stdout: ${stdout.substring(0, 500)}${stdout.length > 500 ? '...' : ''}`);
-      }
-
-      if (stderr) {
-        // Beans CLI sometimes outputs info to stderr
-        if (stderr.includes('[INFO]')) {
-          this.logger.debug(`CLI info: ${stderr}`);
-        } else {
-          this.logger.warn(`CLI stderr: ${stderr}`);
-        }
-      }
-
+    const requestPromise = (async () => {
       try {
-        return JSON.parse(stdout) as T;
-      } catch (parseError) {
-        throw new BeansJSONParseError('Failed to parse beans CLI JSON output', stdout, parseError as Error);
-      }
-    } catch (error: unknown) {
-      const err = error as NodeJS.ErrnoException & { killed?: boolean; signal?: string };
+        const { stdout, stderr } = await execFileAsync(this.cliPath, args, {
+          cwd: this.workspaceRoot,
+          maxBuffer: 10 * 1024 * 1024, // 10MB
+          timeout: 30000, // 30s
+        });
 
-      if (err.code === 'ENOENT') {
-        throw new BeansCLINotFoundError(
-          `Beans CLI not found at: ${this.cliPath}. Please install beans or configure beans.cliPath setting.`
-        );
-      }
+        // Log CLI output
+        if (stdout) {
+          this.logger.debug(`CLI stdout: ${stdout.substring(0, 500)}${stdout.length > 500 ? '...' : ''}`);
+        }
 
-      if (err.killed && err.signal === 'SIGTERM') {
-        throw new BeansTimeoutError('Beans CLI operation timed out');
-      }
+        if (stderr) {
+          // Beans CLI sometimes outputs info to stderr
+          if (stderr.includes('[INFO]')) {
+            this.logger.debug(`CLI info: ${stderr}`);
+          } else {
+            this.logger.warn(`CLI stderr: ${stderr}`);
+          }
+        }
 
-      throw error;
-    }
+        try {
+          return JSON.parse(stdout) as T;
+        } catch (parseError) {
+          throw new BeansJSONParseError('Failed to parse beans CLI JSON output', stdout, parseError as Error);
+        }
+      } catch (error: unknown) {
+        const err = error as NodeJS.ErrnoException & { killed?: boolean; signal?: string };
+
+        if (err.code === 'ENOENT') {
+          throw new BeansCLINotFoundError(
+            `Beans CLI not found at: ${this.cliPath}. Please install beans or configure beans.cliPath setting.`
+          );
+        }
+
+        if (err.killed && err.signal === 'SIGTERM') {
+          throw new BeansTimeoutError('Beans CLI operation timed out');
+        }
+
+        throw error;
+      } finally {
+        // Remove from in-flight map when complete (success or failure)
+        this.inFlightRequests.delete(requestKey);
+      }
+    })();
+
+    // Track the in-flight request
+    this.inFlightRequests.set(requestKey, requestPromise);
+
+    return requestPromise;
   }
 
   /**
