@@ -63,9 +63,10 @@ Click the `+` icon in the Beans sidebar, enter a title, select a type (task, bug
 - **🌴 Tree Views**: Organized views for active, completed, draft, and scrapped beans
 - **🔍 Search & Filter**: Full-text search, filter by status/type/priority/tags
 - **🎯 Drag & Drop**: Create hierarchies and relationships visually
-- **🤖 AI Integration**: MCP tools, `@beans` chat participant, and Copilot skills
+- **🤖 AI Integration**: MCP tools, `@beans` chat participant, auto-generated Copilot skills & instructions
 - **🌐 Remote Ready**: Works seamlessly in SSH, WSL, containers, and Codespaces
 - **⚡ Keyboard-First**: Configurable shortcuts for all operations
+- **🧪 Extensively Tested**: 43+ unit tests and comprehensive integration test suite
 - **♿ Accessible**: Built following WCAG 2.2 Level AA guidelines
 
 ## Documentation
