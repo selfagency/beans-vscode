@@ -394,12 +394,14 @@ export class BeansService {
           return this.filterBeans(this.cachedBeans!, options);
         }
 
-        // No valid cache available - rethrow original error to preserve type info
+        // No valid cache available
         if (!this.offlineMode) {
           this.offlineMode = true;
           this.logger.error('CLI unavailable and no cached data available');
         }
-        throw error;
+        throw new Error(
+          'Beans CLI is not available and no cached data exists. Please ensure Beans CLI is installed and accessible.'
+        );
       }
       // For other errors, just throw
       throw error;
@@ -424,7 +426,16 @@ export class BeansService {
     }
 
     // Validate additional required fields for Bean interface
-    if (!rawBean.slug || !rawBean.path || !rawBean.body || !rawBean.etag) {
+    if (
+      rawBean.slug === undefined ||
+      rawBean.slug === null ||
+      rawBean.path === undefined ||
+      rawBean.path === null ||
+      rawBean.body === undefined ||
+      rawBean.body === null ||
+      rawBean.etag === undefined ||
+      rawBean.etag === null
+    ) {
       throw new BeansJSONParseError(
         'Bean missing required fields (slug, path, body, or etag)',
         JSON.stringify(rawBean),
