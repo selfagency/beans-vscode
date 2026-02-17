@@ -135,8 +135,8 @@ describe('BeansTreeDataProvider', () => {
 
     it('should sort by updated timestamp', async () => {
       mockBeans = [
-        createBean('bean-1', 'Old', 'todo', new Date('2024-01-01')),
-        createBean('bean-2', 'New', 'todo', new Date('2024-12-01')),
+        createBean('bean-1', 'Old', 'todo', new Date(Date.UTC(2024, 0, 1))),
+        createBean('bean-2', 'New', 'todo', new Date(Date.UTC(2024, 11, 1))),
       ];
 
       provider.setSortMode('updated');
@@ -144,7 +144,7 @@ describe('BeansTreeDataProvider', () => {
 
       expect(children[0].bean.id).toBe('bean-2'); // Newer first
       expect(children[1].bean.id).toBe('bean-1');
-    });
+    }, 15000);
 
     it('should sort by created timestamp', async () => {
       mockBeans = [

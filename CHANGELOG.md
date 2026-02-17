@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - Various bug fixes and test updates from branch `fixes/worktree-20260217`.
+- Stabilized a flaky tree sorting test (`should sort by updated timestamp`) for slower CI environments by using deterministic UTC dates and explicit per-test timeout headroom.
 - Restored the Details pane title icon rendering by switching from codicon-font dependency to resilient inline icons.
 - Fixed CI pnpm cache setup failures by adding the required `packages` field to `pnpm-workspace.yaml`.
 - Fixed TypeScript compile errors in `BeansCommands` by aligning Copilot command attempt typing with VS Code `Thenable` return types.
