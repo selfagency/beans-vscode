@@ -541,6 +541,41 @@ describe('BeansService', () => {
       await service.updateBean('test-abc1', { parent: 'parent-123' });
     });
 
+    it('falls back to show when update returns partial payload missing required fields', async () => {
+      const fullBean = {
+        id: 'test-abc1',
+        title: 'Recovered Bean',
+        slug: 'recovered-bean',
+        path: 'beans/test-abc1.md',
+        body: 'Recovered body',
+        status: 'todo',
+        type: 'task',
+        parent_id: 'parent-123',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-02T00:00:00Z',
+        etag: 'etag1',
+      };
+
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        if (Array.isArray(args) && args.includes('update')) {
+          callback(null, { stdout: JSON.stringify({ id: 'test-abc1' }), stderr: '' });
+          return;
+        }
+
+        if (Array.isArray(args) && args.includes('show')) {
+          callback(null, { stdout: JSON.stringify(fullBean), stderr: '' });
+          return;
+        }
+
+        callback(new Error('Unexpected command') as any, null);
+      });
+
+      const bean = await service.updateBean('test-abc1', { parent: 'parent-123' });
+      expect(bean.id).toBe('test-abc1');
+      expect(bean.title).toBe('Recovered Bean');
+      expect(bean.parent).toBe('parent-123');
+    });
+
     it('clears parent relationship explicitly', async () => {
       const mockBean = {
         id: 'test-abc1',

@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-02-17
+
+### Fixed
+
+- Added explicit consent flow before generating Copilot instruction/skill artifacts (`Generate now`, `Not now`, `Never for this workspace`) and persisted workspace opt-out behavior.
+- Fixed `blockedBy` normalization coverage for CLI field variants (`blockedBy`, `blockedByIds`, `blocked_by_ids`, `blocked_by`) with regression tests.
+- Fixed re-parent/update operations when CLI `update --json` returns partial payloads by falling back to a full bean fetch.
+- Fixed standalone MCP server startup by avoiding config barrel imports that could pull in `vscode` runtime dependencies.
+- Improved settings text consistency for acronym casing (`AI`, `CLI`, `MCP`, `ms`).
+
 ## [1.0.1] - 2026-02-17
 
 ### Fixed
@@ -229,6 +239,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Testing documentation and strategy
 
 <!-- markdownlint-enable MD024 -->
+
 - Enhanced README with all features
 - Remote compatibility guide
 - CI/CD workflows and automation

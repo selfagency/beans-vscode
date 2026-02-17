@@ -709,7 +709,19 @@ export class BeansService {
     }
 
     const result = await this.execute<RawBeanFromCLI>(args);
-    return this.normalizeBean(result);
+
+    try {
+      return this.normalizeBean(result);
+    } catch (error) {
+      // Some Beans CLI update responses may be partial (for example, only returning
+      // changed fields). In that case, fetch the full bean as a resilience fallback.
+      if (error instanceof BeansJSONParseError) {
+        this.logger.warn(`Partial bean payload received from update for ${id}; fetching full bean as fallback.`);
+        return this.showBean(id);
+      }
+
+      throw error;
+    }
   }
 
   /**

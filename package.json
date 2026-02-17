@@ -2,7 +2,7 @@
   "name": "beans-vscode",
   "displayName": "Beans",
   "description": "VS Code extension for Beans issue tracker with tree views, commands, MCP tools, GitHub Copilot integration, and remote development support",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "selfagency",
   "author": {
     "name": "Daniel Sieradski",
@@ -434,7 +434,7 @@
         "beans.cliPath": {
           "type": "string",
           "default": "beans",
-          "markdownDescription": "Path to `beans` CLI executable. Defaults to `beans` in PATH."
+          "markdownDescription": "Path to the `beans` CLI executable. Defaults to `beans` in PATH."
         },
         "beans.workspaceRoot": {
           "type": "string",
@@ -508,12 +508,12 @@
           "default": 20000,
           "minimum": 1000,
           "maximum": 120000,
-          "markdownDescription": "Debounce interval (in milliseconds) for file system watcher. Prevents excessive refreshes when many files change. Default: 20000ms (20 seconds)."
+          "markdownDescription": "Debounce interval (ms) for the file system watcher. Prevents excessive refreshes when many files change. Default: 20000 ms (20 seconds)."
         },
         "beans.mcp.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Enable dynamic MCP server definition provider for Beans commands (effective only when beans.ai.enabled is true)."
+          "description": "Enable the dynamic MCP server definition provider for Beans commands (effective only when AI is enabled)."
         }
       }
     }

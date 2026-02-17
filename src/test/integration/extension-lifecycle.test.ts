@@ -360,7 +360,7 @@ describe('Extension lifecycle coverage', () => {
   it('covers init prompt initialize, not-now dismissal, and learn-more branches', async () => {
     state.initialized = false;
 
-    state.showInfoQueue.push('Initialize', 'Generate');
+    state.showInfoQueue.push('Initialize', 'Generate now');
     await activate(makeContext());
     expect(configFns.buildBeansCopilotInstructions).toHaveBeenCalled();
     expect(configFns.writeBeansCopilotSkill).toHaveBeenCalled();

@@ -341,31 +341,34 @@ async function shouldGenerateCopilotInstructionsOnInit(
 
   const preference = context.workspaceState.get<'always' | 'never'>(ARTIFACT_GENERATION_PREF_KEY);
   if (preference === 'always') {
+    logger.info('Using saved AI artifact generation preference: always');
     return true;
   }
   if (preference === 'never') {
+    logger.info('Skipping AI artifact generation due to saved workspace preference');
     return false;
   }
 
   const selection = await vscode.window.showInformationMessage(
     'Generate the Copilot instructions file for this workspace now? (Also refreshes the Beans Copilot skill file.)',
-    'Generate',
-    'Always',
-    'Skip',
-    'Never'
+    'Generate now',
+    'Not now',
+    'Never for this workspace'
   );
 
-  if (selection === 'Always') {
-    await context.workspaceState.update(ARTIFACT_GENERATION_PREF_KEY, 'always');
+  if (selection === 'Generate now') {
+    logger.info('User opted in to generate AI artifacts for this workspace');
     return true;
   }
 
-  if (selection === 'Never') {
+  if (selection === 'Never for this workspace') {
     await context.workspaceState.update(ARTIFACT_GENERATION_PREF_KEY, 'never');
+    logger.info('User opted out of AI artifact generation for this workspace');
     return false;
   }
 
-  return selection === 'Generate';
+  logger.info('User skipped AI artifact generation for now');
+  return false;
 }
 
 async function ensureCopilotAiArtifacts(

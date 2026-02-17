@@ -7,7 +7,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { promisify } from 'node:util';
 import { z } from 'zod';
-import { buildBeansCopilotInstructions, writeBeansCopilotInstructions } from '../config';
+import { buildBeansCopilotInstructions, writeBeansCopilotInstructions } from '../config/CopilotInstructions';
 
 const execFileAsync = promisify(execFile);
 
