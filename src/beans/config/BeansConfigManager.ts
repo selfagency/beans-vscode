@@ -56,7 +56,9 @@ export class BeansConfigManager {
       }
 
       // Extract the 'beans' root key to match .beans.yml structure
-      const beansConfig = (parsed as any).beans;
+      // .beans.yml has structure: { beans: { path: '...', types: [...], ... } }
+      const parsedObj = parsed as Record<string, unknown>;
+      const beansConfig = parsedObj.beans;
       if (!beansConfig || typeof beansConfig !== 'object') {
         this.logger.warn('.beans.yml missing "beans" root key');
         return null;
