@@ -126,7 +126,7 @@ if [[ "$CURRENT_BRANCH" != "main" ]]; then
 fi
 
 echo "🔄 Fetching latest refs..."
-"$GIT_BIN" fetch origin main --tags
+"$GIT_BIN" fetch origin main
 
 echo "🔄 Fast-forwarding local main..."
 "$GIT_BIN" pull --ff-only origin main
@@ -142,7 +142,12 @@ if "$GIT_BIN" ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 
 fi
 
 REPO="$("$GH_BIN" repo view --json nameWithOwner --jq '.nameWithOwner')"
-PREVIOUS_TAG="$("$GIT_BIN" tag --list 'v*' --sort=-version:refname | grep -Fxv "$TAG" | head -n1 || true)"
+PREVIOUS_TAG="$("$GIT_BIN" ls-remote --tags --refs origin 'refs/tags/v*' \
+  | awk '{print $2}' \
+  | sed 's#refs/tags/##' \
+  | grep -Fxv "$TAG" \
+  | sort -V \
+  | tail -n1 || true)"
 
 echo "📝 Generating release notes for ${TAG}..."
 if [[ -n "$PREVIOUS_TAG" ]]; then
