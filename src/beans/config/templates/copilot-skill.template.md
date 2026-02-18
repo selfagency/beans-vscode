@@ -205,6 +205,8 @@ Use CLI only when extension, `@beans`, and MCP tools are all unavailable.
 
 ## Beans CLI baseline (from `beans prime`)
 
-```text
-{{PRIME_OUTPUT}}
+For detailed CLI usage instructions, run:
+
+```bash
+beans prime
 ```
