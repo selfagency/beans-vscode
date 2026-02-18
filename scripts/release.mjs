@@ -3,6 +3,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Octokit } from '@octokit/rest';
 
 $.verbose = false;
 
@@ -68,25 +69,25 @@ process.on('SIGTERM', async () => { await rollback(); process.exit(143); });
 async function main() {
   // --- Prerequisites -------------------------------------------------------
 
-  for (const bin of ['gh', 'git']) {
+  try {
+    await $`which git`;
+  } catch {
+    console.error("❌ 'git' is required but not found in PATH.");
+    process.exit(1);
+  }
+
+  // Resolve GitHub auth token: prefer env vars, then ask the gh CLI.
+  let githubToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? '';
+  if (!githubToken) {
     try {
-      await $`which ${bin}`;
+      githubToken = (await $`gh auth token`).stdout.trim();
     } catch {
-      console.error(`❌ '${bin}' is required but not found in PATH.`);
+      console.error('❌ No GitHub token found. Set GH_TOKEN/GITHUB_TOKEN or run: gh auth login');
       process.exit(1);
     }
   }
 
-  try {
-    await $`gh auth status`;
-  } catch {
-    if (process.env.GH_TOKEN || process.env.GITHUB_TOKEN) {
-      console.log('ℹ️  gh auth status failed but GH_TOKEN/GITHUB_TOKEN is set; continuing.');
-    } else {
-      console.error('❌ GitHub CLI is not authenticated. Run: gh auth login');
-      process.exit(1);
-    }
-  }
+  const octokit = new Octokit({ auth: githubToken });
 
   // --- Precondition checks --------------------------------------------------
 
@@ -106,32 +107,47 @@ async function main() {
   await $`git fetch origin main`;
   await $`git pull --ff-only origin main`;
 
+  // Derive owner/repo from the git remote URL.
+  const remoteUrl = (await $`git remote get-url origin`).stdout.trim();
+  const repoMatch = remoteUrl.match(/[:/]([^/]+)\/([^/.]+?)(\.git)?$/);
+  if (!repoMatch) {
+    console.error(`❌ Cannot parse owner/repo from remote URL: ${remoteUrl}`);
+    process.exit(1);
+  }
+  const [, owner, repo] = repoMatch;
+
+  // Check for existing local tag.
   const localTag = (await $`git tag -l ${tag}`).stdout.trim();
   if (localTag) {
     console.error(`❌ Local tag ${tag} already exists.`);
     process.exit(1);
   }
 
-  const remoteTag = (await $`git ls-remote --tags --refs origin refs/tags/${tag}`).stdout.trim();
-  if (remoteTag) {
+  // Check for existing remote tag via the API.
+  try {
+    await octokit.git.getRef({ owner, repo, ref: `tags/${tag}` });
     console.error(`❌ Remote tag ${tag} already exists.`);
     process.exit(1);
+  } catch (err) {
+    if (err.status !== 404) {
+      throw err;
+    }
+    // 404 = tag does not exist; that's what we want.
   }
 
-  // --- Metadata -------------------------------------------------------------
+  // --- Previous tag (for release notes diff) --------------------------------
 
-  const repo = (await $`gh repo view --json nameWithOwner --jq '.nameWithOwner'`).stdout.trim();
+  const tagsResp = await octokit.paginate(octokit.git.listMatchingRefs, {
+    owner,
+    repo,
+    ref: 'tags/v',
+    per_page: 100,
+  });
 
-  const previousTag = (
-    await $`git ls-remote --tags --refs origin 'refs/tags/v*'`
-  ).stdout
-    .trim()
-    .split('\n')
-    .filter(Boolean)
-    .map((line) => line.split('\t')[1]?.replace('refs/tags/', ''))
-    .filter((t) => t && t !== tag)
+  const previousTag = tagsResp
+    .map((r) => r.ref.replace('refs/tags/', ''))
+    .filter((t) => t !== tag)
     .sort((a, b) => {
-      // Semantic version sort
       const parse = (v) => v.replace(/^v/, '').split('.').map(Number);
       const [aMaj, aMin, aPatch] = parse(a);
       const [bMaj, bMin, bPatch] = parse(b);
@@ -143,18 +159,14 @@ async function main() {
 
   console.log(`📝 Generating release notes for ${tag}...`);
 
-  const generateNotesArgs = [
-    'api',
-    '--method', 'POST',
-    `/repos/${repo}/releases/generate-notes`,
-    '-f', `tag_name=${tag}`,
-    '-f', 'target_commitish=main',
-    ...(previousTag ? ['-f', `previous_tag_name=${previousTag}`] : []),
-    '--jq', '.body // ""',
-  ];
-  const releaseNotesOut = await $`gh ${generateNotesArgs}`;
-
-  const releaseNotes = releaseNotesOut.stdout.trim() || '- No notable changes.';
+  const notesResp = await octokit.repos.generateReleaseNotes({
+    owner,
+    repo,
+    tag_name: tag,
+    target_commitish: 'main',
+    ...(previousTag ? { previous_tag_name: previousTag } : {}),
+  });
+  const releaseNotes = notesResp.data.body?.trim() || '- No notable changes.';
 
   // --- Update package.json --------------------------------------------------
 
@@ -213,8 +225,8 @@ async function main() {
   console.log(`🔎 Waiting for required workflows on ${headSha}...`);
 
   await Promise.all([
-    waitForWorkflow('CI', repo, headSha),
-    waitForWorkflow('Remote Compatibility Tests', repo, headSha),
+    waitForWorkflow(octokit, 'CI', owner, repo, headSha),
+    waitForWorkflow(octokit, 'Remote Compatibility Tests', owner, repo, headSha),
   ]);
 
   // --- Tag + publish --------------------------------------------------------
@@ -243,51 +255,62 @@ async function main() {
 // Workflow polling
 // ---------------------------------------------------------------------------
 
-async function waitForWorkflow(name, repo, headSha, { timeoutMs = 3_600_000, pollMs = 15_000 } = {}) {
+async function waitForWorkflow(
+  octokit,
+  name,
+  owner,
+  repo,
+  headSha,
+  { timeoutMs = 3_600_000, pollMs = 15_000 } = {},
+) {
   const log = (msg) => console.log(`[${name}] ${msg}`);
 
-  const workflowsOut = await $`gh api ${[`/repos/${repo}/actions/workflows`, '--jq', `.workflows[] | select(.name == "${name}") | .id`]}`;
-  const workflowId = workflowsOut.stdout.trim().split('\n')[0];
-
-  if (!workflowId) {
-    throw new Error(`[${name}] workflow not found in ${repo}`);
+  // Resolve the workflow ID by name.
+  const workflowsResp = await octokit.actions.listRepoWorkflows({ owner, repo, per_page: 100 });
+  const workflow = workflowsResp.data.workflows.find((w) => w.name === name);
+  if (!workflow) {
+    throw new Error(`[${name}] workflow not found in ${owner}/${repo}`);
   }
 
   const deadline = Date.now() + timeoutMs;
   let triggered = false;
 
   while (Date.now() < deadline) {
-    const runOut = await $`gh api ${[
-      `/repos/${repo}/actions/workflows/${workflowId}/runs?branch=main&head_sha=${headSha}&per_page=5`,
-      '--jq',
-      '.workflow_runs[0] | "\(.status // "") \(.conclusion // "") \(.html_url // "")"',
-    ]}`;
-    const [status, conclusion, ...urlParts] = runOut.stdout.trim().split(' ');
-    const runUrl = urlParts.join(' ');
+    const runsResp = await octokit.actions.listWorkflowRuns({
+      owner,
+      repo,
+      workflow_id: workflow.id,
+      branch: 'main',
+      head_sha: headSha,
+      per_page: 5,
+    });
 
-    if (!status) {
+    const run = runsResp.data.workflow_runs[0];
+
+    if (!run) {
       if (!triggered) {
-        const remoteMain = (await $`git ls-remote --heads origin main`).stdout.trim().split(/\s+/)[0];
-        if (remoteMain !== headSha) {
+        // Guard: make sure headSha is still the tip of main before dispatching.
+        const branchResp = await octokit.repos.getBranch({ owner, repo, branch: 'main' });
+        const remoteSha = branchResp.data.commit.sha;
+        if (remoteSha !== headSha) {
           throw new Error(
-            `[${name}] HEAD_SHA (${headSha}) is no longer latest on main (remote is ${remoteMain}). Re-run release.`,
+            `[${name}] HEAD_SHA (${headSha}) is no longer latest on main (remote is ${remoteSha}). Re-run release.`,
           );
         }
         log(`no run for ${headSha}; triggering via workflow_dispatch...`);
-        await $`gh api --method POST /repos/${repo}/actions/workflows/${workflowId}/dispatches -f ref=main`;
+        await octokit.actions.createWorkflowDispatch({ owner, repo, workflow_id: workflow.id, ref: 'main' });
         triggered = true;
         log('workflow_dispatch triggered; waiting for run to appear...');
       } else {
         log('no run yet; waiting...');
       }
-    } else if (status !== 'completed') {
-      log(`status=${status}; waiting...`);
-    } else if (conclusion === 'success') {
+    } else if (run.status !== 'completed') {
+      log(`status=${run.status}; waiting...`);
+    } else if (run.conclusion === 'success') {
       log('✅ passed');
       return;
     } else {
-      const urlNote = runUrl ? `\n   Run: ${runUrl}` : '';
-      throw new Error(`[${name}] conclusion=${conclusion}${urlNote}`);
+      throw new Error(`[${name}] conclusion=${run.conclusion}\n   Run: ${run.html_url}`);
     }
 
     await sleep(pollMs);
