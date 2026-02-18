@@ -600,7 +600,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "vscode-test",
-    "release": "node ./scripts/release.js",
+    "release": "zx ./scripts/release.mjs",
     "prepare": "husky"
   },
   "lint-staged": {
