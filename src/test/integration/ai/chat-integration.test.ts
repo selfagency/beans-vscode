@@ -692,7 +692,7 @@ describe('Chat Integration', () => {
       expect(mockService.listBeans).toHaveBeenCalledWith({ status: ['in-progress', 'todo'] });
       expect(mockStream.markdown).toHaveBeenCalledWith(expect.stringContaining('Create an issue-related commit'));
       expect(mockStream.markdown).toHaveBeenCalledWith(expect.stringContaining('bean-commit'));
-      expect(mockStream.markdown).toHaveBeenCalledWith(expect.stringContaining('feat(scope)'));
+      expect(mockStream.markdown).toHaveBeenCalledWith(expect.stringContaining('feat(auth)'));
     });
   });
 

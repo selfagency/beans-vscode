@@ -102,7 +102,11 @@ describe('Chat Prompt Assembly', () => {
     it('should list allowed bean operations', () => {
       const prompt = buildBeansChatSystemPrompt(undefined, []);
 
-      expect(prompt).toContain('view/create/edit/status/type/priority/parent/blocking/delete/filter/search/sort');
+      // Prompt now lists exact extension command names rather than a slash-separated summary
+      expect(prompt).toContain('beans.create');
+      expect(prompt).toContain('beans.setStatus');
+      expect(prompt).toContain('beans.setParent');
+      expect(prompt).toContain('beans.delete');
     });
 
     it('should guide user to suggest Beans commands for out-of-scope requests', () => {
