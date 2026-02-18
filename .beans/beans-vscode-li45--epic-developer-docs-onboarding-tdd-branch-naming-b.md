@@ -4,7 +4,7 @@ title: 'epic: Developer docs & onboarding — TDD, branch naming, Beans workflow
 status: completed
 type: epic
 created_at: 2026-02-18T19:11:27Z
-updated_at: 2026-02-18T19:11:27Z
+updated_at: 2026-02-18T20:00:00Z
 branch: feature/beans-vscode-li45-developer-docs-onboarding
 ---
 
