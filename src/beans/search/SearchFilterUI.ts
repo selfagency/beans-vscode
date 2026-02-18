@@ -22,11 +22,11 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
-  critical: '① Critical',
-  high: '② High',
-  normal: '③ Normal',
-  low: '④ Low',
-  deferred: '⑤ Deferred',
+  critical: '$(circle-large-filled) Critical',
+  high: '$(circle-large-filled) High',
+  normal: '$(circle-large-filled) Normal',
+  low: '$(circle-large-filled) Low',
+  deferred: '$(circle-large-filled) Deferred',
 };
 
 const GROUP_DESCRIPTIONS: Record<SearchFilterGroup, string> = {

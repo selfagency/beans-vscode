@@ -3,6 +3,12 @@ import * as vscode from 'vscode';
 import { BeansCLINotFoundError } from '../../beans/model';
 import { activate, deactivate } from '../../extension';
 
+/** Minimal shape satisfied by the mocked tree providers in this test file. */
+interface MockBeansTreeProvider {
+  refresh: () => void;
+  setFilter: (filter: unknown) => void;
+}
+
 // TODO(beans-vscode-y4k2): Add lower-mock integration tests that exercise
 // real provider/service implementations during activate() to validate wiring,
 // command registration side-effects, and watcher/selection behavior end-to-end.
@@ -24,9 +30,9 @@ const state = vi.hoisted(() => ({
   watcherCallbacks: [] as Array<() => void>,
   configChangeHandler: undefined as ((e: { affectsConfiguration: (key: string) => boolean }) => void) | undefined,
   providerInstances: {
-    active: undefined as any,
-    completed: undefined as any,
-    draft: undefined as any,
+    active: undefined as MockBeansTreeProvider | undefined,
+    completed: undefined as MockBeansTreeProvider | undefined,
+    draft: undefined as MockBeansTreeProvider | undefined,
   },
 }));
 
@@ -206,7 +212,7 @@ describe('Extension lifecycle coverage', () => {
     state.providerInstances = { active: undefined, completed: undefined, draft: undefined };
 
     vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue([
-      { uri: vscode.Uri.file('/ws'), name: 'ws', index: 0 } as any,
+      { uri: vscode.Uri.file('/ws'), name: 'ws', index: 0 } as vscode.WorkspaceFolder,
     ]);
     vi.spyOn(vscode.workspace, 'findFiles').mockResolvedValue([]);
 
@@ -308,9 +314,9 @@ describe('Extension lifecycle coverage', () => {
     state.filters.set('beans.draft', { text: 'z' });
     state.filterListener?.('beans.draft');
 
-    expect(state.providerInstances.active.setFilter).toHaveBeenCalled();
-    expect(state.providerInstances.completed.setFilter).toHaveBeenCalled();
-    expect(state.providerInstances.draft.setFilter).toHaveBeenCalled();
+    expect(state.providerInstances.active!.setFilter).toHaveBeenCalled();
+    expect(state.providerInstances.completed!.setFilter).toHaveBeenCalled();
+    expect(state.providerInstances.draft!.setFilter).toHaveBeenCalled();
 
     state.detailsShouldReject = true;
     await state.registeredCommands.get('beans.openBean')?.({ id: 'bean-1' });

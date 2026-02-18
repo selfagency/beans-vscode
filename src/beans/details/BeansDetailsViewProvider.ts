@@ -1071,7 +1071,21 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
    * Get icon name for bean based on status and type
    */
   private getIconName(bean: Bean): string {
-    return this.getTypeIconName(bean.type);
+    // Mirror BeanTreeItem: use status-specific icons for non-todo statuses,
+    // fall back to type icon for todo/default.
+    switch (bean.status) {
+      case 'completed':
+        return 'issue-closed';
+      case 'in-progress':
+        return 'play-circle';
+      case 'scrapped':
+        return 'stop';
+      case 'draft':
+        return 'issue-draft';
+      case 'todo':
+      default:
+        return this.getTypeIconName(bean.type);
+    }
   }
 
   /**

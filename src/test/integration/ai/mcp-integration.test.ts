@@ -20,7 +20,7 @@ describe('MCP Integration', () => {
       extension: {
         packageJSON: { version: '0.1.0' },
       },
-    } as any;
+    } as unknown as vscode.ExtensionContext;
 
     // Mock vscode.lm API
     (vscode.lm as any) = {
@@ -53,7 +53,7 @@ describe('MCP Integration', () => {
         }
         return defaultValue;
       }),
-    } as any);
+    } as unknown as vscode.WorkspaceConfiguration);
 
     mcpIntegration = new BeansMcpIntegration(mockContext, '/workspace/root', 'beans');
 
@@ -133,7 +133,7 @@ describe('MCP Integration', () => {
           }
           return defaultValue;
         }),
-      } as any);
+      } as unknown as vscode.WorkspaceConfiguration);
 
       const definitions = mcpIntegration.provideMcpServerDefinitions();
 
@@ -154,7 +154,7 @@ describe('MCP Integration', () => {
           }
           return defaultValue;
         }),
-      } as any);
+      } as unknown as vscode.WorkspaceConfiguration);
 
       const definitions = mcpIntegration.provideMcpServerDefinitions();
 
@@ -194,7 +194,7 @@ describe('MCP Integration', () => {
           }
           return defaultValue;
         }),
-      } as any);
+      } as unknown as vscode.WorkspaceConfiguration);
 
       const resolved = mcpIntegration.resolveMcpServerDefinition(inputDefinition) as vscode.McpStdioServerDefinition;
 

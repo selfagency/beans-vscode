@@ -193,7 +193,7 @@ describe('BeansCommands', () => {
 
     commands = new BeansCommands(
       service,
-      context as any,
+      context as unknown as vscode.ExtensionContext,
       previewProvider,
       filterManager,
       configManager,
@@ -309,7 +309,9 @@ describe('BeansCommands', () => {
     const config = {
       update: vi.fn(async () => undefined),
     };
-    (vscode.workspace.getConfiguration as ReturnType<typeof vi.fn>).mockReturnValueOnce(config as any);
+    (vscode.workspace.getConfiguration as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+      config as unknown as vscode.WorkspaceConfiguration
+    );
     showQuickPick.mockResolvedValueOnce({ label: 'Bean ID', value: 'id' });
 
     await (commands as any).sort();

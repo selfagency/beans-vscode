@@ -13,6 +13,8 @@ export class BeansHelpViewProvider implements vscode.WebviewViewProvider {
     _context: vscode.WebviewViewResolveContext,
     _token: vscode.CancellationToken
   ): void {
+    void _context;
+    void _token;
     webviewView.webview.options = {
       enableScripts: false,
       enableCommandUris: true,
@@ -138,7 +140,7 @@ export class BeansHelpViewProvider implements vscode.WebviewViewProvider {
   <h3>Documentation</h3>
   <div class="button-row">
     <a class="button-link" href="command:beans.openUserGuide">User guide</a>
-    <a class="button-link secondary" href="command:beans.openAiFeaturesGuide">AI features </a>
+    <a class="button-link secondary" href="command:beans.openAiFeaturesGuide">AI features</a>
   </div>
 
   <h3>Support</h3>
