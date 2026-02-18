@@ -321,9 +321,9 @@ wait_for_workflow_success "Remote Compatibility Tests" >"$compat_log" 2>&1 &
 compat_pid=$!
 
 # Stream prefixed output while both workers run (portable; works on Linux and macOS).
-tail -f "$ci_log"     | sed "s/^/[CI] /" &
+tail -n +1 -f "$ci_log"     | sed "s/^/[CI] /" &
 ci_tail=$!
-tail -f "$compat_log" | sed "s/^/[Remote Compat] /" &
+tail -n +1 -f "$compat_log" | sed "s/^/[Remote Compat] /" &
 compat_tail=$!
 
 ci_exit=0
