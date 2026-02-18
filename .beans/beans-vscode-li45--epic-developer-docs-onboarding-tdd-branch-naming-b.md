@@ -1,10 +1,11 @@
 ---
 # beans-vscode-li45
 title: 'epic: Developer docs & onboarding — TDD, branch naming, Beans workflow'
-status: todo
+status: in-progress
 type: epic
 created_at: 2026-02-18T19:11:27Z
 updated_at: 2026-02-18T19:11:27Z
+branch: feature/beans-vscode-li45-developer-docs-onboarding
 ---
 
 Create CONTRIBUTING.md and expand README Development section to document:
