@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-02-18
+
+## What's Changed
+* fix: resolve codicon icons and font not loading in details/search webviews by @selfagency in https://github.com/selfagency/beans-vscode/pull/30
+* fix: explicitly pass github-token to github-script + docs: MCP/command priority by @selfagency in https://github.com/selfagency/beans-vscode/pull/33
+* feat: improve Copilot instructions and skills generation by @selfagency in https://github.com/selfagency/beans-vscode/pull/32
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.1.0...v1.1.1
+
+_Source: changes from v1.1.0 to v1.1.1._
+
+
 ## [1.1.0] - 2026-02-18
 
 ## What's Changed
