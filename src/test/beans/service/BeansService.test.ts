@@ -660,6 +660,114 @@ describe('BeansService', () => {
     it('validates status when updating', async () => {
       await expect(service.updateBean('test-abc1', { status: 'invalid' })).rejects.toThrow('Invalid status');
     });
+
+    it('recursively completes children when parent is completed', async () => {
+      const parentId = 'parent-abc1';
+      const childId = 'child-abc2';
+
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        if (args.includes('list')) {
+          const parentFilterIndex = args.indexOf('--parent');
+          const parentFilter = parentFilterIndex !== -1 ? args[parentFilterIndex + 1] : undefined;
+
+          if (parentFilter === parentId) {
+            callback(null, {
+              stdout: JSON.stringify([
+                {
+                  id: childId,
+                  title: 'Child',
+                  status: 'todo',
+                  type: 'task',
+                  parent: parentId,
+                  slug: 'c',
+                  path: 'c.md',
+                  body: '',
+                  etag: 'e2',
+                },
+              ]),
+              stderr: '',
+            });
+          } else if (parentFilter === childId) {
+            callback(null, { stdout: '[]', stderr: '' });
+          } else if (!parentFilter) {
+            callback(null, {
+              stdout: JSON.stringify([
+                {
+                  id: parentId,
+                  title: 'Parent',
+                  status: 'completed',
+                  type: 'task',
+                  slug: 'p',
+                  path: 'p.md',
+                  body: '',
+                  etag: 'e1',
+                },
+                {
+                  id: childId,
+                  title: 'Child',
+                  status: 'todo',
+                  type: 'task',
+                  parent: parentId,
+                  slug: 'c',
+                  path: 'c.md',
+                  body: '',
+                  etag: 'e2',
+                },
+              ]),
+              stderr: '',
+            });
+          } else {
+            callback(null, { stdout: '[]', stderr: '' });
+          }
+        } else if (args.includes('update')) {
+          const id = args[args.length - 1];
+          callback(null, {
+            stdout: JSON.stringify({
+              id,
+              title: 'Updated',
+              status: 'completed',
+              type: 'task',
+              slug: 'u',
+              path: 'u.md',
+              body: '',
+              etag: 'eu',
+            }),
+            stderr: '',
+          });
+        } else if (args.includes('show')) {
+          const id = args[args.length - 1];
+          callback(null, {
+            stdout: JSON.stringify({
+              id,
+              title: 'Shown',
+              status: 'completed',
+              type: 'task',
+              slug: 's',
+              path: 's.md',
+              body: '',
+              etag: 'es',
+            }),
+            stderr: '',
+          });
+        } else {
+          callback(null, { stdout: '{}', stderr: '' });
+        }
+      });
+
+      await service.updateBean(parentId, { status: 'completed' });
+
+      // Verify CLI update was called for BOTH parent and child
+      const updateCalls = mockExecFile.mock.calls.filter(call => call[1].includes('update'));
+      expect(updateCalls).toHaveLength(2);
+
+      const parentUpdate = updateCalls.find(call => call[1].includes(parentId));
+      const childUpdate = updateCalls.find(call => call[1].includes(childId));
+
+      expect(parentUpdate).toBeDefined();
+      expect(childUpdate).toBeDefined();
+      expect(childUpdate![1]).toContain('-s');
+      expect(childUpdate![1]).toContain('completed');
+    });
   });
 
   describe('deleteBean', () => {
