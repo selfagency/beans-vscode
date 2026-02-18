@@ -246,17 +246,25 @@ wait_for_workflow_success() {
     exit 1
   fi
 
-  while true; do
-    local status
-    local conclusion
-    local run_url
+  local triggered=false
 
-    status="$("$GH_BIN" api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?branch=main&head_sha=${HEAD_SHA}&per_page=1" --jq '.workflow_runs[0].status // ""')"
-    conclusion="$("$GH_BIN" api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?branch=main&head_sha=${HEAD_SHA}&per_page=1" --jq '.workflow_runs[0].conclusion // ""')"
-    run_url="$("$GH_BIN" api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?branch=main&head_sha=${HEAD_SHA}&per_page=1" --jq '.workflow_runs[0].html_url // ""')"
+  while true; do
+    local status conclusion run_url
+
+    status="$("$GH_BIN" api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?head_sha=${HEAD_SHA}&per_page=5" --jq '.workflow_runs[0].status // ""')"
+    conclusion="$("$GH_BIN" api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?head_sha=${HEAD_SHA}&per_page=5" --jq '.workflow_runs[0].conclusion // ""')"
+    run_url="$("$GH_BIN" api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?head_sha=${HEAD_SHA}&per_page=5" --jq '.workflow_runs[0].html_url // ""')"
 
     if [[ -z "$status" ]]; then
-      echo "⏳ ${workflow_name}: no run yet for ${HEAD_SHA}; waiting..."
+      if [[ "$triggered" == "false" ]]; then
+        echo "⚡ ${workflow_name}: no run found for ${HEAD_SHA}; triggering via workflow_dispatch on main..."
+        "$GH_BIN" api --method POST "/repos/${REPO}/actions/workflows/${workflow_id}/dispatches" \
+          -f ref="main" >/dev/null 2>&1 || true
+        triggered=true
+        echo "⏳ ${workflow_name}: triggered; waiting for run to appear..."
+      else
+        echo "⏳ ${workflow_name}: no run yet for ${HEAD_SHA}; waiting..."
+      fi
     elif [[ "$status" != "completed" ]]; then
       echo "⏳ ${workflow_name}: status=${status}; waiting..."
     else
