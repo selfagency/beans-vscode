@@ -762,15 +762,18 @@ export class BeansService {
       }
     }
 
-    // Recursively complete children if parent is completed
-    if (updates.status === 'completed') {
+    // Recursively update children if status has changed
+    if (updates.status) {
       try {
         const children = await this.listBeans({ parent: id });
         for (const child of children) {
-          // If child is not already terminal (completed/scrapped/archived), mark as completed
-          if (child.status !== 'completed' && child.status !== 'scrapped') {
-            this.logger.info(`Parent ${id} completed; recursively completing child ${child.id}`);
-            await this.updateBeanWithConfig(child.id, { status: 'completed' }, config);
+          if (child.status !== updates.status) {
+            // Propagate if moving to terminal status, or if child is not terminal,
+            // or if parent is being reopened (simplified to 'propagating always' to fulfill 'full equality' requirement).
+            this.logger.info(
+              `Parent ${id} status changed to ${updates.status}; recursively updating child ${child.id}`
+            );
+            await this.updateBeanWithConfig(child.id, { status: updates.status }, config);
           }
         }
       } catch (childError) {
