@@ -9,18 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [1.1.2] - 2026-02-18
-
-## What's Changed
-* feat(release): poll CI and Remote Compatibility Tests in parallel by @selfagency in https://github.com/selfagency/beans-vscode/pull/39
-* feat(ci): cache dependencies; fix release gating for workflow-only merges by @selfagency in https://github.com/selfagency/beans-vscode/pull/40
-
-
-**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.1.1...v1.1.2
-
-_Source: changes from v1.1.1 to v1.1.2._
-
-
 ## [1.1.1] - 2026-02-18
 
 ## What's Changed
