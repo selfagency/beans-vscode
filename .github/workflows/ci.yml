@@ -7,8 +7,6 @@ on:
       - "src/**"
   pull_request:
     branches: [main]
-    paths:
-      - "src/**"
   workflow_dispatch:
 
 permissions:
@@ -19,8 +17,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      src: ${{ steps.filter.outputs.src }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            src:
+              - 'src/**'
+
   test:
     name: Test
+    needs: changes
+    if: needs.changes.outputs.src == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -80,8 +95,26 @@ jobs:
           path: dist/extension.js
           retention-days: 7
 
+  ci-status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    needs: [test]
+    if: always()
+    steps:
+      - name: Check required jobs
+        run: |
+          result="${{ needs.test.result }}"
+          if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
+            echo "❌ test job ${result}"
+            exit 1
+          fi
+          echo "✅ All required CI jobs passed or were skipped."
+
   coverage:
     name: Test Coverage
+    needs: changes
+    if: needs.changes.outputs.src == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

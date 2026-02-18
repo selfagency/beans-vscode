@@ -249,19 +249,36 @@ wait_for_workflow_success() {
   local triggered=false
 
   while true; do
-    local status conclusion run_url
+    local status conclusion run_url run_info
 
-    status="$("$GH_BIN" api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?head_sha=${HEAD_SHA}&per_page=5" --jq '.workflow_runs[0].status // ""')"
-    conclusion="$("$GH_BIN" api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?head_sha=${HEAD_SHA}&per_page=5" --jq '.workflow_runs[0].conclusion // ""')"
-    run_url="$("$GH_BIN" api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?head_sha=${HEAD_SHA}&per_page=5" --jq '.workflow_runs[0].html_url // ""')"
+    run_info="$("$GH_BIN" api "/repos/${REPO}/actions/workflows/${workflow_id}/runs?branch=main&head_sha=${HEAD_SHA}&per_page=5" --jq '.workflow_runs[0] | "\(.status // "") \(.conclusion // "") \(.html_url // "")"')"
+    read -r status conclusion run_url <<<"$run_info"
 
     if [[ -z "$status" ]]; then
       if [[ "$triggered" == "false" ]]; then
+        local remote_main_sha
+        remote_main_sha="$("$GIT_BIN" ls-remote --heads origin main 2>/dev/null | awk '{print $1}' | head -n1 || true)"
+        if [[ -z "$remote_main_sha" ]]; then
+          echo "❌ Unable to determine remote HEAD for origin/main."
+          exit 1
+        fi
+        if [[ "$remote_main_sha" != "$HEAD_SHA" ]]; then
+          echo "❌ ${workflow_name}: HEAD_SHA (${HEAD_SHA}) is no longer the latest commit on main (remote is ${remote_main_sha})."
+          echo "   Aborting to avoid triggering workflow_dispatch against the wrong commit. Please re-run release against the latest main."
+          exit 1
+        fi
         echo "⚡ ${workflow_name}: no run found for ${HEAD_SHA}; triggering via workflow_dispatch on main..."
-        "$GH_BIN" api --method POST "/repos/${REPO}/actions/workflows/${workflow_id}/dispatches" \
-          -f ref="main" >/dev/null 2>&1 || true
-        triggered=true
-        echo "⏳ ${workflow_name}: triggered; waiting for run to appear..."
+        local dispatch_output
+        if ! dispatch_output="$("$GH_BIN" api --method POST "/repos/${REPO}/actions/workflows/${workflow_id}/dispatches" \
+          -f ref="main" 2>&1)"; then
+          echo "⚠️  ${workflow_name}: failed to trigger workflow_dispatch on main:"
+          echo "    $dispatch_output"
+          return 1
+        else
+          echo "ℹ️  ${workflow_name}: workflow_dispatch triggered successfully."
+          triggered=true
+          echo "⏳ ${workflow_name}: triggered; waiting for run to appear..."
+        fi
       else
         echo "⏳ ${workflow_name}: no run yet for ${HEAD_SHA}; waiting..."
       fi
