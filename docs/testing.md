@@ -75,11 +75,16 @@ Certain tests (e.g., `CopilotInstructions.test.ts` and `CopilotSkill.test.ts`) r
 
 Since Vitest uses Vite's transform pipeline, and Vite does not have a built-in `.md` loader, we use a custom `mdTextPlugin` in `vitest.config.ts`. This mirrors the `esbuild.js` loader: `{ '.md': 'text' }`.
 
-**Usage in tests**:
+**Usage in tests** (matching the real template locations):
 
-```typescript
-import template from '../templates/CopilotInstructions.md';
-// `template` is a string containing the markdown content
+```ts
+// From src/test/beans/config/CopilotInstructions.test.ts
+import copilotInstructionsTemplate from '../../../beans/config/templates/copilot-instructions.template.md';
+
+// From src/test/beans/config/CopilotSkill.test.ts
+import copilotSkillTemplate from '../../../beans/config/templates/copilot-skill.template.md';
+
+// Each imported value is a string containing the markdown content.
 ```
 
 ### Writing Tests (TDD-First)
