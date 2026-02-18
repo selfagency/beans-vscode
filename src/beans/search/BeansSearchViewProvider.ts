@@ -280,8 +280,9 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
   private getHtml(webview: vscode.Webview): string {
     const nonce = this.getNonce();
     const codiconStylesUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
+      vscode.Uri.joinPath(this.extensionUri, 'dist', 'media', 'codicon.css')
     );
+    const codiconFontUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'media', 'codicon.ttf'));
     const csp = [
       "default-src 'none'",
       `font-src ${webview.cspSource}`,
@@ -319,6 +320,11 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
   <link href="${codiconStylesUri}" rel="stylesheet" />
   <style>
+    @font-face {
+      font-family: "codicon";
+      font-display: block;
+      src: url("${codiconFontUri}") format("truetype");
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: var(--vscode-font-family);
