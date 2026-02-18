@@ -46,42 +46,39 @@ export class BeanTreeItem extends vscode.TreeItem {
    * Display labels for status values (emoji + title case).
    */
   private static readonly STATUS_LABELS: Record<string, string> = {
-    todo: '☑️ Todo',
-    'in-progress': '⏳ In Progress',
-    completed: '✅ Completed',
-    draft: '📝 Draft',
-    scrapped: '🗑️ Scrapped',
+    todo: '$(issues) Todo',
+    'in-progress': '$(play-circle) In Progress',
+    completed: '$(issue-closed) Completed',
+    draft: '$(issue-draft) Draft',
+    scrapped: '$(stop) Scrapped',
   };
 
   /**
    * Display labels for type values (emoji + title case).
    */
   private static readonly TYPE_LABELS: Record<string, string> = {
-    task: '🧑‍💻 Task',
-    bug: '🐛 Bug',
-    feature: '💡 Feature',
-    epic: '⚡ Epic',
-    milestone: '🏁 Milestone',
+    task: '$(list-unordered) Task',
+    bug: '$(bug) Bug',
+    feature: '$(lightbulb) Feature',
+    epic: '$(zap) Epic',
+    milestone: '$(milestone) Milestone',
   };
 
   /**
    * Display labels for priority values (emoji + title case).
    */
   private static readonly PRIORITY_LABELS: Record<string, string> = {
-    critical: '🔴 Critical',
-    high: '🟠 High',
-    normal: '🟡 Normal',
-    low: '🟢 Low',
-    deferred: '🔵 Deferred',
+    critical: '$(circle-large-filled) Critical',
+    high: '$(circle-large-filled) High',
+    normal: '$(circle-large-filled) Normal',
+    low: '$(circle-large-filled) Low',
+    deferred: '$(circle-large-filled) Deferred',
   };
 
   /**
-   * Build label — only show ⏳ prefix for in-progress items.
+   * Build label — returns the bean title.
    */
   private buildLabel(): string {
-    if (this.bean.status === 'in-progress') {
-      return `⏳ ${this.bean.title}`;
-    }
     return this.bean.title;
   }
 
@@ -94,12 +91,13 @@ export class BeanTreeItem extends vscode.TreeItem {
 
   /**
    * Build detailed tooltip styled like the details pane, using
-   * full emoji + title-case labels for status, type, and priority.
+   * full codicon + title-case labels for status, type, and priority.
    */
   private buildTooltip(): vscode.MarkdownString {
     const tooltip = new vscode.MarkdownString();
     tooltip.supportHtml = true;
     tooltip.isTrusted = true;
+    tooltip.supportThemeIcons = true;
 
     const statusLabel = BeanTreeItem.STATUS_LABELS[this.bean.status] || this.bean.status;
     const typeLabel = BeanTreeItem.TYPE_LABELS[this.bean.type] || this.bean.type;
@@ -126,7 +124,7 @@ export class BeanTreeItem extends vscode.TreeItem {
       tooltip.appendMarkdown(`| **Blocking** | ${this.bean.blocking.length} bean(s) |\n`);
     }
     if (this.bean.blockedBy.length > 0) {
-      tooltip.appendMarkdown(`| **Blocked by** | ${this.bean.blockedBy.length} bean(s) |\n`);
+      tooltip.appendMarkdown(`| **Blocked by** | $(stop-circle) ${this.bean.blockedBy.length} bean(s) |\n`);
     }
     if (this.bean.tags.length > 0) {
       tooltip.appendMarkdown(`| **Tags** | ${this.bean.tags.join(', ')} |\n`);
@@ -198,34 +196,34 @@ export class BeanTreeItem extends vscode.TreeItem {
         // Use gray for completed items to reduce visual noise
         return new vscode.ThemeIcon('issue-closed', new vscode.ThemeColor('descriptionForeground'));
       case 'in-progress':
-        return this.getTypeIcon(color);
+        return new vscode.ThemeIcon('play-circle', color);
       case 'scrapped':
         // Use gray for scrapped items to reduce visual noise
-        return new vscode.ThemeIcon('error', new vscode.ThemeColor('descriptionForeground'));
+        return new vscode.ThemeIcon('stop', new vscode.ThemeColor('descriptionForeground'));
       case 'draft':
         return new vscode.ThemeIcon('issue-draft', color);
       case 'todo':
       default:
-        return this.getTypeIcon(color);
+        return new vscode.ThemeIcon(this.getTypeIconName(), color);
     }
   }
 
   /**
-   * Get type-specific icon
+   * Get the codicon id for the bean's type, used for todo-status items.
    */
-  private getTypeIcon(color?: vscode.ThemeColor): vscode.ThemeIcon {
+  private getTypeIconName(): string {
     switch (this.bean.type) {
       case 'milestone':
-        return new vscode.ThemeIcon('milestone', color);
+        return 'milestone';
       case 'epic':
-        return new vscode.ThemeIcon('zap', color);
+        return 'zap';
       case 'feature':
-        return new vscode.ThemeIcon('lightbulb', color);
+        return 'lightbulb';
       case 'bug':
-        return new vscode.ThemeIcon('bug', color);
+        return 'bug';
       case 'task':
       default:
-        return new vscode.ThemeIcon('issues', color);
+        return 'list-unordered';
     }
   }
 }

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { BEAN_STATUSES } from '../model';
 
 /**
  * Filter state for a bean tree view
@@ -6,6 +7,9 @@ import * as vscode from 'vscode';
 export interface BeansFilterState {
   /** Text search filter */
   text?: string;
+
+  /** Filter by statuses */
+  statuses?: string[];
 
   /** Filter by tags (any match) */
   tags?: string[];
@@ -65,11 +69,15 @@ export class BeansFilterManager {
    * Check if filter is empty
    */
   private isEmptyFilter(filter: BeansFilterState): boolean {
+    const allowedStatuses = new Set<string>(BEAN_STATUSES as readonly string[]);
+    const hasStatuses =
+      Array.isArray(filter.statuses) &&
+      filter.statuses.some(status => typeof status === 'string' && allowedStatuses.has(status));
     const hasTags = Array.isArray(filter.tags) && filter.tags.length > 0;
     const hasTypes = Array.isArray(filter.types) && filter.types.length > 0;
     const hasPriorities = Array.isArray(filter.priorities) && filter.priorities.length > 0;
 
-    return !filter.text && !hasTags && !hasTypes && !hasPriorities;
+    return !filter.text && !hasStatuses && !hasTags && !hasTypes && !hasPriorities;
   }
 
   /**
@@ -85,6 +93,10 @@ export class BeansFilterManager {
 
     if (filter.text) {
       parts.push(`text:"${filter.text}"`);
+    }
+
+    if (Array.isArray(filter.statuses) && filter.statuses.length > 0) {
+      parts.push(`status:${filter.statuses.join(',')}`);
     }
 
     if (Array.isArray(filter.tags) && filter.tags.length > 0) {

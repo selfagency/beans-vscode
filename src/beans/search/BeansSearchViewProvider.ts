@@ -4,36 +4,36 @@ import { Bean, BEAN_PRIORITIES, BEAN_STATUSES, BEAN_TYPES } from '../model';
 import { BeansService } from '../service';
 
 /**
- * Status emoji mapping for search results
+ * Status icon mapping for search results
  */
-const STATUS_EMOJI: Record<string, string> = {
-  todo: '☑️',
-  'in-progress': '⏳',
-  completed: '✅',
-  draft: '📝',
-  scrapped: '🗑️',
+const STATUS_ICONS: Record<string, string> = {
+  todo: 'issues',
+  'in-progress': 'play-circle',
+  completed: 'issue-closed',
+  draft: 'issue-draft',
+  scrapped: 'stop',
 };
 
 /**
- * Type emoji mapping for search results
+ * Type icon mapping for search results
  */
-const TYPE_EMOJI: Record<string, string> = {
-  task: '🧑‍💻',
-  bug: '🐛',
-  feature: '💡',
-  epic: '⚡',
-  milestone: '🏁',
+const TYPE_ICONS: Record<string, string> = {
+  task: 'list-unordered',
+  bug: 'bug',
+  feature: 'lightbulb',
+  epic: 'zap',
+  milestone: 'milestone',
 };
 
 /**
- * Priority emoji mapping for search results
+ * Priority icon mapping for search results
  */
-const PRIORITY_EMOJI: Record<string, string> = {
-  critical: '🔴',
-  high: '🟠',
-  normal: '🟡',
-  low: '🟢',
-  deferred: '🔵',
+const PRIORITY_ICONS: Record<string, string> = {
+  critical: 'circle-large-filled',
+  high: 'circle-large-filled',
+  normal: 'circle-large-filled',
+  low: 'circle-large-filled',
+  deferred: 'circle-large-filled',
 };
 
 /**
@@ -267,9 +267,9 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
       status: bean.status,
       type: bean.type,
       priority: bean.priority,
-      statusEmoji: STATUS_EMOJI[bean.status] || '',
-      typeEmoji: TYPE_EMOJI[bean.type] || '',
-      priorityEmoji: bean.priority ? PRIORITY_EMOJI[bean.priority] || '' : '',
+      statusIcon: STATUS_ICONS[bean.status] || '',
+      typeIcon: TYPE_ICONS[bean.type] || '',
+      priorityIcon: bean.priority ? PRIORITY_ICONS[bean.priority] || '' : '',
     };
   }
 
@@ -279,6 +279,9 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
 
   private getHtml(webview: vscode.Webview): string {
     const nonce = this.getNonce();
+    const codiconStylesUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
+    );
     const csp = [
       "default-src 'none'",
       `font-src ${webview.cspSource}`,
@@ -289,23 +292,23 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
 
     const statusCheckboxes = BEAN_STATUSES.map(
       s =>
-        `<label class="filter-option"><input type="checkbox" value="${s}" data-group="status" />${
-          STATUS_EMOJI[s] || ''
-        } ${capitalize(s)}</label>`
+        `<label class="filter-option"><input type="checkbox" value="${s}" data-group="status" /><span class="codicon codicon-${
+          STATUS_ICONS[s] || 'circle'
+        }" aria-hidden="true"></span> ${capitalize(s)}</label>`
     ).join('\n');
 
     const typeCheckboxes = BEAN_TYPES.map(
       t =>
-        `<label class="filter-option"><input type="checkbox" value="${t}" data-group="type" />${
-          TYPE_EMOJI[t] || ''
-        } ${capitalize(t)}</label>`
+        `<label class="filter-option"><input type="checkbox" value="${t}" data-group="type" /><span class="codicon codicon-${
+          TYPE_ICONS[t] || 'circle'
+        }" aria-hidden="true"></span> ${capitalize(t)}</label>`
     ).join('\n');
 
     const priorityCheckboxes = BEAN_PRIORITIES.map(
       p =>
-        `<label class="filter-option"><input type="checkbox" value="${p}" data-group="priority" />${
-          PRIORITY_EMOJI[p] || ''
-        } ${capitalize(p)}</label>`
+        `<label class="filter-option"><input type="checkbox" value="${p}" data-group="priority" /><span class="codicon codicon-${
+          PRIORITY_ICONS[p] || 'circle-large-outline'
+        }" aria-hidden="true"></span> ${capitalize(p)}</label>`
     ).join('\n');
 
     return /* html */ `<!DOCTYPE html>
@@ -314,6 +317,7 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
+  <link href="${codiconStylesUri}" rel="stylesheet" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -458,7 +462,7 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
     .result-item:hover {
       background: var(--vscode-list-hoverBackground);
     }
-    .result-emoji { flex-shrink: 0; width: 18px; text-align: center; }
+    .result-status-icon { flex-shrink: 0; width: 16px; text-align: center; color: var(--vscode-descriptionForeground); }
     .result-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .result-code {
       flex-shrink: 0;
@@ -468,8 +472,9 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
     }
     .result-priority {
       flex-shrink: 0;
-      width: 16px;
+      width: 14px;
       text-align: center;
+      color: var(--vscode-descriptionForeground);
     }
     .empty-state {
       text-align: center;
@@ -616,9 +621,9 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
           + 'aria-label="' + escapeAttr(b.title) + '" '
           + 'data-id="' + escapeAttr(b.id) + '" '
           + 'data-vscode-context="' + ctx + '">'
-          + '<span class="result-emoji">' + (b.statusEmoji || '') + '</span>'
+            + '<span class="result-status-icon codicon codicon-' + escapeAttr(b.statusIcon || 'circle-large-outline') + '"></span>'
           + '<span class="result-title">' + escapeHtml(b.title) + '</span>'
-          + '<span class="result-priority">' + (b.priorityEmoji || '') + '</span>'
+            + '<span class="result-priority codicon codicon-' + escapeAttr(b.priorityIcon || 'circle-large-outline') + '"></span>'
           + '<span class="result-code">' + escapeHtml(b.code) + '</span>'
           + '</div>';
       }

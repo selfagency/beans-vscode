@@ -1,3 +1,4 @@
+import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { BeansChatIntegration } from './beans/chat';
@@ -13,26 +14,21 @@ import {
   writeBeansCopilotSkill,
 } from './beans/config';
 import { BeansDetailsViewProvider } from './beans/details';
+import { BeansHelpViewProvider } from './beans/help';
 import { BeansOutput } from './beans/logging';
 import { BeansMcpIntegration } from './beans/mcp';
-import { Bean, BeansCLINotFoundError, BeanType } from './beans/model';
+import { BeansCLINotFoundError } from './beans/model';
 import { BeansPreviewProvider } from './beans/preview';
-import { BeansSearchViewProvider } from './beans/search';
 import { BeansService } from './beans/service';
-import { BeansDragAndDropController, BeansFilterManager } from './beans/tree';
-import {
-  ActiveBeansProvider,
-  CompletedBeansProvider,
-  DraftBeansProvider,
-  ScrappedBeansProvider,
-} from './beans/tree/providers';
+import { BeansFilterManager } from './beans/tree';
+import { ActiveBeansProvider, CompletedBeansProvider, DraftBeansProvider } from './beans/tree/providers';
+import { registerBeansTreeViews } from './beans/tree/registerBeansTreeViews';
 
 let beansService: BeansService | undefined;
 let logger: BeansOutput;
 let activeProvider: ActiveBeansProvider | undefined;
 let completedProvider: CompletedBeansProvider | undefined;
 let draftProvider: DraftBeansProvider | undefined;
-let scrappedProvider: ScrappedBeansProvider | undefined;
 let filterManager: BeansFilterManager | undefined;
 let detailsProvider: BeansDetailsViewProvider | undefined;
 let mcpIntegration: BeansMcpIntegration | undefined;
@@ -107,11 +103,16 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.registerWebviewViewProvider(BeansDetailsViewProvider.viewType, detailsProvider)
     );
 
-    // Register search webview provider
-    const searchProvider = new BeansSearchViewProvider(context.extensionUri, beansService);
+    // Register help webview provider
     context.subscriptions.push(
-      vscode.window.registerWebviewViewProvider(BeansSearchViewProvider.viewType, searchProvider)
+      vscode.window.registerWebviewViewProvider(
+        BeansHelpViewProvider.viewType,
+        new BeansHelpViewProvider(context.extensionUri)
+      )
     );
+
+    // NOTE: search previously used a webview view provider. The tree-based search view
+    // is registered later with the other tree views (when workspace is initialized).
 
     // Register filter manager (needed before tree views)
     filterManager = new BeansFilterManager();
@@ -152,6 +153,14 @@ export async function activate(context: vscode.ExtensionContext) {
         logger.show();
       })
     );
+    context.subscriptions.push(
+      vscode.commands.registerCommand('beans.details.back', async () => {
+        if (!detailsProvider) {
+          return;
+        }
+        await detailsProvider.goBackFromHistory();
+      })
+    );
     // Register beans.init command (special case - needed before initialization)
     context.subscriptions.push(
       vscode.commands.registerCommand('beans.init', async () => {
@@ -188,7 +197,6 @@ export async function activate(context: vscode.ExtensionContext) {
         activeProvider?.refresh();
         completedProvider?.refresh();
         draftProvider?.refresh();
-        scrappedProvider?.refresh();
       })
     );
 
@@ -352,9 +360,7 @@ async function shouldGenerateCopilotInstructionsOnInit(
     return false;
   }
 
-  const instructionsExists = await workspaceFileExists(workspaceRoot, COPILOT_INSTRUCTIONS_RELATIVE_PATH);
-  const skillExists = await workspaceFileExists(workspaceRoot, COPILOT_SKILL_RELATIVE_PATH);
-  if (instructionsExists && skillExists) {
+  if (await hasCopilotArtifacts(workspaceRoot)) {
     logger.info('Copilot instruction and skill artifacts already exist; skipping generation prompt');
     return false;
   }
@@ -378,6 +384,35 @@ async function shouldGenerateCopilotInstructionsOnInit(
   }
 
   logger.info('User skipped AI artifact generation for now');
+  return false;
+}
+
+async function hasCopilotArtifacts(primaryWorkspaceRoot: string): Promise<boolean> {
+  // Check the primary workspace root first.
+  if (
+    (await workspaceFileExists(primaryWorkspaceRoot, COPILOT_INSTRUCTIONS_RELATIVE_PATH)) &&
+    (await workspaceFileExists(primaryWorkspaceRoot, COPILOT_SKILL_RELATIVE_PATH))
+  ) {
+    return true;
+  }
+
+  // In multi-root workspaces, artifacts may live in another folder root.
+  const folderRoots = (vscode.workspace.workspaceFolders || []).map(folder => folder.uri.fsPath);
+  for (const root of folderRoots) {
+    if (root === primaryWorkspaceRoot) {
+      continue;
+    }
+    const hasInstructions = await workspaceFileExists(root, COPILOT_INSTRUCTIONS_RELATIVE_PATH);
+    if (!hasInstructions) {
+      continue;
+    }
+    const hasSkill = await workspaceFileExists(root, COPILOT_SKILL_RELATIVE_PATH);
+    if (hasSkill) {
+      logger.info(`Found existing Copilot artifacts in workspace folder: ${root}`);
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -432,6 +467,15 @@ function triggerCopilotAiArtifactSync(
 }
 
 async function workspaceFileExists(workspaceRoot: string, relativePath: string): Promise<boolean> {
+  const absolutePath = path.resolve(workspaceRoot, relativePath);
+
+  try {
+    await fs.access(absolutePath);
+    return true;
+  } catch {
+    // Fall through to workspace search to support virtual/remote workspaces.
+  }
+
   try {
     const normalizedRelativePath = relativePath.replace(/\\/g, '/');
     const matches = await vscode.workspace.findFiles(
@@ -454,131 +498,10 @@ function registerTreeViews(
   manager: BeansFilterManager,
   details: BeansDetailsViewProvider
 ): void {
-  // Create drag and drop controller
-  const dragAndDropController = new BeansDragAndDropController(service);
-
-  // Create providers and store in module variables for refresh
-  activeProvider = new ActiveBeansProvider(service);
-  completedProvider = new CompletedBeansProvider(service);
-  draftProvider = new DraftBeansProvider(service);
-  scrappedProvider = new ScrappedBeansProvider(service);
-
-  // Subscribe to filter changes
-  context.subscriptions.push(
-    manager.onDidChangeFilter(viewId => {
-      const filter = manager.getFilter(viewId);
-      const filterOptions = filter
-        ? {
-            searchFilter: filter.text,
-            tagFilter: filter.tags,
-            typeFilter: filter.types as BeanType[] | undefined,
-            // Note: priorities not yet supported in TreeFilterOptions
-          }
-        : {};
-
-      // Apply filter to the appropriate provider
-      switch (viewId) {
-        case 'beans.active':
-          activeProvider?.setFilter(filterOptions);
-          break;
-        case 'beans.completed':
-          completedProvider?.setFilter(filterOptions);
-          break;
-        case 'beans.draft':
-          draftProvider?.setFilter(filterOptions);
-          break;
-        case 'beans.scrapped':
-          scrappedProvider?.setFilter(filterOptions);
-          break;
-      }
-    })
-  );
-
-  // Register openBean command so clicking a tree item always opens details
-  // (VS Code onDidChangeSelection doesn't fire when clicking an already-selected item)
-  context.subscriptions.push(
-    vscode.commands.registerCommand('beans.openBean', (bean: Bean) => {
-      if (bean) {
-        details.showBean(bean).catch(error => {
-          logger.error('Failed to show bean details', error as Error);
-        });
-      }
-    })
-  );
-
-  // Register tree views with drag and drop support
-  const activeTreeView = vscode.window.createTreeView('beans.active', {
-    treeDataProvider: activeProvider,
-    showCollapseAll: true,
-    dragAndDropController,
-  });
-
-  const completedTreeView = vscode.window.createTreeView('beans.completed', {
-    treeDataProvider: completedProvider,
-    showCollapseAll: true,
-    dragAndDropController,
-  });
-
-  const draftTreeView = vscode.window.createTreeView('beans.draft', {
-    treeDataProvider: draftProvider,
-    showCollapseAll: true,
-    dragAndDropController,
-  });
-
-  const scrappedTreeView = vscode.window.createTreeView('beans.scrapped', {
-    treeDataProvider: scrappedProvider,
-    showCollapseAll: true,
-    dragAndDropController,
-  });
-
-  // Subscribe to selection changes to show details
-  context.subscriptions.push(
-    activeTreeView.onDidChangeSelection(e => {
-      if (e.selection.length > 0) {
-        const bean = e.selection[0].bean;
-        if (bean) {
-          details.showBean(bean).catch(error => {
-            logger.error('Failed to show bean details', error as Error);
-          });
-        }
-      }
-    }),
-    completedTreeView.onDidChangeSelection(e => {
-      if (e.selection.length > 0) {
-        const bean = e.selection[0].bean;
-        if (bean) {
-          details.showBean(bean).catch(error => {
-            logger.error('Failed to show bean details', error as Error);
-          });
-        }
-      }
-    }),
-    draftTreeView.onDidChangeSelection(e => {
-      if (e.selection.length > 0) {
-        const bean = e.selection[0].bean;
-        if (bean) {
-          details.showBean(bean).catch(error => {
-            logger.error('Failed to show bean details', error as Error);
-          });
-        }
-      }
-    }),
-    scrappedTreeView.onDidChangeSelection(e => {
-      if (e.selection.length > 0) {
-        const bean = e.selection[0].bean;
-        if (bean) {
-          details.showBean(bean).catch(error => {
-            logger.error('Failed to show bean details', error as Error);
-          });
-        }
-      }
-    })
-  );
-
-  // Add disposables
-  context.subscriptions.push(activeTreeView, completedTreeView, draftTreeView, scrappedTreeView);
-
-  logger.info('Tree views registered with drag-and-drop support and details view integration');
+  const providers = registerBeansTreeViews(context, service, manager, details, logger);
+  activeProvider = providers.activeProvider;
+  completedProvider = providers.completedProvider;
+  draftProvider = providers.draftProvider;
 }
 
 /**

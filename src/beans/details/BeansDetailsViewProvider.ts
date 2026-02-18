@@ -4,7 +4,7 @@ import { Bean } from '../model';
 import { BeansService } from '../service';
 
 type DetailsWebviewMessage = {
-  command?: 'updateBean' | 'openBeanFromReference' | 'goBack';
+  command?: 'updateBean' | 'openBeanFromReference';
   updates?: unknown;
   beanId?: unknown;
 };
@@ -23,6 +23,11 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   /** The currently displayed bean (used by view/title edit command). */
   public get currentBean(): Bean | undefined {
     return this._currentBean;
+  }
+
+  /** Whether there is a previously visited bean in details navigation history. */
+  public get canGoBack(): boolean {
+    return this._navigationHistory.length > 0;
   }
 
   constructor(
@@ -56,9 +61,6 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
             await this.openBeanFromReference(message.beanId);
           }
           break;
-        case 'goBack':
-          await this.goBack();
-          break;
       }
     });
 
@@ -75,6 +77,8 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     } else {
       webviewView.webview.html = this.getEmptyHtml();
     }
+
+    void this.updateDetailsContextKeys();
 
     this.logger.debug('Bean details view resolved');
   }
@@ -112,7 +116,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       // Fetch full bean data including body field
       const fullBean = await this.service.showBean(bean.id);
       this._currentBean = fullBean;
-      await vscode.commands.executeCommand('setContext', 'beans.hasSelectedBean', true);
+      await this.updateDetailsContextKeys();
 
       // Resolve parent bean for display (code + title)
       this._parentBean = undefined;
@@ -132,7 +136,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       // Fall back to using the provided bean (without body)
       this._currentBean = bean;
       this._parentBean = undefined;
-      await vscode.commands.executeCommand('setContext', 'beans.hasSelectedBean', true);
+      await this.updateDetailsContextKeys();
       if (this._view) {
         this.updateView(bean);
       }
@@ -146,10 +150,17 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     this._currentBean = undefined;
     this._parentBean = undefined;
     this._navigationHistory.length = 0;
-    void vscode.commands.executeCommand('setContext', 'beans.hasSelectedBean', false);
+    this.updateDetailsContextKeys().catch(error => {
+      this.logger.error('Failed to update details context keys after clear', error as Error);
+    });
     if (this._view) {
       this._view.webview.html = this.getEmptyHtml();
     }
+  }
+
+  /** Navigate back to the previously opened bean, if any history exists. */
+  public async goBackFromHistory(): Promise<void> {
+    await this.goBack();
   }
 
   /**
@@ -213,12 +224,10 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     const nonce = this.getNonce();
     const tagsBadges = bean.tags?.map(tag => this.renderBadge(tag, 'tag')).join('') || '';
     const iconName = this.getIconName(bean);
-    const iconGlyph = this.getIconGlyph(iconName);
     const iconLabel = this.getIconLabel(bean);
-    const showBackButton = this._navigationHistory.length > 0;
-    const backButtonHtml = showBackButton
-      ? '<button type="button" id="back-button" class="back-button" aria-label="Back to previous bean">← Back</button>'
-      : '';
+    const codiconStylesUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
+    );
     const csp = [
       "default-src 'none'",
       `img-src ${webview.cspSource} data: https:`,
@@ -244,7 +253,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       bean.blockedBy && bean.blockedBy.length > 0
         ? `
       <div class="section">
-        <h3>Blocked By</h3>
+        <h3><span class="codicon codicon-stop-circle" aria-hidden="true"></span> Blocked By</h3>
         <div class="badge-container">
           ${bean.blockedBy.map(id => this.renderBadge(id, 'relationship')).join('')}
         </div>
@@ -264,14 +273,43 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     const parentSpan = this._parentBean
       ? ` <span class="parent-sep">&middot;</span> <span class="parent-label">Parent</span> <a href="#" class="bean-ref parent-ref" data-bean-id="${this.escapeHtml(
           this._parentBean.id
-        )}"><span class="parent-code">${this.escapeHtml(this._parentBean.code)}</span> <span class="parent-title" title="${this.escapeHtml(
+        )}"><span class="parent-code">${this.escapeHtml(this._parentBean.code)}</span></a> <span class="parent-title" title="${this.escapeHtml(
           this._parentBean.title
-        )}">${this.escapeHtml(this._parentBean.title)}</span></a>`
+        )}">${this.escapeHtml(this._parentBean.title)}</span>`
       : bean.parent
         ? ` <span class="parent-sep">&middot;</span> <span class="parent-label">Parent</span> <a href="#" class="bean-ref parent-ref" data-bean-id="${this.escapeHtml(
             bean.parent
           )}"><span class="parent-code">${this.escapeHtml(bean.parent.split('-').pop() || bean.parent)}</span></a>`
         : '';
+
+    const statusOptions = this.escapeHtml(
+      JSON.stringify([
+        { value: 'todo', label: 'Todo', icon: 'issues' },
+        { value: 'in-progress', label: 'In Progress', icon: 'play-circle' },
+        { value: 'completed', label: 'Completed', icon: 'issue-closed' },
+        { value: 'draft', label: 'Draft', icon: 'issue-draft' },
+        { value: 'scrapped', label: 'Scrapped', icon: 'stop' },
+      ])
+    );
+    const typeOptions = this.escapeHtml(
+      JSON.stringify([
+        { value: 'task', label: 'Task', icon: 'list-unordered' },
+        { value: 'bug', label: 'Bug', icon: 'bug' },
+        { value: 'feature', label: 'Feature', icon: 'lightbulb' },
+        { value: 'epic', label: 'Epic', icon: 'zap' },
+        { value: 'milestone', label: 'Milestone', icon: 'milestone' },
+      ])
+    );
+    const priorityOptions = this.escapeHtml(
+      JSON.stringify([
+        { value: '', label: '— None', icon: 'dash' },
+        { value: 'critical', label: '① Critical', icon: 'error' },
+        { value: 'high', label: '② High', icon: 'arrow-up' },
+        { value: 'normal', label: '③ Normal', icon: 'circle-outline' },
+        { value: 'low', label: '④ Low', icon: 'arrow-down' },
+        { value: 'deferred', label: '⑤ Deferred', icon: 'clock' },
+      ])
+    );
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -279,6 +317,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="${csp}">
+  <link href="${codiconStylesUri}" rel="stylesheet" />
   <title>Bean Details</title>
   <style>
     body {
@@ -299,30 +338,23 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       gap: 8px;
       margin-bottom: 12px;
     }
-    .back-button {
-      border: 1px solid var(--vscode-button-border, transparent);
-      background: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
-      color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
-      border-radius: 4px;
-      padding: 2px 8px;
-      font-size: 11px;
-      line-height: 1.5;
-      cursor: pointer;
-      flex-shrink: 0;
-      margin-top: 1px;
-    }
-    .back-button:hover {
-      background: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground));
-    }
-    .back-button:focus-visible {
-      outline: 1px solid var(--vscode-focusBorder);
-      outline-offset: 1px;
-    }
     .title-icon {
-      font-size: 16px;
+      font-size: 15px;
       opacity: 0.8;
       flex-shrink: 0;
       margin-top: 2px;
+    }
+    .sr-only {
+      border: 0;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      padding: 0;
+      position: absolute;
+      white-space: nowrap;
+      width: 1px;
     }
     .title {
       font-size: 14px;
@@ -397,33 +429,95 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       padding: 12px 16px;
       border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
       border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      column-gap: 8px;
+      row-gap: 6px;
       align-items: center;
     }
     .metadata-row {
+      display: contents;
+    }
+    .metadata-label-group {
       display: flex;
-      gap: 20px;
       align-items: center;
-      margin-bottom: 8px;
+      gap: 5px;
+      min-width: 85px;
+      flex-shrink: 0;
     }
     .metadata-label {
       font-size: 12px;
       color: var(--vscode-descriptionForeground);
-      min-width: 60px;
     }
-    select {
+    .metadata-icon {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground);
+      width: 14px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .icon-select {
+      position: relative;
+    }
+    .icon-select-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      width: 100%;
       background: var(--vscode-dropdown-background);
       color: var(--vscode-dropdown-foreground);
       border: 1px solid var(--vscode-dropdown-border);
-      padding: 6px 8px;
+      padding: 3px 6px;
       font-size: 12px;
       border-radius: 2px;
       cursor: pointer;
-      min-width: 150px;
+      font-family: var(--vscode-font-family);
+      text-align: left;
+      box-sizing: border-box;
     }
-    select:focus {
+    .icon-select-btn:focus {
       outline: 1px solid var(--vscode-focusBorder);
+    }
+    .icon-select-chevron {
+      margin-left: auto;
+      opacity: 0.6;
+    }
+    .icon-select-list {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      background: var(--vscode-dropdown-background);
+      border: 1px solid var(--vscode-dropdown-border);
+      border-radius: 2px;
+      margin-top: 1px;
+      padding: 2px 0;
+      list-style: none;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .icon-select-list.open {
+      display: block;
+    }
+    .icon-select-option {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--vscode-dropdown-foreground);
+    }
+    .icon-select-option:hover,
+    .icon-select-option:focus {
+      background: var(--vscode-list-hoverBackground);
+      outline: none;
+    }
+    .icon-select-option.selected {
+      background: var(--vscode-list-activeSelectionBackground);
+      color: var(--vscode-list-activeSelectionForeground);
     }
     .badge {
       display: inline-block;
@@ -535,8 +629,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 <body>
   <div class="header">
     <div class="title-row">
-      ${backButtonHtml}
-      <span class="title-icon" role="img" aria-label="${this.escapeHtml(iconLabel)}">${this.escapeHtml(iconGlyph)}</span>
+      <span class="title-icon codicon codicon-${this.escapeHtml(iconName)}" role="img" aria-label="${this.escapeHtml(iconLabel)}"></span>
       <h1 class="title">${this.escapeHtml(bean.title)}</h1>
     </div>
     <div class="bean-id">
@@ -549,40 +642,30 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   </div>
   <div class="metadata-section">
     <div class="metadata-row">
-      <span class="metadata-label">Status</span>
-      <select id="status" onchange="updateField('status', this.value)" aria-label="Status">
-        <option value="todo" ${bean.status === 'todo' ? 'selected' : ''}>☑️ Todo</option>
-        <option value="in-progress" ${bean.status === 'in-progress' ? 'selected' : ''}>⏳ In Progress</option>
-        <option value="completed" ${bean.status === 'completed' ? 'selected' : ''}>✅ Completed</option>
-        <option value="draft" ${bean.status === 'draft' ? 'selected' : ''}>📝 Draft</option>
-        <option value="scrapped" ${bean.status === 'scrapped' ? 'selected' : ''}>🗑️ Scrapped</option>
-      </select>
+      <div class="metadata-label-group">
+        <span class="metadata-icon codicon codicon-pulse" aria-hidden="true"></span>
+        <span class="metadata-label">Status</span>
+      </div>
+      <div class="icon-select" data-field="status" data-value="${this.escapeHtml(bean.status)}" data-options="${statusOptions}" aria-label="Status" role="group"></div>
     </div>
 
     <div class="metadata-row">
-      <span class="metadata-label">Type</span>
-      <select id="type" onchange="updateField('type', this.value)" aria-label="Type">
-        <option value="task" ${bean.type === 'task' ? 'selected' : ''}>🧑‍💻 Task</option>
-        <option value="bug" ${bean.type === 'bug' ? 'selected' : ''}>\uD83D\uDC1B Bug</option>
-        <option value="feature" ${bean.type === 'feature' ? 'selected' : ''}>\uD83D\uDCA1 Feature</option>
-        <option value="epic" ${bean.type === 'epic' ? 'selected' : ''}>\u26A1 Epic</option>
-        <option value="milestone" ${bean.type === 'milestone' ? 'selected' : ''}>\uD83C\uDFC1 Milestone</option>
-      </select>
+      <div class="metadata-label-group">
+        <span class="metadata-icon codicon codicon-folder" aria-hidden="true"></span>
+        <span class="metadata-label">Type</span>
+      </div>
+      <div class="icon-select" data-field="type" data-value="${this.escapeHtml(bean.type)}" data-options="${typeOptions}" aria-label="Type" role="group"></div>
     </div>
 
     <div class="metadata-row">
-      <span class="metadata-label">Priority</span>
-      <select id="priority" onchange="updateField('priority', this.value)" aria-label="Priority">
-        <option value="" ${!bean.priority ? 'selected' : ''}>\u2014 None</option>
-        <option value="critical" ${bean.priority === 'critical' ? 'selected' : ''}>\uD83D\uDD34 Critical</option>
-        <option value="high" ${bean.priority === 'high' ? 'selected' : ''}>\uD83D\uDFE0 High</option>
-        <option value="normal" ${bean.priority === 'normal' ? 'selected' : ''}>\uD83D\uDFE1 Normal</option>
-        <option value="low" ${bean.priority === 'low' ? 'selected' : ''}>\uD83D\uDFE2 Low</option>
-        <option value="deferred" ${bean.priority === 'deferred' ? 'selected' : ''}>\uD83D\uDD35 Deferred</option>
-      </select>
+      <div class="metadata-label-group">
+        <span class="metadata-icon codicon codicon-list-ordered" aria-hidden="true"></span>
+        <span class="metadata-label">Priority</span>
+      </div>
+      <div class="icon-select" data-field="priority" data-value="${this.escapeHtml(bean.priority || '')}" data-options="${priorityOptions}" aria-label="Priority" role="group"></div>
     </div>
 
-    ${tagsBadges ? `<div class="metadata">${tagsBadges}</div>` : ''}
+    ${tagsBadges ? `<div class="metadata" style="grid-column:1/-1">${tagsBadges}</div>` : ''}
   </div>
   <div class="content">
     <div class="body-content">
@@ -593,6 +676,128 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   </div>
 
   <script nonce="${nonce}">
+    function initIconSelect(el) {
+      var field = el.dataset.field;
+      var options = JSON.parse(el.dataset.options || '[]');
+
+      function renderBtnInner() {
+        var cur = options.find(function(o) { return o.value === el.dataset.value; });
+        if (!cur) { cur = options[0]; }
+        return '<span class="codicon codicon-' + (cur ? cur.icon : '') + '" aria-hidden="true"></span>'
+          + '<span>' + (cur ? cur.label : '') + '</span>'
+          + '<span class="codicon codicon-chevron-down icon-select-chevron" aria-hidden="true"></span>';
+      }
+
+      var list = document.createElement('ul');
+      list.className = 'icon-select-list';
+      list.setAttribute('role', 'listbox');
+      list.setAttribute('aria-label', el.getAttribute('aria-label') || field);
+      options.forEach(function(o) {
+        var li = document.createElement('li');
+        li.className = 'icon-select-option' + (o.value === el.dataset.value ? ' selected' : '');
+        li.setAttribute('role', 'option');
+        li.setAttribute('data-value', o.value);
+        li.setAttribute('aria-selected', o.value === el.dataset.value ? 'true' : 'false');
+        li.setAttribute('tabindex', '-1');
+        li.innerHTML = '<span class="codicon codicon-' + o.icon + '" aria-hidden="true"></span><span>' + o.label + '</span>';
+        list.appendChild(li);
+      });
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'icon-select-btn';
+      btn.setAttribute('aria-haspopup', 'listbox');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.setAttribute('aria-label', el.getAttribute('aria-label') || field);
+      btn.innerHTML = renderBtnInner();
+
+      el.innerHTML = '';
+      el.appendChild(btn);
+      el.appendChild(list);
+
+      function openList() {
+        list.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+        var sel = list.querySelector('.selected') || list.querySelector('[role="option"]');
+        if (sel) { sel.focus(); }
+      }
+
+      function closeList() {
+        list.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+
+      function selectVal(value) {
+        el.dataset.value = value;
+        btn.innerHTML = renderBtnInner();
+        list.querySelectorAll('[role="option"]').forEach(function(opt) {
+          var isSelected = opt.dataset.value === value;
+          opt.classList.toggle('selected', isSelected);
+          opt.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+        });
+        closeList();
+        btn.focus();
+        updateField(field, value);
+      }
+
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        list.classList.contains('open') ? closeList() : openList();
+      });
+
+      btn.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          list.classList.contains('open') ? closeList() : openList();
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (!list.classList.contains('open')) { openList(); }
+          else {
+            var items = Array.from(list.querySelectorAll('[role="option"]'));
+            var idx = items.indexOf(document.activeElement);
+            if (items[idx + 1]) { items[idx + 1].focus(); }
+          }
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          closeList();
+          btn.focus();
+        }
+      });
+
+      list.addEventListener('click', function(e) {
+        var option = e.target.closest('[role="option"]');
+        if (option) { selectVal(option.dataset.value); }
+      });
+
+      list.addEventListener('keydown', function(e) {
+        var items = Array.from(list.querySelectorAll('[role="option"]'));
+        var idx = items.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (items[idx + 1]) { items[idx + 1].focus(); }
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (idx <= 0) { closeList(); btn.focus(); }
+          else if (items[idx - 1]) { items[idx - 1].focus(); }
+        } else if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (document.activeElement && document.activeElement.hasAttribute('data-value')) {
+            selectVal(document.activeElement.dataset.value);
+          }
+        } else if (e.key === 'Escape' || e.key === 'Tab') {
+          e.preventDefault();
+          closeList();
+          btn.focus();
+        } else if (e.key === 'Home') {
+          e.preventDefault();
+          if (items[0]) { items[0].focus(); }
+        } else if (e.key === 'End') {
+          e.preventDefault();
+          if (items[items.length - 1]) { items[items.length - 1].focus(); }
+        }
+      });
+    }
+
     const vscode = acquireVsCodeApi();
 
     function updateField(field, value) {
@@ -604,7 +809,19 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       });
     }
 
+    document.querySelectorAll('.icon-select').forEach(initIconSelect);
+
     document.addEventListener('click', event => {
+      // Close any open dropdowns when clicking outside
+      document.querySelectorAll('.icon-select-list.open').forEach(function(openList) {
+        openList.classList.remove('open');
+        var selectEl = openList.closest('.icon-select');
+        if (selectEl) {
+          var selectBtn = selectEl.querySelector('.icon-select-btn');
+          if (selectBtn) { selectBtn.setAttribute('aria-expanded', 'false'); }
+        }
+      });
+
       const target = event.target;
       if (!(target instanceof Element)) {
         return;
@@ -621,12 +838,6 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
           });
         }
         return;
-      }
-
-      const backButton = target.closest('#back-button');
-      if (backButton instanceof Element) {
-        event.preventDefault();
-        vscode.postMessage({ command: 'goBack' });
       }
     });
   </script>
@@ -714,7 +925,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 
   private autoLinkBeanReferences(html: string, currentBeanId?: string): string {
     const tokenPattern = /(<[^>]+>|[^<]+)/g;
-    const beanIdPattern = /\b([a-z][a-z0-9-]*-\d+)\b/gi;
+    const beanIdPattern = /\b([a-z][a-z0-9-]*-\d[a-z0-9]*)\b/gi;
     let inAnchor = false;
     let inCode = false;
     let inPre = false;
@@ -799,6 +1010,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       if (this._currentBean) {
         this.updateView(this._currentBean);
       }
+      await this.updateDetailsContextKeys();
     }
   }
 
@@ -814,6 +1026,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       if (this._currentBean) {
         this.updateView(this._currentBean);
       }
+      await this.updateDetailsContextKeys();
     }
   }
 
@@ -821,7 +1034,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     try {
       const fullBean = await this.service.showBean(beanId);
       this._currentBean = fullBean;
-      await vscode.commands.executeCommand('setContext', 'beans.hasSelectedBean', true);
+      await this.updateDetailsContextKeys();
 
       this._parentBean = undefined;
       if (fullBean.parent) {
@@ -843,6 +1056,11 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private async updateDetailsContextKeys(): Promise<void> {
+    await vscode.commands.executeCommand('setContext', 'beans.hasSelectedBean', Boolean(this._currentBean));
+    await vscode.commands.executeCommand('setContext', 'beans.detailsCanGoBack', this.canGoBack);
+  }
+
   private getNonce(): string {
     return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
   }
@@ -851,13 +1069,15 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
    * Get icon name for bean based on status and type
    */
   private getIconName(bean: Bean): string {
+    // Mirror BeanTreeItem: use status-specific icons for non-todo statuses,
+    // fall back to type icon for todo/default.
     switch (bean.status) {
       case 'completed':
         return 'issue-closed';
       case 'in-progress':
-        return this.getTypeIconName(bean.type);
+        return 'play-circle';
       case 'scrapped':
-        return 'error';
+        return 'stop';
       case 'draft':
         return 'issue-draft';
       case 'todo':
@@ -881,32 +1101,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
         return 'bug';
       case 'task':
       default:
-        return 'issues';
-    }
-  }
-
-  /**
-   * Use resilient inline glyphs for title icons (no external codicon font dependency).
-   */
-  private getIconGlyph(iconName: string): string {
-    switch (iconName) {
-      case 'issue-closed':
-        return '✅';
-      case 'issue-draft':
-        return '📝';
-      case 'error':
-        return '🗑️';
-      case 'milestone':
-        return '🏁';
-      case 'zap':
-        return '⚡';
-      case 'lightbulb':
-        return '💡';
-      case 'bug':
-        return '🐛';
-      case 'issues':
-      default:
-        return '📋';
+        return 'list-unordered';
     }
   }
 

@@ -205,6 +205,7 @@ export class BeansCommands {
 
     // Documentation
     this.registerCommand('beans.openUserGuide', this.openUserGuide.bind(this));
+    this.registerCommand('beans.openAiFeaturesGuide', this.openAiFeaturesGuide.bind(this));
 
     logger.info('All Beans commands registered');
   }
@@ -1217,47 +1218,41 @@ export class BeansCommands {
   }
 
   /**
-   * Search beans across all panes
+   * Search beans in the Search pane.
+   * The Search pane performs full-field matching via BeansSearchTreeProvider.
    */
   private async search(): Promise<void> {
     try {
       const searchText = await vscode.window.showInputBox({
-        prompt: 'Search beans by title or body',
+        prompt: 'Search beans across all fields',
         placeHolder: 'Enter search text',
-        title: 'Search All Beans',
+        title: 'Search Beans',
       });
 
       if (searchText === undefined) {
         return; // User cancelled
       }
 
-      // Apply search filter to all view panes
-      const viewIds = ['beans.active', 'beans.draft', 'beans.completed', 'beans.scrapped', 'beans.archived'];
+      // Focus Beans activity bar and route search to the dedicated Search pane.
+      await vscode.commands.executeCommand('workbench.view.extension.beans');
+
+      const viewId = 'beans.search';
+      const currentFilter = this.filterManager.getFilter(viewId) || {};
 
       if (!searchText) {
-        // Clear search from all panes if empty
-        viewIds.forEach(viewId => {
-          const currentFilter = this.filterManager.getFilter(viewId);
-          if (currentFilter) {
-            const updatedFilter = { ...currentFilter };
-            delete updatedFilter.text;
-            this.filterManager.setFilter(viewId, updatedFilter);
-          }
-        });
-        vscode.window.showInformationMessage('Search cleared from all panes');
+        const updatedFilter = { ...currentFilter };
+        delete updatedFilter.text;
+        this.filterManager.setFilter(viewId, updatedFilter);
+        vscode.window.showInformationMessage('Search cleared');
       } else {
-        // Apply search to all panes
-        viewIds.forEach(viewId => {
-          const currentFilter = this.filterManager.getFilter(viewId) || {};
-          this.filterManager.setFilter(viewId, {
-            ...currentFilter,
-            text: searchText,
-          });
+        this.filterManager.setFilter(viewId, {
+          ...currentFilter,
+          text: searchText,
         });
-        vscode.window.showInformationMessage(`Searching all panes for: "${searchText}"`);
+        vscode.window.showInformationMessage(`Searching for: "${searchText}"`);
       }
 
-      logger.info(`Search applied across all panes: ${searchText || '(cleared)'}`);
+      logger.info(`Search applied in Search pane: ${searchText || '(cleared)'}`);
     } catch (error) {
       const message = `Failed to search: ${(error as Error).message}`;
       logger.error(message, error as Error);
@@ -1377,6 +1372,27 @@ export class BeansCommands {
         logger.error('Failed to open user guide', openError as Error);
         vscode.window.showErrorMessage(
           'Failed to open user guide. The documentation may be missing from the extension.'
+        );
+      }
+    }
+  }
+
+  /**
+   * Open AI features documentation
+   */
+  private async openAiFeaturesGuide(): Promise<void> {
+    const extensionPath = this.context.extensionUri;
+    const docPath = vscode.Uri.joinPath(extensionPath, 'docs', 'ai-features.md');
+
+    try {
+      await vscode.commands.executeCommand('markdown.showPreview', docPath);
+    } catch {
+      try {
+        await vscode.window.showTextDocument(docPath);
+      } catch (openError) {
+        logger.error('Failed to open AI features guide', openError as Error);
+        vscode.window.showErrorMessage(
+          'Failed to open AI features guide. The documentation may be missing from the extension.'
         );
       }
     }

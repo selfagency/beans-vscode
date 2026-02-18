@@ -1,0 +1,1 @@
+export { BeansHelpViewProvider } from './BeansHelpViewProvider';

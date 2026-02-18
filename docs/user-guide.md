@@ -185,10 +185,11 @@ Access via `Cmd+,` (Mac) or `Ctrl+,` (Windows/Linux), search "Beans".
 
 ### AI Settings
 
-| Setting             | Type    | Default | Description                   |
-| ------------------- | ------- | ------- | ----------------------------- |
-| `beans.ai.enabled`  | boolean | `true`  | Master switch for AI features |
-| `beans.mcp.enabled` | boolean | `true`  | Enable MCP server provider    |
+| Setting             | Type    | Default | Description                                                                 |
+| ------------------- | ------- | ------- | --------------------------------------------------------------------------- |
+| `beans.ai.enabled`  | boolean | `true`  | Master switch for AI features                                               |
+| `beans.mcp.enabled` | boolean | `true`  | Enable MCP server provider                                                  |
+| `beans.mcp.port`    | number  | `39173` | Port metadata propagated to MCP process (stdio transport remains unchanged) |
 
 ### UI Settings
 

@@ -273,13 +273,16 @@ Copilot: [References Beans skill guidance]
 ```json
 {
   "beans.ai.enabled": true, // Master switch
-  "beans.mcp.enabled": true // MCP server specifically
+  "beans.mcp.enabled": true, // MCP server specifically
+  "beans.mcp.port": 39173 // Port metadata passed to MCP process
 }
 ```
 
 To disable all AI features: Set `beans.ai.enabled` to `false`.
 
 To disable only MCP server: Set `beans.mcp.enabled` to `false`.
+
+To change the propagated MCP port value: Set `beans.mcp.port` to your preferred port.
 
 ### MCP Server Configuration
 
@@ -288,6 +291,8 @@ The MCP server is automatically configured. To customize:
 1. Open MCP settings: `Beans: MCP: Open MCP Settings`
 2. Locate the `beans-vscode` server entry
 3. Modify as needed (advanced)
+
+> Note: Beans MCP currently uses stdio transport. `beans.mcp.port` is propagated via args/env for host and integration compatibility, and for forward compatibility with port-aware tooling.
 
 ## Troubleshooting
 

@@ -72,6 +72,12 @@
         "icon": "$(info)"
       },
       {
+        "command": "beans.openAiFeaturesGuide",
+        "title": "Open AI Features Guide",
+        "category": "Beans",
+        "icon": "$(sparkle)"
+      },
+      {
         "command": "beans.showOutput",
         "title": "Show Output",
         "category": "Beans",
@@ -95,6 +101,13 @@
         "title": "Edit Bean",
         "category": "Beans",
         "icon": "$(edit)",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.details.back",
+        "title": "Back to Previous Bean",
+        "category": "Beans",
+        "icon": "$(arrow-left)",
         "when": "beans.initialized"
       },
       {
@@ -177,6 +190,20 @@
         "title": "Search Beans",
         "category": "Beans",
         "icon": "$(search)",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.searchView.filter",
+        "title": "Filter Search Results",
+        "category": "Beans",
+        "icon": "$(filter)",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.searchView.clear",
+        "title": "Clear Search Filters",
+        "category": "Beans",
+        "icon": "$(circle-slash)",
         "when": "beans.initialized"
       },
       {
@@ -264,39 +291,32 @@
     "views": {
       "beans": [
         {
-          "type": "webview",
-          "id": "beans.search",
-          "name": "Search",
-          "icon": "$(search)",
+          "icon": "$(issue-draft)",
+          "id": "beans.draft",
+          "name": "Drafts",
           "when": "beans.initialized",
-          "visibility": "collapsed"
+          "visibility": "visible"
         },
         {
           "icon": "$(issue-opened)",
           "id": "beans.active",
-          "name": "Active",
-          "when": "beans.initialized"
-        },
-        {
-          "icon": "$(issue-draft)",
-          "id": "beans.draft",
-          "name": "Draft",
+          "name": "Open Beans",
           "when": "beans.initialized",
-          "visibility": "collapsed"
+          "visibility": "visible"
         },
         {
           "icon": "$(issue-closed)",
           "id": "beans.completed",
           "name": "Completed",
           "when": "beans.initialized",
-          "visibility": "collapsed"
+          "visibility": "visible"
         },
         {
-          "icon": "$(error)",
-          "id": "beans.scrapped",
-          "name": "Scrapped",
+          "icon": "$(search)",
+          "id": "beans.search",
+          "name": "Search",
           "when": "beans.initialized",
-          "visibility": "collapsed"
+          "visibility": "visible"
         },
         {
           "icon": "$(info)",
@@ -305,15 +325,35 @@
           "name": "Details",
           "when": "beans.initialized",
           "visibility": "visible"
+        },
+        {
+          "icon": "$(question)",
+          "type": "webview",
+          "id": "beans.help",
+          "name": "Help",
+          "when": "beans.initialized",
+          "visibility": "visible"
         }
       ]
     },
     "menus": {
       "view/title": [
         {
-          "command": "beans.create",
-          "when": "view == beans.active && beans.initialized",
+          "command": "beans.search",
+          "when": "view == beans.search && beans.initialized",
           "group": "navigation@1"
+        },
+        {
+          "command": "beans.searchView.filter",
+          "when": "view == beans.search && beans.initialized",
+          "group": "navigation@2",
+          "icon": "$(filter)"
+        },
+        {
+          "command": "beans.searchView.clear",
+          "when": "view == beans.search && beans.initialized",
+          "group": "navigation@3",
+          "icon": "$(circle-slash)"
         },
         {
           "command": "beans.create",
@@ -327,23 +367,23 @@
         },
         {
           "command": "beans.showOutput",
-          "when": "view == beans.active && beans.initialized",
-          "group": "navigation@3"
+          "when": "view == beans.help && beans.initialized",
+          "group": "navigation@1"
         },
         {
-          "command": "beans.openUserGuide",
-          "when": "view == beans.active",
-          "group": "navigation@4"
+          "command": "beans.details.back",
+          "when": "view == beans.details && beans.hasSelectedBean && beans.detailsCanGoBack",
+          "group": "navigation@1"
         },
         {
           "command": "beans.edit",
           "when": "view == beans.details && beans.hasSelectedBean",
-          "group": "navigation"
+          "group": "navigation@2"
         },
         {
           "command": "beans.copilotStartWork",
           "when": "view == beans.details && beans.hasSelectedBean && beans.aiEnabled",
-          "group": "navigation@2"
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
@@ -532,6 +572,13 @@
           "type": "boolean",
           "default": true,
           "description": "Enable the dynamic MCP server definition provider for Beans commands (effective only when AI is enabled)."
+        },
+        "beans.mcp.port": {
+          "type": "number",
+          "default": 39173,
+          "minimum": 1024,
+          "maximum": 65535,
+          "markdownDescription": "Port value propagated to the Beans MCP server process for host/tooling compatibility. Current transport is stdio; this setting is reserved for integrations that also read port metadata."
         }
       }
     }

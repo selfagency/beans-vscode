@@ -2,6 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { BeansDetailsViewProvider } from '../../../beans/details/BeansDetailsViewProvider';
 import type { Bean } from '../../../beans/model';
+import type { BeansService } from '../../../beans/service';
+
+/** Type helper for accessing private members of BeansDetailsViewProvider in tests. */
+type ProviderPrivate = {
+  _currentBean: Bean | undefined;
+  renderMarkdown(md: string): string;
+  escapeHtml(s: string): string;
+  normalizeEscapedNewlinesOutsideCodeBlocks(input: string): string;
+  getIconName(bean: Bean): string;
+  getTypeIconName(type: string): string;
+};
 
 // TODO(beans-vscode-1m8d): Add deeper webview integration tests for details
 // panel interactions (real DOM script execution, select-change update flows,
@@ -63,7 +74,10 @@ describe('BeansDetailsViewProvider', () => {
       showBean: vi.fn(),
       updateBean: vi.fn(),
     };
-    provider = new BeansDetailsViewProvider(vscode.Uri.file('/ext') as any, service as any);
+    provider = new BeansDetailsViewProvider(
+      vscode.Uri.file('/ext') as unknown as vscode.Uri,
+      service as unknown as BeansService
+    );
 
     webview = {
       options: undefined,
@@ -110,8 +124,9 @@ describe('BeansDetailsViewProvider', () => {
     expect(webview.html).toContain('class="bean-ref parent-ref"');
     expect(webview.html).toContain('data-bean-id="beans-vscode-parent"');
     expect(webview.html).toContain('role="img"');
-    expect(webview.html).toContain('📋');
-    expect(webview.html).not.toContain('id="back-button"');
+    expect(webview.html).toContain('codicon codicon-list-unordered');
+    expect(webview.html).toContain('class="parent-code">PARENT</span></a> <span class="parent-title"');
+    expect(provider.canGoBack).toBe(false);
   });
 
   it('renders unresolved parent as clickable reference using parent id', async () => {
@@ -143,24 +158,27 @@ describe('BeansDetailsViewProvider', () => {
     expect(bean.body).toBe('Depends on beans-vscode-200 and beans-vscode-300.');
   });
 
-  it('shows back button only after internal reference navigation and supports going back', async () => {
+  it('tracks navigation history after internal reference navigation and supports going back', async () => {
     const first = makeBean({ id: 'beans-vscode-10', code: '10', title: 'First bean', body: 'See beans-vscode-20' });
     const second = makeBean({ id: 'beans-vscode-20', code: '20', title: 'Second bean' });
 
     service.showBean.mockResolvedValueOnce(first).mockResolvedValueOnce(second).mockResolvedValueOnce(first);
+    const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand');
 
     provider.resolveWebviewView(view, resolveContext, cancellationToken);
     await provider.showBean(first);
     expect(webview.html).toContain('First bean');
-    expect(webview.html).not.toContain('id="back-button"');
+    expect(provider.canGoBack).toBe(false);
 
     await receivedHandler?.({ command: 'openBeanFromReference', beanId: 'beans-vscode-20' });
     expect(webview.html).toContain('Second bean');
-    expect(webview.html).toContain('id="back-button"');
+    expect(provider.canGoBack).toBe(true);
+    expect(executeCommandSpy).toHaveBeenCalledWith('setContext', 'beans.detailsCanGoBack', true);
 
-    await receivedHandler?.({ command: 'goBack' });
+    await provider.goBackFromHistory();
     expect(webview.html).toContain('First bean');
-    expect(webview.html).not.toContain('id="back-button"');
+    expect(provider.canGoBack).toBe(false);
+    expect(executeCommandSpy).toHaveBeenCalledWith('setContext', 'beans.detailsCanGoBack', false);
   });
 
   it('navigates to parent from clickable header reference and supports going back', async () => {
@@ -192,16 +210,16 @@ describe('BeansDetailsViewProvider', () => {
     expect(webview.html).toContain('Child bean');
     expect(webview.html).toContain('class="bean-ref parent-ref"');
     expect(webview.html).toContain('data-bean-id="beans-vscode-parent"');
-    expect(webview.html).not.toContain('id="back-button"');
+    expect(provider.canGoBack).toBe(false);
 
     // Simulate clicking the parent link in the webview script by posting same message.
     await receivedHandler?.({ command: 'openBeanFromReference', beanId: 'beans-vscode-parent' });
     expect(webview.html).toContain('Parent bean');
-    expect(webview.html).toContain('id="back-button"');
+    expect(provider.canGoBack).toBe(true);
 
-    await receivedHandler?.({ command: 'goBack' });
+    await provider.goBackFromHistory();
     expect(webview.html).toContain('Child bean');
-    expect(webview.html).not.toContain('id="back-button"');
+    expect(provider.canGoBack).toBe(false);
   });
 
   it('falls back when full bean fetch fails', async () => {
@@ -218,22 +236,26 @@ describe('BeansDetailsViewProvider', () => {
     expect(webview.html).toContain('No description');
   });
 
-  it('clears selected bean and resets html/context', () => {
+  it('clears selected bean and resets html/context', async () => {
     const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand');
     provider.resolveWebviewView(view, resolveContext, cancellationToken);
 
-    (provider as any)._currentBean = makeBean();
+    const providerWithPrivate = provider as unknown as { _currentBean: Bean | undefined };
+    providerWithPrivate._currentBean = makeBean();
     provider.clear();
 
-    expect(provider.currentBean).toBeUndefined();
-    expect(executeCommandSpy).toHaveBeenCalledWith('setContext', 'beans.hasSelectedBean', false);
-    expect(webview.html).toContain('Select a bean to view details');
+    await vi.waitFor(() => {
+      expect(provider.currentBean).toBeUndefined();
+      expect(executeCommandSpy).toHaveBeenCalledWith('setContext', 'beans.hasSelectedBean', false);
+      expect(executeCommandSpy).toHaveBeenCalledWith('setContext', 'beans.detailsCanGoBack', false);
+      expect(webview.html).toContain('Select a bean to view details');
+    });
   });
 
   it('updates bean via message handler and refreshes tree', async () => {
     const bean = makeBean({ id: 'beans-vscode-1', code: '1', title: 'Before' });
     const updated = makeBean({ id: 'beans-vscode-1', code: '1', title: 'After', status: 'in-progress', type: 'bug' });
-    (provider as any)._currentBean = bean;
+    (provider as unknown as ProviderPrivate)._currentBean = bean;
     service.updateBean.mockResolvedValue(updated);
 
     const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand');
@@ -247,11 +269,11 @@ describe('BeansDetailsViewProvider', () => {
     expect(executeCommandSpy).toHaveBeenCalledWith('beans.refreshAll');
     expect(infoSpy).toHaveBeenCalledWith('Bean updated successfully');
     expect(webview.html).toContain('After');
-    expect(webview.html).toContain('🐛');
+    expect(webview.html).toContain('codicon codicon-play-circle');
   });
 
   it('handles update errors from message handler', async () => {
-    (provider as any)._currentBean = makeBean({ id: 'beans-vscode-2' });
+    (provider as unknown as ProviderPrivate)._currentBean = makeBean({ id: 'beans-vscode-2' });
     service.updateBean.mockRejectedValue(new Error('update failed'));
     const errorSpy = vi.spyOn(vscode.window, 'showErrorMessage');
 
@@ -264,7 +286,7 @@ describe('BeansDetailsViewProvider', () => {
 
   it('updates visible view when visibility changes and bean exists', () => {
     provider.resolveWebviewView(view, resolveContext, cancellationToken);
-    (provider as any)._currentBean = makeBean({ title: 'Visible bean' });
+    (provider as unknown as ProviderPrivate)._currentBean = makeBean({ title: 'Visible bean' });
 
     visibilityHandler?.();
 
@@ -284,7 +306,7 @@ describe('BeansDetailsViewProvider', () => {
       '- item',
     ].join('\n');
 
-    const html = (provider as any).renderMarkdown(markdown);
+    const html = (provider as unknown as ProviderPrivate).renderMarkdown(markdown);
     expect(html).toContain('<h1>H1</h1>');
     expect(html).toContain('<h2>H2</h2>');
     expect(html).toContain('<h3>H3</h3>');
@@ -295,12 +317,12 @@ describe('BeansDetailsViewProvider', () => {
     expect(html).toContain('<a href="https://example.com" target="_blank" rel="noopener noreferrer">link</a>');
     expect(html).toContain('<ul><li>item</li></ul>');
 
-    const escaped = (provider as any).escapeHtml('<tag>"x"&\'y\'');
+    const escaped = (provider as unknown as ProviderPrivate).escapeHtml('<tag>"x"&\'y\'');
     expect(escaped).toBe('&lt;tag&gt;&quot;x&quot;&amp;&#039;y&#039;');
   });
 
   it('does not render unsafe javascript: markdown links', () => {
-    const html = (provider as any).renderMarkdown('[x](javascript:alert(1))');
+    const html = (provider as unknown as ProviderPrivate).renderMarkdown('[x](javascript:alert(1))');
     expect(html).not.toContain('javascript:');
     expect(html).not.toContain('<a href=');
     expect(html).toContain('x');
@@ -317,7 +339,7 @@ describe('BeansDetailsViewProvider', () => {
       'Tail\\nline',
     ].join('\n');
 
-    const normalized = (provider as any).normalizeEscapedNewlinesOutsideCodeBlocks(input);
+    const normalized = (provider as unknown as ProviderPrivate).normalizeEscapedNewlinesOutsideCodeBlocks(input);
 
     expect(normalized).toContain('Goal\nRename generated instructions.');
     expect(normalized).toContain('## Checklist\n- [ ] Update path');
@@ -339,14 +361,25 @@ describe('BeansDetailsViewProvider', () => {
     expect(webview.html).not.toContain('Goal\\nRename generated file');
   });
 
-  it('returns expected icon names by status/type', () => {
-    expect((provider as any).getIconName(makeBean({ status: 'completed' }))).toBe('issue-closed');
-    expect((provider as any).getIconName(makeBean({ status: 'scrapped' }))).toBe('error');
-    expect((provider as any).getIconName(makeBean({ status: 'draft' }))).toBe('issue-draft');
-    expect((provider as any).getIconName(makeBean({ status: 'in-progress', type: 'feature' }))).toBe('lightbulb');
-    expect((provider as any).getIconName(makeBean({ status: 'todo', type: 'milestone' }))).toBe('milestone');
-    expect((provider as any).getTypeIconName('epic')).toBe('zap');
-    expect((provider as any).getTypeIconName('bug')).toBe('bug');
-    expect((provider as any).getTypeIconName('unknown')).toBe('issues');
+  it('returns expected icon names by type and status', () => {
+    // For todo status, icon is type-based
+    expect((provider as unknown as ProviderPrivate).getIconName(makeBean({ type: 'task' }))).toBe('list-unordered');
+    expect((provider as unknown as ProviderPrivate).getIconName(makeBean({ type: 'bug' }))).toBe('bug');
+    expect((provider as unknown as ProviderPrivate).getIconName(makeBean({ type: 'feature' }))).toBe('lightbulb');
+    expect((provider as unknown as ProviderPrivate).getIconName(makeBean({ type: 'epic' }))).toBe('zap');
+    expect((provider as unknown as ProviderPrivate).getIconName(makeBean({ type: 'milestone' }))).toBe('milestone');
+    // For non-todo statuses, icon is status-based (matching BeanTreeItem)
+    expect((provider as unknown as ProviderPrivate).getIconName(makeBean({ status: 'completed' }))).toBe(
+      'issue-closed'
+    );
+    expect((provider as unknown as ProviderPrivate).getIconName(makeBean({ status: 'in-progress' }))).toBe(
+      'play-circle'
+    );
+    expect((provider as unknown as ProviderPrivate).getIconName(makeBean({ status: 'scrapped' }))).toBe('stop');
+    expect((provider as unknown as ProviderPrivate).getIconName(makeBean({ status: 'draft' }))).toBe('issue-draft');
+    // getTypeIconName always returns type-based icon name
+    expect((provider as unknown as ProviderPrivate).getTypeIconName('epic')).toBe('zap');
+    expect((provider as unknown as ProviderPrivate).getTypeIconName('bug')).toBe('bug');
+    expect((provider as unknown as ProviderPrivate).getTypeIconName('unknown')).toBe('list-unordered');
   });
 });

@@ -20,10 +20,10 @@ describe('MCP Integration', () => {
       extension: {
         packageJSON: { version: '0.1.0' },
       },
-    } as any;
+    } as unknown as vscode.ExtensionContext;
 
     // Mock vscode.lm API
-    (vscode.lm as any) = {
+    (vscode as unknown as { lm: unknown }).lm = {
       registerMcpServerDefinitionProvider: vi.fn((id: string, provider: any) => {
         registeredProviders.set(id, provider);
         return { dispose: vi.fn() };
@@ -45,12 +45,15 @@ describe('MCP Integration', () => {
         if (key === 'mcp.enabled') {
           return true;
         }
+        if (key === 'mcp.port') {
+          return 39173;
+        }
         if (key === 'cliPath') {
           return 'beans';
         }
         return defaultValue;
       }),
-    } as any);
+    } as unknown as vscode.WorkspaceConfiguration);
 
     mcpIntegration = new BeansMcpIntegration(mockContext, '/workspace/root', 'beans');
 
@@ -82,7 +85,7 @@ describe('MCP Integration', () => {
     });
 
     it('should not register when lm API is unavailable', () => {
-      (vscode.lm as any) = undefined;
+      (vscode as unknown as { lm: unknown }).lm = undefined;
 
       mcpIntegration.register();
 
@@ -108,8 +111,12 @@ describe('MCP Integration', () => {
       expect(definition.args.length).toBeGreaterThan(0);
       expect(definition.args).toContain('--workspace');
       expect(definition.args).toContain('/workspace/root');
+      expect(definition.args).toContain('--port');
+      expect(definition.args).toContain('39173');
       expect(definition.env).toBeDefined();
       expect(definition.env?.BEANS_VSCODE_MCP).toBe('1');
+      expect(definition.env?.BEANS_VSCODE_MCP_PORT).toBe('39173');
+      expect(definition.env?.BEANS_MCP_PORT).toBe('39173');
     });
 
     it('should return empty array when ai.enabled is false', () => {
@@ -121,9 +128,12 @@ describe('MCP Integration', () => {
           if (key === 'mcp.enabled') {
             return true;
           }
+          if (key === 'mcp.port') {
+            return 39173;
+          }
           return defaultValue;
         }),
-      } as any);
+      } as unknown as vscode.WorkspaceConfiguration);
 
       const definitions = mcpIntegration.provideMcpServerDefinitions();
 
@@ -139,9 +149,12 @@ describe('MCP Integration', () => {
           if (key === 'mcp.enabled') {
             return false;
           }
+          if (key === 'mcp.port') {
+            return 39173;
+          }
           return defaultValue;
         }),
-      } as any);
+      } as unknown as vscode.WorkspaceConfiguration);
 
       const definitions = mcpIntegration.provideMcpServerDefinitions();
 
@@ -176,15 +189,20 @@ describe('MCP Integration', () => {
           if (key === 'cliPath') {
             return '/custom/beans/path';
           }
+          if (key === 'mcp.port') {
+            return 49731;
+          }
           return defaultValue;
         }),
-      } as any);
+      } as unknown as vscode.WorkspaceConfiguration);
 
       const resolved = mcpIntegration.resolveMcpServerDefinition(inputDefinition) as vscode.McpStdioServerDefinition;
 
       expect(resolved).toBeDefined();
       expect(resolved.args).toContain('--cli-path');
       expect(resolved.args).toContain('/custom/beans/path');
+      expect(resolved.args).toContain('--port');
+      expect(resolved.args).toContain('49731');
     });
 
     it('should preserve label and version from input definition', () => {
