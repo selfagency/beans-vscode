@@ -33,6 +33,16 @@ pnpm run lint             # ESLint
 | `src/beans/config/templates/`                   | Markdown templates for generated Copilot artifacts; `{{PRIME_OUTPUT}}` placeholder replaced at write time             |
 | `src/beans/model/`                              | `Bean` type, `errors.ts` typed error classes, `config.ts` workspace config types                                      |
 
+## Tool usage priority
+
+**Always prefer MCP tools and VS Code extension commands over CLIs.** Follow this strict priority order:
+
+1. **MCP tools first** — if an MCP server exposes a tool that covers the operation, use it. This includes the Beans MCP server exposed by this extension (`BeansMcpServer.ts`) and any other active MCP servers in the session.
+2. **VS Code extension commands second** — if a registered VS Code command (via `vscode.commands.executeCommand`) can perform the operation, use it instead of shelling out. Extension commands are typed, safe, and integrated with the VS Code UX.
+3. **CLI as last resort only** — invoke the `beans` CLI (or any other CLI tool) only when neither an MCP tool nor a VS Code command covers the required operation. When a CLI must be used, always go through `BeansService` as an argument array — never build shell strings.
+
+This priority applies when writing code, suggesting code changes, and answering questions about how to interact with the extension's functionality.
+
 ## Key patterns
 
 **Process execution** — never build shell strings. `BeansService` always calls `beans` via an argument array with `child_process.execFile` or similar. Treat all bean content as untrusted input.
