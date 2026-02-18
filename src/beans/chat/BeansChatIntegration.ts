@@ -1,3 +1,15 @@
+/**
+ * Module: beans/chat
+ *
+ * Registers a read-only chat participant that surfaces workspace Beans data
+ * to chat scenarios. Handlers in this module should *never* modify bean state.
+ * They are intended for summarization, search, prioritization, and commit
+ * composition assistance only.
+ *
+ * Testing notes:
+ * - Unit tests should mock `BeansService` and the `vscode.ChatResponseStream`
+ *   used for streaming markdown fragments to the chat UI.
+ */
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
 import type { Bean } from '../model';

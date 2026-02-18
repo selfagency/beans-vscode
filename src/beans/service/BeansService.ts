@@ -1,3 +1,17 @@
+/**
+ * Module: beans/service
+ *
+ * Provides a type-safe, resilient wrapper around the Beans CLI. Responsibilities:
+ * - Securely execute the `beans` CLI via `execFile` (avoid shell interpolation)
+ * - Parse and normalize CLI JSON output into application `Bean` models
+ * - Provide retry + exponential backoff for transient errors
+ * - Deduplicate concurrent identical requests to reduce CLI churn
+ * - Maintain a short-lived offline cache to allow graceful degradation
+ *
+ * Important contributor notes:
+ * - Tests should mock `child_process.execFile` (or `execFileAsync`) to avoid spawning real processes
+ * - Do not change `CACHE_TTL_MS` behaviour without adding tests covering cache expiration
+ */
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
