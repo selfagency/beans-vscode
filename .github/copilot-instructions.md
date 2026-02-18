@@ -35,13 +35,27 @@ pnpm run lint             # ESLint
 
 ## Tool usage priority
 
-**Always prefer MCP tools and VS Code extension commands over CLIs.** Follow this strict priority order:
+**Always prefer extension commands and MCP tools over CLIs.** The priority depends on context:
 
-1. **MCP tools first** — if an MCP server exposes a tool that covers the operation, use it. This includes the Beans MCP server exposed by this extension (`BeansMcpServer.ts`) and any other active MCP servers in the session.
-2. **VS Code extension commands second** — if a registered VS Code command (via `vscode.commands.executeCommand`) can perform the operation, use it instead of shelling out. Extension commands are typed, safe, and integrated with the VS Code UX.
-3. **CLI as last resort only** — invoke the `beans` CLI (or any other CLI tool) only when neither an MCP tool nor a VS Code command covers the required operation. When a CLI must be used, always go through `BeansService` as an argument array — never build shell strings.
+### For Beans work tracking (using this extension)
 
-This priority applies when writing code, suggesting code changes, and answering questions about how to interact with the extension's functionality.
+When tracking your own work with Beans in this repository:
+
+1. **VS Code extension commands/UI first** — use command palette, sidebar, or webviews (`beans.create`, `beans.edit`, `beans.setStatus`, etc.). Best user experience.
+2. **@beans chat participant second** — conversational interface for guidance, summaries, and workflows.
+3. **MCP tools third** — programmatic interface when integrated into automated workflows.
+4. **CLI last resort only** — via `BeansService` argument arrays; never shell strings.
+
+### For testing extension code
+
+When writing tests or verifying extension functionality:
+
+1. **MCP tools first** — programmatic, deterministic testing of Beans operations.
+2. **Extension commands second** — for UI/UX verification and integration testing.
+3. **Direct TypeScript calls third** — when testing internal APIs (`BeansService`, etc.).
+4. **CLI last resort only** — via `BeansService` argument arrays; never shell strings.
+
+Both contexts: never build shell command strings; always use `BeansService` with argument arrays when CLI invocation is unavoidable.
 
 ## Key patterns
 
