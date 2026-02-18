@@ -91,15 +91,15 @@ This skill drives all Beans issue tracker operations in this workspace using the
 
 **Slash commands:**
 
-| Command              | When to use                                                                                 | What it returns                                              |
-| -------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `/summary`           | Start of session or sprint; workspace health check                                          | Count by status + list of up to 10 in-progress beans         |
-| `/priority`          | Before picking up new work; see what matters most                                           | Up to 8 active beans sorted by status then priority          |
-| `/stale`             | Triage/cleanup; find forgotten work                                                         | Beans not updated in 21+ days, sorted oldest-first           |
-| `/next`              | Deciding what to start; replaces manually scanning the tree                                 | Up to 8 todo/in-progress beans ranked by status + priority   |
-| `/create`            | When you want guided prompting for all fields before calling `beans.create`                 | Field checklist (title, type, priority, description, parent) |
-| `/search <query>`    | Finding a bean by keyword before starting work or linking a parent                          | Up to 20 matching beans with id, title, status, type         |
-| `/commit`            | After completing a step; drafts a conventional commit referencing the most relevant bean(s) | Likely bean IDs in context + example commit subject line     |
+| Command           | When to use                                                                                 | What it returns                                              |
+| ----------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `/summary`        | Start of session or sprint; workspace health check                                          | Count by status + list of up to 10 in-progress beans         |
+| `/priority`       | Before picking up new work; see what matters most                                           | Up to 8 active beans sorted by status then priority          |
+| `/stale`          | Triage/cleanup; find forgotten work                                                         | Beans not updated in 21+ days, sorted oldest-first           |
+| `/next`           | Deciding what to start; replaces manually scanning the tree                                 | Up to 8 todo/in-progress beans ranked by status + priority   |
+| `/create`         | When you want guided prompting for all fields before calling `beans.create`                 | Field checklist (title, type, priority, description, parent) |
+| `/search <query>` | Finding a bean by keyword before starting work or linking a parent                          | Up to 20 matching beans with id, title, status, type         |
+| `/commit`         | After completing a step; drafts a conventional commit referencing the most relevant bean(s) | Likely bean IDs in context + example commit subject line     |
 
 **Follow-up suggestions** — after any `@beans` response, VS Code surfaces quick-pick follow-ups for `/summary`, `/priority`, `/stale`, `/create`, and `/commit`. Use them to stay in flow without typing commands.
 

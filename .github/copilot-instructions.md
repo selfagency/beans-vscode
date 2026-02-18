@@ -18,20 +18,20 @@ pnpm run lint             # ESLint
 
 ## Module map
 
-| Module | Purpose |
-| --- | --- |
-| `src/extension.ts` | Activation: wires all providers, registers disposables |
-| `src/beans/service/BeansService.ts` | Typed CLI wrapper — **all** `beans` invocations go through here as argument arrays |
-| `src/beans/tree/BeansTreeDataProvider.ts` | Base tree provider; status-specific subclasses in `tree/providers/` |
-| `src/beans/tree/registerBeansTreeViews.ts` | Registers all five pane tree views (active/completed/draft/scrapped/archived) |
-| `src/beans/commands/BeansCommands.ts` | All command registration and orchestration |
-| `src/beans/details/BeansDetailsViewProvider.ts` | Webview sidebar — bean detail view + inline metadata selects |
-| `src/beans/search/BeansSearchViewProvider.ts` | Webview search panel |
-| `src/beans/mcp/BeansMcpIntegration.ts` | Stdio MCP server lifecycle; port from `beans.mcp.port` (default 39173) |
-| `src/beans/chat/BeansChatIntegration.ts` | `@beans` chat participant + slash commands |
-| `src/beans/config/BeansConfigManager.ts` | Reads/writes `.beans.yml`, generates `.github/instructions/tasks.instructions.md` and `.github/skills/beans/SKILL.md` |
-| `src/beans/config/templates/` | Markdown templates for generated Copilot artifacts; `{{PRIME_OUTPUT}}` placeholder replaced at write time |
-| `src/beans/model/` | `Bean` type, `errors.ts` typed error classes, `config.ts` workspace config types |
+| Module                                          | Purpose                                                                                                               |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `src/extension.ts`                              | Activation: wires all providers, registers disposables                                                                |
+| `src/beans/service/BeansService.ts`             | Typed CLI wrapper — **all** `beans` invocations go through here as argument arrays                                    |
+| `src/beans/tree/BeansTreeDataProvider.ts`       | Base tree provider; status-specific subclasses in `tree/providers/`                                                   |
+| `src/beans/tree/registerBeansTreeViews.ts`      | Registers all five pane tree views (active/completed/draft/scrapped/archived)                                         |
+| `src/beans/commands/BeansCommands.ts`           | All command registration and orchestration                                                                            |
+| `src/beans/details/BeansDetailsViewProvider.ts` | Webview sidebar — bean detail view + inline metadata selects                                                          |
+| `src/beans/search/BeansSearchViewProvider.ts`   | Webview search panel                                                                                                  |
+| `src/beans/mcp/BeansMcpIntegration.ts`          | Stdio MCP server lifecycle; port from `beans.mcp.port` (default 39173)                                                |
+| `src/beans/chat/BeansChatIntegration.ts`        | `@beans` chat participant + slash commands                                                                            |
+| `src/beans/config/BeansConfigManager.ts`        | Reads/writes `.beans.yml`, generates `.github/instructions/tasks.instructions.md` and `.github/skills/beans/SKILL.md` |
+| `src/beans/config/templates/`                   | Markdown templates for generated Copilot artifacts; `{{PRIME_OUTPUT}}` placeholder replaced at write time             |
+| `src/beans/model/`                              | `Bean` type, `errors.ts` typed error classes, `config.ts` workspace config types                                      |
 
 ## Key patterns
 
