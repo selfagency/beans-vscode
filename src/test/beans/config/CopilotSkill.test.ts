@@ -1,11 +1,11 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildBeansCopilotSkill,
-  writeBeansCopilotSkill,
-  removeBeansCopilotSkill,
   COPILOT_SKILL_RELATIVE_PATH,
+  removeBeansCopilotSkill,
+  writeBeansCopilotSkill,
 } from '../../../beans/config';
 
 // Mock fs module
@@ -24,18 +24,17 @@ describe('CopilotSkill', () => {
 
   describe('buildBeansCopilotSkill', () => {
     it('creates compact skill content with required frontmatter fields and planning guidance', () => {
-      const content = buildBeansCopilotSkill('beans prime output');
+      const content = buildBeansCopilotSkill('');
 
       expect(content).toContain('name: beans');
       expect(content).toContain('Use for Beans issue tracker workflows');
       expect(content).toContain('# Beans Skill');
       expect(content).toContain('## Planning mode: epic decomposition');
       expect(content).toContain('### Step 3 — Propose the issue map');
-      expect(content).toContain('beans prime output');
     });
 
     it('should include VS Code command references', () => {
-      const content = buildBeansCopilotSkill('prime data');
+      const content = buildBeansCopilotSkill('');
 
       expect(content).toContain('## VS Code extension command reference');
       expect(content).toContain('beans.view');
@@ -49,21 +48,6 @@ describe('CopilotSkill', () => {
       expect(content).toContain('## Core rules (always enforced)');
       expect(content).toContain('## Starting work on a bean');
       expect(content).toContain('Never start work without a bean');
-    });
-
-    it('should trim prime output', () => {
-      const content = buildBeansCopilotSkill('  \n\n  trimmed content  \n  ');
-
-      expect(content).toContain('trimmed content');
-      // Match the last ```text block (the prime output block)
-      const primeBlockMatch = [...content.matchAll(/```text\n([\s\S]*?)\n```/g)].pop();
-      expect(primeBlockMatch?.[1]).toBe('trimmed content');
-    });
-
-    it('should embed prime output in code block', () => {
-      const content = buildBeansCopilotSkill('prime content');
-
-      expect(content).toContain('```text\nprime content\n```');
     });
 
     it('should include planning format guidance', () => {
