@@ -1,11 +1,11 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildBeansCopilotSkill,
-  writeBeansCopilotSkill,
-  removeBeansCopilotSkill,
   COPILOT_SKILL_RELATIVE_PATH,
+  removeBeansCopilotSkill,
+  writeBeansCopilotSkill,
 } from '../../../beans/config';
 
 // Mock fs module
@@ -24,20 +24,19 @@ describe('CopilotSkill', () => {
 
   describe('buildBeansCopilotSkill', () => {
     it('creates compact skill content with required frontmatter fields and planning guidance', () => {
-      const content = buildBeansCopilotSkill('beans prime output');
+      const content = buildBeansCopilotSkill('');
 
       expect(content).toContain('name: beans');
-      expect(content).toContain('description: Use for Beans issue tracker workflows');
+      expect(content).toContain('Use for Beans issue tracker workflows');
       expect(content).toContain('# Beans Skill');
-      expect(content).toContain('## Planning mode: map and create epic issues');
-      expect(content).toContain('### Planning output format');
-      expect(content).toContain('beans prime output');
+      expect(content).toContain('## Planning mode: epic decomposition');
+      expect(content).toContain('### Step 3 — Propose the issue map');
     });
 
     it('should include VS Code command references', () => {
-      const content = buildBeansCopilotSkill('prime data');
+      const content = buildBeansCopilotSkill('');
 
-      expect(content).toContain('## VS Code command surface');
+      expect(content).toContain('## VS Code extension command reference');
       expect(content).toContain('beans.view');
       expect(content).toContain('beans.create');
       expect(content).toContain('beans.setStatus');
@@ -46,31 +45,17 @@ describe('CopilotSkill', () => {
     it('should include workflow guidance', () => {
       const content = buildBeansCopilotSkill('');
 
-      expect(content).toContain('## Use Beans as source of truth');
-      expect(content).toContain('## Recommended workflow');
-      expect(content).toContain('Read current state before mutating');
-    });
-
-    it('should trim prime output', () => {
-      const content = buildBeansCopilotSkill('  \n\n  trimmed content  \n  ');
-      const primeBlockMatch = content.match(/```text\n([\s\S]*?)\n```/);
-
-      expect(content).toContain('trimmed content');
-      expect(primeBlockMatch?.[1]).toBe('trimmed content');
-    });
-
-    it('should embed prime output in code block', () => {
-      const content = buildBeansCopilotSkill('prime content');
-
-      expect(content).toContain('```text\nprime content\n```');
+      expect(content).toContain('## Core rules (always enforced)');
+      expect(content).toContain('## Starting work on a bean');
+      expect(content).toContain('Never start work without a bean');
     });
 
     it('should include planning format guidance', () => {
       const content = buildBeansCopilotSkill('');
 
-      expect(content).toContain('- [ ] <title> — type=<type>, priority=<priority>, depends_on=<ids or none>');
-      expect(content).toContain('After approval, create issues and reply with:');
-      expect(content).toContain('Suggested first issue:');
+      expect(content).toContain('- [ ] <title> \u2014 type=<task|feature|bug>');
+      expect(content).toContain('Do not create any beans until the user approves the plan');
+      expect(content).toContain('Start with:');
     });
   });
 

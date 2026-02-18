@@ -11,15 +11,15 @@ This skill drives all Beans issue tracker operations in this workspace using the
 
 **Always use the highest available interface. Never skip levels for convenience.**
 
-1. **VS Code extension commands** (`beans.*`) — invoke via command palette or sidebar UI
-2. **`@beans` chat participant** — for guidance, summaries, and structured workflows
-3. **Beans MCP tools** — preferred programmatic interface when the UI is not in focus
+1. **Beans MCP tools** — preferred programmatic interface when the UI is not in focus
+2. **VS Code extension commands** (`beans.*`) — invoke via command palette or sidebar UI
+3. **`@beans` chat participant** — for guidance, summaries, and structured workflows
 4. **CLI** — only when extension, chat, and MCP are all genuinely unavailable; see CLI constraints
 
 ## Core rules (always enforced)
 
 - **Never start work without a bean.** Find a relevant bean or create one first. No exceptions.
-- **Always use the extension or MCP.** Do not reach for the CLI unless all other interfaces are unavailable.
+- **Prefer MCP tools, then extension commands.** Do not reach for the CLI unless all other interfaces are unavailable.
 - **The bean is the source of truth.** Keep status, type, priority, parent, blocking, and body current.
 - **Create a branch before writing code.** Name it `feature/<bean-id>-<slug>` or `fix/<bean-id>-<slug>`.
 - **Record branch and PR in bean frontmatter.** Add `branch:` and `pr:` as soon as they exist; commit immediately.
@@ -63,7 +63,7 @@ This skill drives all Beans issue tracker operations in this workspace using the
 | `beans.view`             | Open bean details sidebar                                 |
 | `beans.edit`             | Edit bean body/frontmatter in editor                      |
 | `beans.setStatus`        | Change status (todo → in-progress → completed / scrapped) |
-| `beans.setType`          | Change type (task / feature / bug / milestone)            |
+| `beans.setType`          | Change type (task / feature / bug / epic / milestone)     |
 | `beans.setPriority`      | Change priority (① critical … ⑤ low)                      |
 | `beans.setParent`        | Link a bean to a parent epic                              |
 | `beans.removeParent`     | Remove parent link                                        |
@@ -141,6 +141,8 @@ Group proposed child issues by outcome phase. Present a compact checklist for us
 ```text
 - [ ] <title> — type=<task|feature|bug>, priority=<①–⑤>, depends_on=<bean-ids or none>
 ```
+
+Child beans for an epic typically use `task`, `feature`, or `bug` types. `epic` and `milestone` are valid bean types in Beans, but reserve them for higher-level work or nested structures when the user explicitly asks for additional epics or milestones.
 
 Example phases: **Foundation**, **Implementation**, **Validation**, **Documentation**, **Deployment**.
 

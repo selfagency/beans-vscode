@@ -20,19 +20,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  docker-remote-test:
-    name: Docker Remote Test
-    runs-on: ubuntu-latest
+  remote-test:
+    name: Remote Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
 
     strategy:
       fail-fast: false
       matrix:
         include:
-          - node-version: "20"
-            base-image: "node:20-alpine"
-          - node-version: "22"
-            base-image: "node:22-bookworm"
+          - os: ubuntu-22.04
+            node-version: "22"
+          - os: windows-latest
+            node-version: "22"
 
     steps:
       - name: Checkout
@@ -47,6 +47,11 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: "pnpm"
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -58,105 +63,69 @@ jobs:
           pnpm install -g @vscode/vsce
           vsce package --no-dependencies --out beans-vscode-test.vsix
 
-      - name: Create Dockerfile for testing
-        run: |
-          cat > Dockerfile.test << 'EOF'
-          FROM ${{ matrix.base-image }}
-
-          # Install Go from official source (distro packages are often too old)
-          RUN if command -v apt-get > /dev/null; then \
-                apt-get update && apt-get install -y curl jq git wget && \
-                wget -q https://go.dev/dl/go1.23.5.linux-amd64.tar.gz && \
-                tar -C /usr/local -xzf go1.23.5.linux-amd64.tar.gz && \
-                rm go1.23.5.linux-amd64.tar.gz; \
-              elif command -v apk > /dev/null; then \
-                apk add --no-cache curl jq git bash wget && \
-                wget -q https://go.dev/dl/go1.23.5.linux-amd64.tar.gz && \
-                tar -C /usr/local -xzf go1.23.5.linux-amd64.tar.gz && \
-                rm go1.23.5.linux-amd64.tar.gz; \
-              fi
-
-          ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}"
-
-          # Install beans CLI
-          RUN go install github.com/hmans/beans@latest
-
-          # Verify beans installed
-          RUN beans version
-
-          # Set up workspace
-          WORKDIR /workspace
-          RUN git config --global user.email "test@example.com" && \
-              git config --global user.name "Test User"
-
-          # Copy extension for testing
-          COPY . /workspace/
-
-          EOF
-
-      - name: Build test image
-        run: docker build -t beans-vscode-remote-test -f Dockerfile.test .
+      - name: Install beans CLI
+        run: go install github.com/hmans/beans@latest
 
       - name: Run remote compatibility tests
+        shell: bash
         run: |
-          docker run --rm beans-vscode-remote-test /bin/bash -c '
-            set -e
+          set -e
 
-            echo "=== Testing Beans CLI ==="
-            beans version
+          echo "=== Testing Beans CLI ==="
+          beans version
 
-            echo ""
-            echo "=== Creating clean test directory ==="
-            mkdir -p /tmp/beans-test
-            cd /tmp/beans-test
+          echo ""
+          echo "=== Creating clean test directory ==="
+          TEST_DIR="${{ runner.temp }}/beans-test"
+          mkdir -p "$TEST_DIR"
+          cd "$TEST_DIR"
 
-            echo ""
-            echo "=== Initializing Beans workspace ==="
-            beans init
+          echo ""
+          echo "=== Initializing Beans workspace ==="
+          beans init
 
-            echo ""
-            echo "=== Creating test beans ==="
-            beans create "Test Issue 1" -t task -s todo -d "Test description"
-            beans create "Test Bug" -t bug -s in-progress -p high
-            beans create "Test Feature" -t feature -s draft
+          echo ""
+          echo "=== Creating test beans ==="
+          beans create "Test Issue 1" -t task -s todo -d "Test description"
+          beans create "Test Bug" -t bug -s in-progress -p high
+          beans create "Test Feature" -t feature -s draft
 
-            echo ""
-            echo "=== Listing beans ==="
-            BEAN_COUNT=$(beans list --json | jq "length")
-            echo "Found $BEAN_COUNT beans"
+          echo ""
+          echo "=== Listing beans ==="
+          BEAN_COUNT=$(beans list --json | jq "length")
+          echo "Found $BEAN_COUNT beans"
 
-            if [ "$BEAN_COUNT" -ne 3 ]; then
-              echo "ERROR: Expected 3 beans, found $BEAN_COUNT"
-              exit 1
-            fi
+          if [ "$BEAN_COUNT" -ne 3 ]; then
+            echo "ERROR: Expected 3 beans, found $BEAN_COUNT"
+            exit 1
+          fi
 
-            echo ""
-            echo "=== Testing bean operations ==="
-            FIRST_BEAN=$(beans list --json | jq -r ".[0].id")
-            echo "Testing with bean: $FIRST_BEAN"
+          echo ""
+          echo "=== Testing bean operations ==="
+          FIRST_BEAN=$(beans list --json | jq -r ".[0].id")
+          echo "Testing with bean: $FIRST_BEAN"
 
-            beans show "$FIRST_BEAN" --json | jq .
-            beans update "$FIRST_BEAN" -s completed
+          beans show "$FIRST_BEAN" --json | jq .
+          beans update "$FIRST_BEAN" -s completed
 
-            STATUS=$(beans show "$FIRST_BEAN" --json | jq -r ".status")
-            if [ "$STATUS" != "completed" ]; then
-              echo "ERROR: Bean status should be completed, got $STATUS"
-              exit 1
-            fi
+          STATUS=$(beans show "$FIRST_BEAN" --json | jq -r ".status")
+          if [ "$STATUS" != "completed" ]; then
+            echo "ERROR: Bean status should be completed, got $STATUS"
+            exit 1
+          fi
 
-            echo ""
-            echo "=== Testing GraphQL query ==="
-            beans query "{ beans { id title status type } }" --json | jq .
+          echo ""
+          echo "=== Testing GraphQL query ==="
+          beans query "{ beans { id title status type } }" --json | jq .
 
-            echo ""
-            echo "✅ All remote compatibility tests passed!"
-          '
+          echo ""
+          echo "✅ All remote compatibility tests passed!"
 
       - name: Upload test artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: remote-test-logs-${{ matrix.base-image }}-node${{ matrix.node-version }}
+          name: remote-test-logs-${{ matrix.os }}-node${{ matrix.node-version }}
           path: |
             *.log
             .beans/
@@ -357,13 +326,13 @@ jobs:
   summary:
     name: Remote Tests Summary
     runs-on: ubuntu-latest
-    needs: [docker-remote-test, devcontainer-test, vscode-integration-test]
+    needs: [remote-test, devcontainer-test, vscode-integration-test]
     if: always()
 
     steps:
       - name: Check test results
         run: |
-          if [ "${{ needs.docker-remote-test.result }}" != "success" ] || \
+          if [ "${{ needs.remote-test.result }}" != "success" ] || \
              [ "${{ needs.devcontainer-test.result }}" != "success" ] || \
              [ "${{ needs.vscode-integration-test.result }}" != "success" -a "${{ needs.vscode-integration-test.result }}" != "skipped" ]; then
             echo "❌ Some remote compatibility tests failed"
