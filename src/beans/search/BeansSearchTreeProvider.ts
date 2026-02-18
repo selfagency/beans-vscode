@@ -49,9 +49,12 @@ export class BeansSearchTreeProvider implements vscode.TreeDataProvider<BeanTree
     try {
       const options: { status?: string[]; type?: string[] } = {};
 
-      // Apply type filter if present
+      // Apply status/type filter if present
       if (this.currentFilter?.types && this.currentFilter.types.length > 0) {
         options.type = this.currentFilter.types as string[];
+      }
+      if ((this.currentFilter as any)?.statuses && (this.currentFilter as any).statuses.length > 0) {
+        options.status = (this.currentFilter as any).statuses as string[];
       }
 
       // Request beans from service

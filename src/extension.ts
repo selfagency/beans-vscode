@@ -19,7 +19,7 @@ import { Bean, BeansCLINotFoundError, BeanType } from './beans/model';
 import { BeansPreviewProvider } from './beans/preview';
 import { BeansSearchTreeProvider } from './beans/search/BeansSearchTreeProvider';
 import { BeansService } from './beans/service';
-import { BeansDragAndDropController, BeansFilterManager } from './beans/tree';
+import { BeansDragAndDropController, BeansFilterManager, BeanTreeItem } from './beans/tree';
 import {
   ActiveBeansProvider,
   CompletedBeansProvider,
@@ -459,6 +459,8 @@ function registerTreeViews(
   completedProvider = new CompletedBeansProvider(service);
   draftProvider = new DraftBeansProvider(service);
   scrappedProvider = new ScrappedBeansProvider(service);
+  // Search provider (single-level tree)
+  const searchProvider = new BeansSearchTreeProvider(service);
 
   // Subscribe to filter changes
   context.subscriptions.push(
@@ -477,6 +479,11 @@ function registerTreeViews(
       switch (viewId) {
         case 'beans.active':
           activeProvider?.setFilter(filterOptions);
+          break;
+        case 'beans.search':
+          // Convert manager filter to BeansTreeDataProvider-compatible options
+          // searchProvider expects BeansFilterState directly
+          (searchProvider as any).setFilter(manager.getFilter(viewId));
           break;
         case 'beans.completed':
           completedProvider?.setFilter(filterOptions);
@@ -504,25 +511,125 @@ function registerTreeViews(
   );
 
   // Register tree views with drag and drop support
-  const activeTreeView = vscode.window.createTreeView('beans.active', {
+  const activeTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.active', {
     treeDataProvider: activeProvider,
     showCollapseAll: true,
     dragAndDropController,
   });
 
-  const completedTreeView = vscode.window.createTreeView('beans.completed', {
+  const searchTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.search', {
+    treeDataProvider: searchProvider,
+    showCollapseAll: false,
+  });
+
+  // Register search view title actions: filter and clear
+  const applySearchFilterCmd = vscode.commands.registerCommand('beans.searchView.filter', async () => {
+    try {
+      const current = manager.getFilter('beans.search');
+      const newFilter = await showSearchFilterUI(current);
+      if (newFilter) {
+        manager.setFilter('beans.search', newFilter as any);
+        // Also push to provider for immediate refresh
+        searchProvider.setFilter(newFilter as any);
+      }
+    } catch (error) {
+      logger.error('Failed to apply search filter', error as Error);
+    }
+  });
+
+  const clearSearchFilterCmd = vscode.commands.registerCommand('beans.searchView.clear', () => {
+    try {
+      manager.clearFilter('beans.search');
+      searchProvider.setFilter(undefined as any);
+      vscode.window.showInformationMessage('Search filters cleared');
+    } catch (error) {
+      logger.error('Failed to clear search filters', error as Error);
+    }
+  });
+
+  context.subscriptions.push(applySearchFilterCmd, clearSearchFilterCmd);
+
+  // Helper: hierarchical QuickPick UI for search filters
+  async function showSearchFilterUI(current?: import('./beans/tree/BeansFilterManager').BeansFilterState) {
+    const qp = vscode.window.createQuickPick();
+    qp.canSelectMany = true;
+    qp.title = 'Filter Search Results';
+
+    const statuses = ['in-progress', 'todo', 'draft', 'completed', 'scrapped'];
+    const types = ['milestone', 'epic', 'feature', 'bug', 'task'];
+    const priorities = ['critical', 'high', 'normal', 'low', 'deferred'];
+
+    const items: vscode.QuickPickItem[] = [];
+    items.push({ kind: vscode.QuickPickItemKind.Separator, label: 'Status' } as any);
+    for (const s of statuses) {
+      items.push({ label: s, description: 'status' });
+    }
+    items.push({ kind: vscode.QuickPickItemKind.Separator, label: 'Type' } as any);
+    for (const t of types) {
+      items.push({ label: t, description: 'type' });
+    }
+    items.push({ kind: vscode.QuickPickItemKind.Separator, label: 'Priority' } as any);
+    for (const p of priorities) {
+      items.push({ label: p, description: 'priority' });
+    }
+
+    qp.items = items;
+
+    // Preselect existing values if present
+    const preselect: vscode.QuickPickItem[] = [];
+    if (current?.types) {
+      preselect.push(...qp.items.filter(i => current.types!.includes(i.label)));
+    }
+    if (current?.priorities) {
+      preselect.push(...qp.items.filter(i => current.priorities!.includes(i.label)));
+    }
+    if (current?.tags) {
+      preselect.push(...qp.items.filter(i => current.tags!.includes(i.label)));
+    }
+    qp.selectedItems = preselect;
+
+    const picked = await new Promise<vscode.QuickPickItem[] | undefined>(resolve => {
+      qp.onDidAccept(() => resolve(Array.from(qp.selectedItems) as vscode.QuickPickItem[]));
+      qp.onDidHide(() => resolve(undefined));
+      qp.show();
+    });
+    qp.dispose();
+
+    if (!picked) {
+      return undefined;
+    }
+
+    const result: any = {};
+    for (const p of picked) {
+      const desc = p.description;
+      if (desc === 'type') {
+        result.types = result.types || [];
+        result.types.push(p.label);
+      } else if (desc === 'priority') {
+        result.priorities = result.priorities || [];
+        result.priorities.push(p.label);
+      } else if (desc === 'status') {
+        result.statuses = result.statuses || [];
+        result.statuses.push(p.label);
+      }
+    }
+
+    return result as import('./beans/tree/BeansFilterManager').BeansFilterState;
+  }
+
+  const completedTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.completed', {
     treeDataProvider: completedProvider,
     showCollapseAll: true,
     dragAndDropController,
   });
 
-  const draftTreeView = vscode.window.createTreeView('beans.draft', {
+  const draftTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.draft', {
     treeDataProvider: draftProvider,
     showCollapseAll: true,
     dragAndDropController,
   });
 
-  const scrappedTreeView = vscode.window.createTreeView('beans.scrapped', {
+  const scrappedTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.scrapped', {
     treeDataProvider: scrappedProvider,
     showCollapseAll: true,
     dragAndDropController,
@@ -569,11 +676,22 @@ function registerTreeViews(
           });
         }
       }
+    }),
+    // Search selection -> show details
+    searchTreeView.onDidChangeSelection(e => {
+      if (e.selection.length > 0) {
+        const bean = e.selection[0].bean;
+        if (bean) {
+          details.showBean(bean).catch(error => {
+            logger.error('Failed to show bean details', error as Error);
+          });
+        }
+      }
     })
   );
 
   // Add disposables
-  context.subscriptions.push(activeTreeView, completedTreeView, draftTreeView, scrappedTreeView);
+  context.subscriptions.push(activeTreeView, completedTreeView, draftTreeView, scrappedTreeView, searchTreeView);
 
   logger.info('Tree views registered with drag-and-drop support and details view integration');
 }

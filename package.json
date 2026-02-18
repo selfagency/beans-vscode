@@ -180,6 +180,20 @@
         "when": "beans.initialized"
       },
       {
+        "command": "beans.searchView.filter",
+        "title": "Filter Search Results",
+        "category": "Beans",
+        "icon": "$(filter)",
+        "when": "beans.initialized"
+      },
+      {
+        "command": "beans.searchView.clear",
+        "title": "Clear Search Filters",
+        "category": "Beans",
+        "icon": "$(close)",
+        "when": "beans.initialized"
+      },
+      {
         "command": "beans.sort",
         "title": "Change Sort Mode",
         "category": "Beans",
@@ -264,10 +278,9 @@
     "views": {
       "beans": [
         {
-          "type": "webview",
+          "icon": "$(search)",
           "id": "beans.search",
           "name": "Search",
-          "icon": "$(search)",
           "when": "beans.initialized",
           "visibility": "collapsed"
         },
@@ -314,6 +327,23 @@
           "command": "beans.create",
           "when": "view == beans.active && beans.initialized",
           "group": "navigation@1"
+        },
+        {
+          "command": "beans.search",
+          "when": "view == beans.search && beans.initialized",
+          "group": "navigation@1"
+        },
+        {
+          "command": "beans.searchView.filter",
+          "when": "view == beans.search && beans.initialized",
+          "group": "navigation@2",
+          "icon": "$(filter)"
+        },
+        {
+          "command": "beans.searchView.clear",
+          "when": "view == beans.search && beans.initialized",
+          "group": "navigation@3",
+          "icon": "$(close)"
         },
         {
           "command": "beans.create",
