@@ -67,10 +67,23 @@ class BeansCliBackend {
     return target;
   }
 
+  private getSafeEnv(): NodeJS.ProcessEnv {
+    const safeEnv: NodeJS.ProcessEnv = {};
+    const whitelist = ['PATH', 'HOME', 'USER', 'LANG', 'LC_ALL', 'LC_CTYPE', 'SHELL'];
+
+    for (const key of Object.keys(process.env)) {
+      if (whitelist.includes(key) || key.startsWith('BEANS_')) {
+        safeEnv[key] = process.env[key];
+      }
+    }
+
+    return safeEnv;
+  }
+
   private async executeJson<T>(args: string[]): Promise<BeansCliResult<T>> {
     const { stdout } = await execFileAsync(this.cliPath, args, {
       cwd: this.workspaceRoot,
-      env: process.env,
+      env: this.getSafeEnv(),
       maxBuffer: 10 * 1024 * 1024,
       timeout: 30000,
     });
@@ -89,7 +102,7 @@ class BeansCliBackend {
     }
     await execFileAsync(this.cliPath, args, {
       cwd: this.workspaceRoot,
-      env: process.env,
+      env: this.getSafeEnv(),
       maxBuffer: 10 * 1024 * 1024,
       timeout: 30000,
     });
@@ -201,7 +214,7 @@ class BeansCliBackend {
   async prime(): Promise<string> {
     const { stdout } = await execFileAsync(this.cliPath, ['prime'], {
       cwd: this.workspaceRoot,
-      env: process.env,
+      env: this.getSafeEnv(),
       maxBuffer: 10 * 1024 * 1024,
       timeout: 30000,
     });
@@ -214,8 +227,15 @@ class BeansCliBackend {
   }
 
   async readOutputLog(options?: { lines?: number }): Promise<{ path: string; content: string; linesReturned: number }> {
-    const outputPath =
-      process.env.BEANS_VSCODE_OUTPUT_LOG || join(this.workspaceRoot, '.beans', '.vscode', 'beans-output.log');
+    const outputPath = resolve(
+      process.env.BEANS_VSCODE_OUTPUT_LOG || join(this.workspaceRoot, '.beans', '.vscode', 'beans-output.log')
+    );
+
+    const relativePath = relative(this.workspaceRoot, outputPath);
+    if (relativePath.startsWith('..')) {
+      throw new Error('Output log path must stay within the workspace');
+    }
+
     const maxLines = options?.lines && options.lines > 0 ? options.lines : 500;
     const ringBuffer: string[] = [];
 
@@ -351,6 +371,9 @@ export function parseCliArgs(argv: string[]): { workspaceRoot: string; cliPath: 
       i += 1;
     } else if (arg === '--cli-path' && argv[i + 1]) {
       cliPath = argv[i + 1]!;
+      if (/[\s;&|><$(){}\[\]`]/.test(cliPath)) {
+        throw new Error('Invalid CLI path');
+      }
       i += 1;
     } else if (arg === '--port' && argv[i + 1]) {
       const parsedPort = Number.parseInt(argv[i + 1]!, 10);
@@ -364,6 +387,12 @@ export function parseCliArgs(argv: string[]): { workspaceRoot: string; cliPath: 
   return { workspaceRoot, cliPath, port };
 }
 
+const MAX_ID_LENGTH = 128;
+const MAX_TITLE_LENGTH = 1024;
+const MAX_METADATA_LENGTH = 128;
+const MAX_DESCRIPTION_LENGTH = 65536; // 64KB
+const MAX_PATH_LENGTH = 1024;
+
 function registerTools(server: McpServer, backend: BeansCliBackend): void {
   server.registerTool(
     'beans_vscode_init',
@@ -371,7 +400,7 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Initialize Beans Workspace',
       description: 'Initialize Beans in the current workspace, equivalent to the extension init command.',
       inputSchema: z.object({
-        prefix: z.string().optional().describe('Optional workspace prefix for bean IDs'),
+        prefix: z.string().max(32).optional().describe('Optional workspace prefix for bean IDs'),
       }),
       annotations: {
         readOnlyHint: false,
@@ -410,7 +439,7 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
     {
       title: 'View Bean',
       description: 'Fetch full bean details by ID.',
-      inputSchema: z.object({ beanId: z.string().min(1) }),
+      inputSchema: z.object({ beanId: z.string().min(1).max(MAX_ID_LENGTH) }),
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -427,12 +456,12 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Create Bean',
       description: 'Create a new bean.',
       inputSchema: z.object({
-        title: z.string().min(1),
-        type: z.string().min(1),
-        status: z.string().optional(),
-        priority: z.string().optional(),
-        description: z.string().optional(),
-        parent: z.string().optional(),
+        title: z.string().min(1).max(MAX_TITLE_LENGTH),
+        type: z.string().min(1).max(MAX_METADATA_LENGTH),
+        status: z.string().max(MAX_METADATA_LENGTH).optional(),
+        priority: z.string().max(MAX_METADATA_LENGTH).optional(),
+        description: z.string().max(MAX_DESCRIPTION_LENGTH).optional(),
+        parent: z.string().max(MAX_ID_LENGTH).optional(),
       }),
       annotations: {
         readOnlyHint: false,
@@ -457,14 +486,14 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Edit Bean Metadata',
       description: 'Update bean metadata fields (status/type/priority/parent/blocking).',
       inputSchema: z.object({
-        beanId: z.string().min(1),
-        status: z.string().optional(),
-        type: z.string().optional(),
-        priority: z.string().optional(),
-        parent: z.string().optional(),
+        beanId: z.string().min(1).max(MAX_ID_LENGTH),
+        status: z.string().max(MAX_METADATA_LENGTH).optional(),
+        type: z.string().max(MAX_METADATA_LENGTH).optional(),
+        priority: z.string().max(MAX_METADATA_LENGTH).optional(),
+        parent: z.string().max(MAX_ID_LENGTH).optional(),
         clearParent: z.boolean().optional(),
-        blocking: z.array(z.string()).optional(),
-        blockedBy: z.array(z.string()).optional(),
+        blocking: z.array(z.string().max(MAX_ID_LENGTH)).optional(),
+        blockedBy: z.array(z.string().max(MAX_ID_LENGTH)).optional(),
       }),
       annotations: {
         readOnlyHint: false,
@@ -493,7 +522,10 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
     {
       title: 'Set Bean Status',
       description: 'Set status for a bean.',
-      inputSchema: z.object({ beanId: z.string().min(1), status: z.string().min(1) }),
+      inputSchema: z.object({
+        beanId: z.string().min(1).max(MAX_ID_LENGTH),
+        status: z.string().min(1).max(MAX_METADATA_LENGTH),
+      }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -511,8 +543,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Reopen Completed Bean',
       description: 'Reopen a completed bean into a non-closed status.',
       inputSchema: z.object({
-        beanId: z.string().min(1),
-        targetStatus: z.string().default('todo'),
+        beanId: z.string().min(1).max(MAX_ID_LENGTH),
+        targetStatus: z.string().max(MAX_METADATA_LENGTH).default('todo'),
       }),
       annotations: {
         readOnlyHint: false,
@@ -536,8 +568,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Reopen Scrapped Bean',
       description: 'Reopen a scrapped bean into a non-closed status.',
       inputSchema: z.object({
-        beanId: z.string().min(1),
-        targetStatus: z.string().default('todo'),
+        beanId: z.string().min(1).max(MAX_ID_LENGTH),
+        targetStatus: z.string().max(MAX_METADATA_LENGTH).default('todo'),
       }),
       annotations: {
         readOnlyHint: false,
@@ -560,7 +592,10 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
     {
       title: 'Set Bean Type',
       description: 'Set type for a bean.',
-      inputSchema: z.object({ beanId: z.string().min(1), type: z.string().min(1) }),
+      inputSchema: z.object({
+        beanId: z.string().min(1).max(MAX_ID_LENGTH),
+        type: z.string().min(1).max(MAX_METADATA_LENGTH),
+      }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -577,7 +612,10 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
     {
       title: 'Set Bean Priority',
       description: 'Set priority for a bean.',
-      inputSchema: z.object({ beanId: z.string().min(1), priority: z.string().min(1) }),
+      inputSchema: z.object({
+        beanId: z.string().min(1).max(MAX_ID_LENGTH),
+        priority: z.string().min(1).max(MAX_METADATA_LENGTH),
+      }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -594,7 +632,10 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
     {
       title: 'Set Bean Parent',
       description: 'Set parent for a bean.',
-      inputSchema: z.object({ beanId: z.string().min(1), parentBeanId: z.string().min(1) }),
+      inputSchema: z.object({
+        beanId: z.string().min(1).max(MAX_ID_LENGTH),
+        parentBeanId: z.string().min(1).max(MAX_ID_LENGTH),
+      }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -611,7 +652,7 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
     {
       title: 'Remove Bean Parent',
       description: 'Remove parent relationship from a bean.',
-      inputSchema: z.object({ beanId: z.string().min(1) }),
+      inputSchema: z.object({ beanId: z.string().min(1).max(MAX_ID_LENGTH) }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -629,10 +670,10 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Edit Blocking Relationships',
       description: 'Add or remove blocking/blocked-by relationships.',
       inputSchema: z.object({
-        beanId: z.string().min(1),
+        beanId: z.string().min(1).max(MAX_ID_LENGTH),
         relation: z.enum(['blocking', 'blocked_by']),
         operation: z.enum(['add', 'remove']),
-        relatedBeanIds: z.array(z.string().min(1)).min(1),
+        relatedBeanIds: z.array(z.string().min(1).max(MAX_ID_LENGTH)).min(1),
       }),
       annotations: {
         readOnlyHint: false,
@@ -677,7 +718,7 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
     {
       title: 'Copy Bean ID',
       description: 'Return bean ID and short code equivalent of copy-id command.',
-      inputSchema: z.object({ beanId: z.string().min(1) }),
+      inputSchema: z.object({ beanId: z.string().min(1).max(MAX_ID_LENGTH) }),
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -697,7 +738,10 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
     {
       title: 'Delete Bean',
       description: 'Delete a bean (intended for draft/scrapped beans).',
-      inputSchema: z.object({ beanId: z.string().min(1), force: z.boolean().default(false) }),
+      inputSchema: z.object({
+        beanId: z.string().min(1).max(MAX_ID_LENGTH),
+        force: z.boolean().default(false),
+      }),
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
@@ -720,10 +764,10 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Filter Beans',
       description: 'Filter beans by status, type, and free-text search.',
       inputSchema: z.object({
-        statuses: z.array(z.string()).nullable().optional(),
-        types: z.array(z.string()).nullable().optional(),
-        search: z.string().optional(),
-        tags: z.array(z.string()).nullable().optional(),
+        statuses: z.array(z.string().max(MAX_METADATA_LENGTH)).nullable().optional(),
+        types: z.array(z.string().max(MAX_METADATA_LENGTH)).nullable().optional(),
+        search: z.string().max(MAX_TITLE_LENGTH).optional(),
+        tags: z.array(z.string().max(MAX_METADATA_LENGTH)).nullable().optional(),
       }),
       annotations: {
         readOnlyHint: true,
@@ -761,7 +805,10 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
     {
       title: 'Search Beans',
       description: 'Search beans by text query.',
-      inputSchema: z.object({ query: z.string().min(1), includeClosed: z.boolean().default(true) }),
+      inputSchema: z.object({
+        query: z.string().min(1).max(MAX_TITLE_LENGTH),
+        includeClosed: z.boolean().default(true),
+      }),
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -785,9 +832,9 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       description: 'Sort beans using extension-supported sort modes.',
       inputSchema: z.object({
         mode: z.enum(['status-priority-type-title', 'updated', 'created', 'id']).default('status-priority-type-title'),
-        statuses: z.array(z.string()).nullable().optional(),
-        types: z.array(z.string()).nullable().optional(),
-        search: z.string().optional(),
+        statuses: z.array(z.string().max(MAX_METADATA_LENGTH)).nullable().optional(),
+        types: z.array(z.string().max(MAX_METADATA_LENGTH)).nullable().optional(),
+        search: z.string().max(MAX_TITLE_LENGTH).optional(),
       }),
       annotations: {
         readOnlyHint: true,
@@ -867,7 +914,7 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Read Bean File',
       description: 'Read a file directly from the .beans directory.',
       inputSchema: z.object({
-        path: z.string().min(1).describe('Path relative to .beans, e.g. bean-id.md'),
+        path: z.string().min(1).max(MAX_PATH_LENGTH).describe('Path relative to .beans, e.g. bean-id.md'),
       }),
       annotations: {
         readOnlyHint: true,
@@ -885,8 +932,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Edit Bean File',
       description: 'Overwrite a file in .beans with new content.',
       inputSchema: z.object({
-        path: z.string().min(1).describe('Path relative to .beans'),
-        content: z.string().describe('Complete replacement content'),
+        path: z.string().min(1).max(MAX_PATH_LENGTH).describe('Path relative to .beans'),
+        content: z.string().max(MAX_DESCRIPTION_LENGTH).describe('Complete replacement content'),
       }),
       annotations: {
         readOnlyHint: false,
@@ -905,8 +952,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Create Bean File',
       description: 'Create a new file under .beans (optionally overwrite).',
       inputSchema: z.object({
-        path: z.string().min(1).describe('Path relative to .beans'),
-        content: z.string().describe('Initial file content'),
+        path: z.string().min(1).max(MAX_PATH_LENGTH).describe('Path relative to .beans'),
+        content: z.string().max(MAX_DESCRIPTION_LENGTH).describe('Initial file content'),
         overwrite: z.boolean().default(false),
       }),
       annotations: {
@@ -926,7 +973,7 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       title: 'Delete Bean File',
       description: 'Delete a file under .beans.',
       inputSchema: z.object({
-        path: z.string().min(1).describe('Path relative to .beans'),
+        path: z.string().min(1).max(MAX_PATH_LENGTH).describe('Path relative to .beans'),
       }),
       annotations: {
         readOnlyHint: false,

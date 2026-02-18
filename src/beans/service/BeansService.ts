@@ -111,13 +111,20 @@ export class BeansService {
   /**
    * Apply local filtering for cached beans in offline mode.
    */
-  private filterBeans(beans: Bean[], options?: { status?: string[]; type?: string[]; search?: string }): Bean[] {
+  private filterBeans(
+    beans: Bean[],
+    options?: { status?: string[]; type?: string[]; search?: string; parent?: string }
+  ): Bean[] {
     return beans.filter(bean => {
       if (options?.status?.length && !options.status.includes(bean.status)) {
         return false;
       }
 
       if (options?.type?.length && !options.type.includes(bean.type)) {
+        return false;
+      }
+
+      if (options?.parent && bean.parent !== options.parent) {
         return false;
       }
 
@@ -369,7 +376,7 @@ export class BeansService {
    * List beans with optional filters
    * Supports offline mode with cached data fallback
    */
-  async listBeans(options?: { status?: string[]; type?: string[]; search?: string }): Promise<Bean[]> {
+  async listBeans(options?: { status?: string[]; type?: string[]; search?: string; parent?: string }): Promise<Bean[]> {
     try {
       const args = ['list', '--json'];
 
@@ -388,6 +395,10 @@ export class BeansService {
 
       if (options?.search) {
         args.push('--search', options.search);
+      }
+
+      if (options?.parent) {
+        args.push('--parent', options.parent);
       }
 
       const result = await this.execute<RawBeanFromCLI[]>(args);
@@ -736,19 +747,39 @@ export class BeansService {
     }
 
     const result = await this.execute<RawBeanFromCLI>(args);
+    let updatedBean: Bean;
 
     try {
-      return this.normalizeBean(result);
+      updatedBean = this.normalizeBean(result);
     } catch (error) {
       // Some Beans CLI update responses may be partial (for example, only returning
       // changed fields). In that case, fetch the full bean as a resilience fallback.
       if (error instanceof BeansJSONParseError) {
         this.logger.warn(`Partial bean payload received from update for ${id}; fetching full bean as fallback.`);
-        return this.showBean(id);
+        updatedBean = await this.showBean(id);
+      } else {
+        throw error;
       }
-
-      throw error;
     }
+
+    // Recursively complete children if parent is completed
+    if (updates.status === 'completed') {
+      try {
+        const children = await this.listBeans({ parent: id });
+        for (const child of children) {
+          // If child is not already terminal (completed/scrapped), mark as completed
+          if (child.status !== 'completed' && child.status !== 'scrapped') {
+            this.logger.info(`Parent ${id} completed; recursively completing child ${child.id}`);
+            await this.updateBeanWithConfig(child.id, { status: 'completed' }, config);
+          }
+        }
+      } catch (childError) {
+        // Log but don't fail the primary update if child update fails
+        this.logger.error(`Failed to recursively update children for ${id}: ${childError}`);
+      }
+    }
+
+    return updatedBean;
   }
 
   /**
