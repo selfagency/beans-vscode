@@ -76,8 +76,9 @@ jobs:
 
           echo ""
           echo "=== Creating clean test directory ==="
-          mkdir -p /tmp/beans-test
-          cd /tmp/beans-test
+          TEST_DIR="${{ runner.temp }}/beans-test"
+          mkdir -p "$TEST_DIR"
+          cd "$TEST_DIR"
 
           echo ""
           echo "=== Initializing Beans workspace ==="
