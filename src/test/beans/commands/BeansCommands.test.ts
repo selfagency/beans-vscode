@@ -130,7 +130,6 @@ describe('BeansCommands', () => {
     vi.clearAllMocks();
     commandHandlers.clear();
     createQuickPickMock.mockImplementation(() => {
-      let _acceptHandler: (() => void) | undefined;
       let hideHandler: (() => void) | undefined;
       const qp: any = {
         title: '',
@@ -140,9 +139,7 @@ describe('BeansCommands', () => {
         buttons: [],
         selectedItems: [],
         onDidTriggerButton: vi.fn(),
-        onDidAccept: vi.fn((cb: () => void) => {
-          _acceptHandler = cb;
-        }),
+        onDidAccept: vi.fn(),
         onDidHide: vi.fn((cb: () => void) => {
           hideHandler = cb;
         }),
