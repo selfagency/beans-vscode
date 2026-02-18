@@ -123,6 +123,8 @@ Use compact planning checklist format:
 
 ## Beans CLI baseline (from `beans prime`)
 
-```text
-{{PRIME_OUTPUT}}
+For detailed CLI usage instructions, run:
+
+```bash
+beans prime
 ```
