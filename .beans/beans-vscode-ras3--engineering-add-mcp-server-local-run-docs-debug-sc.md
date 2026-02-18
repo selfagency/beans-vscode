@@ -1,11 +1,11 @@
 ---
 # beans-vscode-ras3
 title: 'engineering: Add MCP server local-run docs & debug script'
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-02-18T19:11:39Z
-updated_at: 2026-02-18T19:43:48Z
+updated_at: 2026-02-18T21:15:53Z
 parent: beans-vscode-li45
 ---
 

@@ -1,11 +1,11 @@
 ---
 # beans-vscode-92nk
 title: 'docs: Add JSDoc and short module headers for core modules'
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-02-18T19:11:34Z
-updated_at: 2026-02-18T19:43:37Z
+updated_at: 2026-02-18T21:15:30Z
 parent: beans-vscode-li45
 ---
 
