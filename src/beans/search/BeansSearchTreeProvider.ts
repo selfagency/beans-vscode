@@ -74,7 +74,7 @@ export class BeansSearchTreeProvider implements vscode.TreeDataProvider<BeanTree
       }
 
       // Request beans from service
-      this.beans = await this.service.listBeans(options);
+      this.beans = (await this.service.listBeans(options)) || [];
 
       // Client-side tag/priorities/text filtering
       if (this.currentFilter) {
@@ -108,7 +108,7 @@ export class BeansSearchTreeProvider implements vscode.TreeDataProvider<BeanTree
     if (Array.isArray(bean.tags) && bean.tags.length > 0) {
       fields.push(...bean.tags);
     }
-    return fields.some(field => this.toLower(field).includes(q));
+    return fields.some(field => field !== null && field !== undefined && this.toLower(field).includes(q));
   }
 
   private scoreRelevance(bean: Bean, q: string): number {

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { BEAN_STATUSES } from '../model';
 
 /**
  * Filter state for a bean tree view
@@ -68,7 +69,10 @@ export class BeansFilterManager {
    * Check if filter is empty
    */
   private isEmptyFilter(filter: BeansFilterState): boolean {
-    const hasStatuses = Array.isArray(filter.statuses) && filter.statuses.length > 0;
+    const allowedStatuses = new Set<string>(BEAN_STATUSES as readonly string[]);
+    const hasStatuses =
+      Array.isArray(filter.statuses) &&
+      filter.statuses.some(status => typeof status === 'string' && allowedStatuses.has(status));
     const hasTags = Array.isArray(filter.tags) && filter.tags.length > 0;
     const hasTypes = Array.isArray(filter.types) && filter.types.length > 0;
     const hasPriorities = Array.isArray(filter.priorities) && filter.priorities.length > 0;
