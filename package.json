@@ -72,6 +72,12 @@
         "icon": "$(info)"
       },
       {
+        "command": "beans.openAiFeaturesGuide",
+        "title": "Open AI Features Guide",
+        "category": "Beans",
+        "icon": "$(sparkle)"
+      },
+      {
         "command": "beans.showOutput",
         "title": "Show Output",
         "category": "Beans",
@@ -287,14 +293,14 @@
         {
           "icon": "$(issue-draft)",
           "id": "beans.draft",
-          "name": "Draft",
+          "name": "Drafts",
           "when": "beans.initialized",
           "visibility": "visible"
         },
         {
           "icon": "$(issue-opened)",
           "id": "beans.active",
-          "name": "Active",
+          "name": "Open Beans",
           "when": "beans.initialized",
           "visibility": "visible"
         },
@@ -319,16 +325,19 @@
           "name": "Details",
           "when": "beans.initialized",
           "visibility": "visible"
+        },
+        {
+          "icon": "$(question)",
+          "type": "webview",
+          "id": "beans.help",
+          "name": "Help",
+          "when": "beans.initialized",
+          "visibility": "visible"
         }
       ]
     },
     "menus": {
       "view/title": [
-        {
-          "command": "beans.create",
-          "when": "view == beans.active && beans.initialized",
-          "group": "navigation@1"
-        },
         {
           "command": "beans.search",
           "when": "view == beans.search && beans.initialized",
@@ -358,13 +367,13 @@
         },
         {
           "command": "beans.showOutput",
-          "when": "view == beans.active && beans.initialized",
-          "group": "navigation@3"
+          "when": "view == beans.help && beans.initialized",
+          "group": "navigation@1"
         },
         {
           "command": "beans.openUserGuide",
-          "when": "view == beans.active",
-          "group": "navigation@4"
+          "when": "view == beans.help && beans.initialized",
+          "group": "navigation@2"
         },
         {
           "command": "beans.details.back",
@@ -568,6 +577,13 @@
           "type": "boolean",
           "default": true,
           "description": "Enable the dynamic MCP server definition provider for Beans commands (effective only when AI is enabled)."
+        },
+        "beans.mcp.port": {
+          "type": "number",
+          "default": 39173,
+          "minimum": 1024,
+          "maximum": 65535,
+          "markdownDescription": "Port value propagated to the Beans MCP server process for host/tooling compatibility. Current transport is stdio; this setting is reserved for integrations that also read port metadata."
         }
       }
     }

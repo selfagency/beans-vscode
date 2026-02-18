@@ -359,6 +359,32 @@ describe('BeansService', () => {
       expect(bean.id).toBe('test-abc1');
       expect(bean.code).toBe('abc1');
     });
+
+    it('accepts partial show payloads from CLI and applies safe defaults', async () => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        expect(args).toContain('show');
+        expect(args).toContain('test-abc1');
+        callback(null, {
+          stdout: JSON.stringify({
+            id: 'test-abc1',
+            title: 'Test Bean',
+            status: 'todo',
+            type: 'task',
+            // show payload can be partial on some CLI versions;
+            // intentionally omit slug/path/body/etag
+          }),
+          stderr: '',
+        });
+      });
+
+      const bean = await service.showBean('test-abc1');
+
+      expect(bean.id).toBe('test-abc1');
+      expect(bean.slug).toBe('');
+      expect(bean.path).toBe('');
+      expect(bean.body).toBe('');
+      expect(bean.etag).toBe('');
+    });
   });
 
   describe('createBean', () => {

@@ -29,6 +29,8 @@ type BeanRecord = {
   [key: string]: unknown;
 };
 
+const DEFAULT_MCP_PORT = 39173;
+
 type BeansCliResult<T> = T;
 
 function makeTextAndStructured<T extends Record<string, unknown>>(value: T) {
@@ -336,9 +338,11 @@ export function sortBeans(beans: BeanRecord[], mode: SortMode): BeanRecord[] {
   });
 }
 
-export function parseCliArgs(argv: string[]): { workspaceRoot: string; cliPath: string } {
+export function parseCliArgs(argv: string[]): { workspaceRoot: string; cliPath: string; port: number } {
   let workspaceRoot = process.cwd();
   let cliPath = 'beans';
+  const envPort = Number.parseInt(process.env.BEANS_VSCODE_MCP_PORT || process.env.BEANS_MCP_PORT || '', 10);
+  let port = Number.isInteger(envPort) && envPort > 0 ? envPort : DEFAULT_MCP_PORT;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -348,10 +352,16 @@ export function parseCliArgs(argv: string[]): { workspaceRoot: string; cliPath: 
     } else if (arg === '--cli-path' && argv[i + 1]) {
       cliPath = argv[i + 1]!;
       i += 1;
+    } else if (arg === '--port' && argv[i + 1]) {
+      const parsedPort = Number.parseInt(argv[i + 1]!, 10);
+      if (Number.isInteger(parsedPort) && parsedPort > 0) {
+        port = parsedPort;
+      }
+      i += 1;
     }
   }
 
-  return { workspaceRoot, cliPath };
+  return { workspaceRoot, cliPath, port };
 }
 
 function registerTools(server: McpServer, backend: BeansCliBackend): void {
@@ -968,7 +978,9 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
 }
 
 export async function startBeansMcpServer(argv: string[]): Promise<void> {
-  const { workspaceRoot, cliPath } = parseCliArgs(argv);
+  const { workspaceRoot, cliPath, port } = parseCliArgs(argv);
+  process.env.BEANS_VSCODE_MCP_PORT = String(port);
+  process.env.BEANS_MCP_PORT = String(port);
   const backend = new BeansCliBackend(workspaceRoot, cliPath);
 
   const server = new McpServer({

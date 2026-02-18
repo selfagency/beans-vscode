@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
 
 const MCP_PROVIDER_ID = 'beans.mcpServers';
+const DEFAULT_MCP_PORT = 39173;
 
 /**
  * Publishes the Beans MCP server definition to VS Code and exposes troubleshooting commands.
@@ -100,9 +101,21 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
     env: Record<string, string | number | null>;
     version: string;
   } {
+    const config = vscode.workspace.getConfiguration('beans');
+    const configuredPort = config.get<number>('mcp.port', DEFAULT_MCP_PORT);
+    const mcpPort = Number.isInteger(configuredPort) && configuredPort > 0 ? configuredPort : DEFAULT_MCP_PORT;
+
     const command = process.execPath;
     const serverScript = path.join(this.context.extensionPath, 'dist', 'beans-mcp-server.js');
-    const args = [serverScript, '--workspace', this.workspaceRoot, '--cli-path', cliPathOverride || this.cliPath];
+    const args = [
+      serverScript,
+      '--workspace',
+      this.workspaceRoot,
+      '--cli-path',
+      cliPathOverride || this.cliPath,
+      '--port',
+      String(mcpPort),
+    ];
     const outputLogPath = path.join(this.workspaceRoot, '.beans', '.vscode', 'beans-output.log');
 
     const version = (this.context.extension.packageJSON as { version?: string }).version || '0.1.0';
@@ -113,6 +126,8 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
       env: {
         BEANS_VSCODE_MCP: '1',
         BEANS_VSCODE_OUTPUT_LOG: outputLogPath,
+        BEANS_VSCODE_MCP_PORT: String(mcpPort),
+        BEANS_MCP_PORT: String(mcpPort),
       },
       version,
     };

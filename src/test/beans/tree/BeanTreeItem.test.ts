@@ -28,10 +28,10 @@ function makeBean(overrides: Partial<Bean> = {}): Bean {
 
 describe('BeanTreeItem', () => {
   describe('label', () => {
-    it('shows hourglass prefix only for in-progress items', () => {
+    it('shows plain title for in-progress items', () => {
       const bean = makeBean({ status: 'in-progress', title: 'Active Task' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      expect(item.label).toBe('⏳ Active Task');
+      expect(item.label).toBe('Active Task');
     });
 
     it('shows plain title for todo items (no emoji)', () => {
@@ -82,25 +82,25 @@ describe('BeanTreeItem', () => {
       expect(tooltip.value.includes('mb1')).toBe(true);
     });
 
-    it('contains emoji status label', () => {
+    it('contains codicon status label', () => {
       const bean = makeBean({ status: 'in-progress' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
       const tooltip = item.tooltip as vscode.MarkdownString;
-      expect(tooltip.value.includes('⏳ In Progress')).toBe(true);
+      expect(tooltip.value.includes('$(play-circle) In Progress')).toBe(true);
     });
 
-    it('contains emoji type label', () => {
+    it('contains codicon type label', () => {
       const bean = makeBean({ type: 'bug' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
       const tooltip = item.tooltip as vscode.MarkdownString;
-      expect(tooltip.value.includes('🐛 Bug')).toBe(true);
+      expect(tooltip.value.includes('$(bug) Bug')).toBe(true);
     });
 
-    it('contains emoji priority label when set', () => {
+    it('contains codicon priority label when set', () => {
       const bean = makeBean({ priority: 'critical' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
       const tooltip = item.tooltip as vscode.MarkdownString;
-      expect(tooltip.value.includes('🔴 Critical')).toBe(true);
+      expect(tooltip.value.includes('$(circle-large-filled) Critical')).toBe(true);
     });
 
     it('omits priority row when not set', () => {
@@ -164,22 +164,22 @@ describe('BeanTreeItem', () => {
       expect((item.iconPath as vscode.ThemeIcon).id).toBe('issue-draft');
     });
 
-    it('uses error for scrapped status', () => {
+    it('uses stop for scrapped status', () => {
       const bean = makeBean({ status: 'scrapped' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      expect((item.iconPath as vscode.ThemeIcon).id).toBe('error');
+      expect((item.iconPath as vscode.ThemeIcon).id).toBe('stop');
     });
 
-    it('uses bug icon for in-progress bug', () => {
+    it('uses play-circle icon for in-progress status', () => {
       const bean = makeBean({ status: 'in-progress', type: 'bug' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      expect((item.iconPath as vscode.ThemeIcon).id).toBe('bug');
+      expect((item.iconPath as vscode.ThemeIcon).id).toBe('play-circle');
     });
 
-    it('uses milestone icon for todo milestone', () => {
+    it('uses issues icon for todo status', () => {
       const bean = makeBean({ status: 'todo', type: 'milestone' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      expect((item.iconPath as vscode.ThemeIcon).id).toBe('milestone');
+      expect((item.iconPath as vscode.ThemeIcon).id).toBe('issues');
     });
   });
 

@@ -511,7 +511,19 @@ export class BeansService {
    */
   async showBean(id: string): Promise<Bean> {
     const result = await this.execute<RawBeanFromCLI>(['show', '--json', id]);
-    return this.normalizeBean(result);
+    try {
+      return this.normalizeBean(result);
+    } catch (error) {
+      // Some Beans CLI versions can return partial payloads for `show --json`
+      // (omitting fields like slug/path/body/etag). Keep strict validation for
+      // core identity fields, but gracefully accept partial metadata.
+      if (error instanceof BeansJSONParseError) {
+        this.logger.warn(`Partial bean payload received from show for ${id}; using safe defaults for missing fields.`);
+        return this.normalizeBean(result, { allowPartial: true });
+      }
+
+      throw error;
+    }
   }
 
   /**

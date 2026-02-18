@@ -150,9 +150,9 @@ describe('BeansSearchViewProvider', () => {
     expect(message.command).toBe('results');
     expect(message.beans).toHaveLength(2);
     expect(message.beans[0].id).toBe('auth');
-    expect(message.beans[0].statusEmoji).toBe('⏳');
-    expect(message.beans[0].typeEmoji).toBe('🐛');
-    expect(message.beans[0].priorityEmoji).toBe('🔴');
+    expect(message.beans[0].statusIcon).toBe('play-circle');
+    expect(message.beans[0].typeIcon).toBe('bug');
+    expect(message.beans[0].priorityIcon).toBe('circle-large-filled');
   });
 
   it('handles empty query and no filters', async () => {

@@ -205,6 +205,7 @@ export class BeansCommands {
 
     // Documentation
     this.registerCommand('beans.openUserGuide', this.openUserGuide.bind(this));
+    this.registerCommand('beans.openAiFeaturesGuide', this.openAiFeaturesGuide.bind(this));
 
     logger.info('All Beans commands registered');
   }
@@ -1371,6 +1372,27 @@ export class BeansCommands {
         logger.error('Failed to open user guide', openError as Error);
         vscode.window.showErrorMessage(
           'Failed to open user guide. The documentation may be missing from the extension.'
+        );
+      }
+    }
+  }
+
+  /**
+   * Open AI features documentation
+   */
+  private async openAiFeaturesGuide(): Promise<void> {
+    const extensionPath = this.context.extensionUri;
+    const docPath = vscode.Uri.joinPath(extensionPath, 'docs', 'ai-features.md');
+
+    try {
+      await vscode.commands.executeCommand('markdown.showPreview', docPath);
+    } catch {
+      try {
+        await vscode.window.showTextDocument(docPath);
+      } catch (openError) {
+        logger.error('Failed to open AI features guide', openError as Error);
+        vscode.window.showErrorMessage(
+          'Failed to open AI features guide. The documentation may be missing from the extension.'
         );
       }
     }

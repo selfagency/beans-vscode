@@ -110,7 +110,8 @@ describe('BeansDetailsViewProvider', () => {
     expect(webview.html).toContain('class="bean-ref parent-ref"');
     expect(webview.html).toContain('data-bean-id="beans-vscode-parent"');
     expect(webview.html).toContain('role="img"');
-    expect(webview.html).toContain('📋');
+    expect(webview.html).toContain('codicon codicon-issues');
+    expect(webview.html).toContain('class="parent-code">PARENT</span></a> <span class="parent-title"');
     expect(provider.canGoBack).toBe(false);
   });
 
@@ -254,7 +255,7 @@ describe('BeansDetailsViewProvider', () => {
     expect(executeCommandSpy).toHaveBeenCalledWith('beans.refreshAll');
     expect(infoSpy).toHaveBeenCalledWith('Bean updated successfully');
     expect(webview.html).toContain('After');
-    expect(webview.html).toContain('🐛');
+    expect(webview.html).toContain('codicon codicon-play-circle');
   });
 
   it('handles update errors from message handler', async () => {
@@ -348,12 +349,12 @@ describe('BeansDetailsViewProvider', () => {
 
   it('returns expected icon names by status/type', () => {
     expect((provider as any).getIconName(makeBean({ status: 'completed' }))).toBe('issue-closed');
-    expect((provider as any).getIconName(makeBean({ status: 'scrapped' }))).toBe('error');
+    expect((provider as any).getIconName(makeBean({ status: 'scrapped' }))).toBe('stop');
     expect((provider as any).getIconName(makeBean({ status: 'draft' }))).toBe('issue-draft');
-    expect((provider as any).getIconName(makeBean({ status: 'in-progress', type: 'feature' }))).toBe('lightbulb');
-    expect((provider as any).getIconName(makeBean({ status: 'todo', type: 'milestone' }))).toBe('milestone');
+    expect((provider as any).getIconName(makeBean({ status: 'in-progress', type: 'feature' }))).toBe('play-circle');
+    expect((provider as any).getIconName(makeBean({ status: 'todo', type: 'milestone' }))).toBe('issues');
     expect((provider as any).getTypeIconName('epic')).toBe('zap');
     expect((provider as any).getTypeIconName('bug')).toBe('bug');
-    expect((provider as any).getTypeIconName('unknown')).toBe('issues');
+    expect((provider as any).getTypeIconName('unknown')).toBe('list-unordered');
   });
 });

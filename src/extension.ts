@@ -14,6 +14,7 @@ import {
   writeBeansCopilotSkill,
 } from './beans/config';
 import { BeansDetailsViewProvider } from './beans/details';
+import { BeansHelpViewProvider } from './beans/help';
 import { BeansOutput } from './beans/logging';
 import { BeansMcpIntegration } from './beans/mcp';
 import { BeansCLINotFoundError } from './beans/model';
@@ -100,6 +101,14 @@ export async function activate(context: vscode.ExtensionContext) {
     detailsProvider = new BeansDetailsViewProvider(context.extensionUri, beansService);
     context.subscriptions.push(
       vscode.window.registerWebviewViewProvider(BeansDetailsViewProvider.viewType, detailsProvider)
+    );
+
+    // Register help webview provider
+    context.subscriptions.push(
+      vscode.window.registerWebviewViewProvider(
+        BeansHelpViewProvider.viewType,
+        new BeansHelpViewProvider(context.extensionUri)
+      )
     );
 
     // NOTE: search previously used a webview view provider. The tree-based search view

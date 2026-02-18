@@ -45,6 +45,9 @@ describe('MCP Integration', () => {
         if (key === 'mcp.enabled') {
           return true;
         }
+        if (key === 'mcp.port') {
+          return 39173;
+        }
         if (key === 'cliPath') {
           return 'beans';
         }
@@ -108,8 +111,12 @@ describe('MCP Integration', () => {
       expect(definition.args.length).toBeGreaterThan(0);
       expect(definition.args).toContain('--workspace');
       expect(definition.args).toContain('/workspace/root');
+      expect(definition.args).toContain('--port');
+      expect(definition.args).toContain('39173');
       expect(definition.env).toBeDefined();
       expect(definition.env?.BEANS_VSCODE_MCP).toBe('1');
+      expect(definition.env?.BEANS_VSCODE_MCP_PORT).toBe('39173');
+      expect(definition.env?.BEANS_MCP_PORT).toBe('39173');
     });
 
     it('should return empty array when ai.enabled is false', () => {
@@ -120,6 +127,9 @@ describe('MCP Integration', () => {
           }
           if (key === 'mcp.enabled') {
             return true;
+          }
+          if (key === 'mcp.port') {
+            return 39173;
           }
           return defaultValue;
         }),
@@ -138,6 +148,9 @@ describe('MCP Integration', () => {
           }
           if (key === 'mcp.enabled') {
             return false;
+          }
+          if (key === 'mcp.port') {
+            return 39173;
           }
           return defaultValue;
         }),
@@ -176,6 +189,9 @@ describe('MCP Integration', () => {
           if (key === 'cliPath') {
             return '/custom/beans/path';
           }
+          if (key === 'mcp.port') {
+            return 49731;
+          }
           return defaultValue;
         }),
       } as any);
@@ -185,6 +201,8 @@ describe('MCP Integration', () => {
       expect(resolved).toBeDefined();
       expect(resolved.args).toContain('--cli-path');
       expect(resolved.args).toContain('/custom/beans/path');
+      expect(resolved.args).toContain('--port');
+      expect(resolved.args).toContain('49731');
     });
 
     it('should preserve label and version from input definition', () => {

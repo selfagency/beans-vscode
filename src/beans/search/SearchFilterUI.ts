@@ -6,15 +6,15 @@ type SearchFilterGroup = 'status' | 'type' | 'priority';
 type SearchFilterItem = vscode.QuickPickItem & { group?: SearchFilterGroup; value?: string };
 
 const STATUS_LABELS: Record<string, string> = {
-  todo: '$(issue-opened) Todo',
-  'in-progress': '$(loading~spin) In Progress',
+  todo: '$(issues) Todo',
+  'in-progress': '$(play-circle) In Progress',
   completed: '$(issue-closed) Completed',
   draft: '$(issue-draft) Draft',
-  scrapped: '$(trash) Scrapped',
+  scrapped: '$(stop) Scrapped',
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  task: '$(issues) Task',
+  task: '$(list-unordered) Task',
   bug: '$(bug) Bug',
   feature: '$(lightbulb) Feature',
   epic: '$(zap) Epic',
@@ -22,11 +22,17 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
-  critical: '$(circle-large-filled) Critical',
-  high: '$(circle-large-filled) High',
-  normal: '$(circle-large-filled) Normal',
-  low: '$(circle-large-filled) Low',
-  deferred: '$(circle-large-filled) Deferred',
+  critical: '① Critical',
+  high: '② High',
+  normal: '③ Normal',
+  low: '④ Low',
+  deferred: '⑤ Deferred',
+};
+
+const GROUP_DESCRIPTIONS: Record<SearchFilterGroup, string> = {
+  status: 'status',
+  type: 'type',
+  priority: 'priority',
 };
 
 function prettyLabel(group: SearchFilterGroup, value: string): string {
@@ -40,18 +46,18 @@ function prettyLabel(group: SearchFilterGroup, value: string): string {
 }
 
 function buildSearchFilterItems(): vscode.QuickPickItem[] {
-  const groups: Array<{ title: string; group: SearchFilterGroup; values: readonly string[] }> = [
-    { title: 'Status', group: 'status', values: BEAN_STATUSES },
-    { title: 'Type', group: 'type', values: BEAN_TYPES },
-    { title: 'Priority', group: 'priority', values: BEAN_PRIORITIES },
+  const groups: Array<{ group: SearchFilterGroup; values: readonly string[] }> = [
+    { group: 'status', values: BEAN_STATUSES },
+    { group: 'type', values: BEAN_TYPES },
+    { group: 'priority', values: BEAN_PRIORITIES },
   ];
 
   const items: SearchFilterItem[] = [];
   for (const group of groups) {
-    items.push({ kind: vscode.QuickPickItemKind.Separator, label: group.title });
     for (const value of group.values) {
       items.push({
         label: prettyLabel(group.group, value),
+        description: GROUP_DESCRIPTIONS[group.group],
         group: group.group,
         value,
       });

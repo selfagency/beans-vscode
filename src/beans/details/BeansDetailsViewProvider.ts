@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
 import { Bean } from '../model';
@@ -224,8 +225,11 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     const nonce = this.getNonce();
     const tagsBadges = bean.tags?.map(tag => this.renderBadge(tag, 'tag')).join('') || '';
     const iconName = this.getIconName(bean);
-    const iconGlyph = this.getIconGlyph(iconName);
     const iconLabel = this.getIconLabel(bean);
+    const extensionRootPath = (this.extensionUri as vscode.Uri & { fsPath?: string }).fsPath || this.extensionUri.path;
+    const codiconStylesUri = webview.asWebviewUri(
+      vscode.Uri.file(path.join(extensionRootPath, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css'))
+    );
     const csp = [
       "default-src 'none'",
       `img-src ${webview.cspSource} data: https:`,
@@ -251,7 +255,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       bean.blockedBy && bean.blockedBy.length > 0
         ? `
       <div class="section">
-        <h3>Blocked By</h3>
+        <h3><span class="codicon codicon-stop-circle" aria-hidden="true"></span> Blocked By</h3>
         <div class="badge-container">
           ${bean.blockedBy.map(id => this.renderBadge(id, 'relationship')).join('')}
         </div>
@@ -271,9 +275,9 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     const parentSpan = this._parentBean
       ? ` <span class="parent-sep">&middot;</span> <span class="parent-label">Parent</span> <a href="#" class="bean-ref parent-ref" data-bean-id="${this.escapeHtml(
           this._parentBean.id
-        )}"><span class="parent-code">${this.escapeHtml(this._parentBean.code)}</span> <span class="parent-title" title="${this.escapeHtml(
+        )}"><span class="parent-code">${this.escapeHtml(this._parentBean.code)}</span></a> <span class="parent-title" title="${this.escapeHtml(
           this._parentBean.title
-        )}">${this.escapeHtml(this._parentBean.title)}</span></a>`
+        )}">${this.escapeHtml(this._parentBean.title)}</span>`
       : bean.parent
         ? ` <span class="parent-sep">&middot;</span> <span class="parent-label">Parent</span> <a href="#" class="bean-ref parent-ref" data-bean-id="${this.escapeHtml(
             bean.parent
@@ -286,6 +290,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="${csp}">
+  <link href="${codiconStylesUri}" rel="stylesheet" />
   <title>Bean Details</title>
   <style>
     body {
@@ -307,10 +312,22 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       margin-bottom: 12px;
     }
     .title-icon {
-      font-size: 16px;
+      font-size: 15px;
       opacity: 0.8;
       flex-shrink: 0;
       margin-top: 2px;
+    }
+    .sr-only {
+      border: 0;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      padding: 0;
+      position: absolute;
+      white-space: nowrap;
+      width: 1px;
     }
     .title {
       font-size: 14px;
@@ -399,6 +416,13 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       font-size: 12px;
       color: var(--vscode-descriptionForeground);
       min-width: 60px;
+    }
+    .metadata-icon {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground);
+      width: 14px;
+      text-align: center;
+      flex-shrink: 0;
     }
     select {
       background: var(--vscode-dropdown-background);
@@ -523,7 +547,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 <body>
   <div class="header">
     <div class="title-row">
-      <span class="title-icon" role="img" aria-label="${this.escapeHtml(iconLabel)}">${this.escapeHtml(iconGlyph)}</span>
+      <span class="title-icon codicon codicon-${this.escapeHtml(iconName)}" role="img" aria-label="${this.escapeHtml(iconLabel)}"></span>
       <h1 class="title">${this.escapeHtml(bean.title)}</h1>
     </div>
     <div class="bean-id">
@@ -536,24 +560,26 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   </div>
   <div class="metadata-section">
     <div class="metadata-row">
+      <span class="metadata-icon codicon codicon-${this.escapeHtml(this.getStatusIcon(bean.status))}" aria-hidden="true"></span>
       <span class="metadata-label">Status</span>
       <select id="status" onchange="updateField('status', this.value)" aria-label="Status">
-        <option value="todo" ${bean.status === 'todo' ? 'selected' : ''}>☑️ Todo</option>
-        <option value="in-progress" ${bean.status === 'in-progress' ? 'selected' : ''}>⏳ In Progress</option>
-        <option value="completed" ${bean.status === 'completed' ? 'selected' : ''}>✅ Completed</option>
-        <option value="draft" ${bean.status === 'draft' ? 'selected' : ''}>📝 Draft</option>
-        <option value="scrapped" ${bean.status === 'scrapped' ? 'selected' : ''}>🗑️ Scrapped</option>
+        <option value="todo" ${bean.status === 'todo' ? 'selected' : ''}>Todo</option>
+        <option value="in-progress" ${bean.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+        <option value="completed" ${bean.status === 'completed' ? 'selected' : ''}>Completed</option>
+        <option value="draft" ${bean.status === 'draft' ? 'selected' : ''}>Draft</option>
+        <option value="scrapped" ${bean.status === 'scrapped' ? 'selected' : ''}>Scrapped</option>
       </select>
     </div>
 
     <div class="metadata-row">
+      <span class="metadata-icon codicon codicon-${this.escapeHtml(this.getTypeIconName(bean.type))}" aria-hidden="true"></span>
       <span class="metadata-label">Type</span>
       <select id="type" onchange="updateField('type', this.value)" aria-label="Type">
-        <option value="task" ${bean.type === 'task' ? 'selected' : ''}>🧑‍💻 Task</option>
-        <option value="bug" ${bean.type === 'bug' ? 'selected' : ''}>\uD83D\uDC1B Bug</option>
-        <option value="feature" ${bean.type === 'feature' ? 'selected' : ''}>\uD83D\uDCA1 Feature</option>
-        <option value="epic" ${bean.type === 'epic' ? 'selected' : ''}>\u26A1 Epic</option>
-        <option value="milestone" ${bean.type === 'milestone' ? 'selected' : ''}>\uD83C\uDFC1 Milestone</option>
+        <option value="task" ${bean.type === 'task' ? 'selected' : ''}>Task</option>
+        <option value="bug" ${bean.type === 'bug' ? 'selected' : ''}>Bug</option>
+        <option value="feature" ${bean.type === 'feature' ? 'selected' : ''}>Feature</option>
+        <option value="epic" ${bean.type === 'epic' ? 'selected' : ''}>Epic</option>
+        <option value="milestone" ${bean.type === 'milestone' ? 'selected' : ''}>Milestone</option>
       </select>
     </div>
 
@@ -843,14 +869,30 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       case 'completed':
         return 'issue-closed';
       case 'in-progress':
-        return this.getTypeIconName(bean.type);
+        return 'play-circle';
       case 'scrapped':
-        return 'error';
+        return 'stop';
       case 'draft':
         return 'issue-draft';
       case 'todo':
       default:
-        return this.getTypeIconName(bean.type);
+        return 'issues';
+    }
+  }
+
+  private getStatusIcon(status: Bean['status']): string {
+    switch (status) {
+      case 'completed':
+        return 'issue-closed';
+      case 'in-progress':
+        return 'play-circle';
+      case 'scrapped':
+        return 'stop';
+      case 'draft':
+        return 'issue-draft';
+      case 'todo':
+      default:
+        return 'issues';
     }
   }
 
@@ -869,32 +911,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
         return 'bug';
       case 'task':
       default:
-        return 'issues';
-    }
-  }
-
-  /**
-   * Use resilient inline glyphs for title icons (no external codicon font dependency).
-   */
-  private getIconGlyph(iconName: string): string {
-    switch (iconName) {
-      case 'issue-closed':
-        return '✅';
-      case 'issue-draft':
-        return '📝';
-      case 'error':
-        return '🗑️';
-      case 'milestone':
-        return '🏁';
-      case 'zap':
-        return '⚡';
-      case 'lightbulb':
-        return '💡';
-      case 'bug':
-        return '🐛';
-      case 'issues':
-      default:
-        return '📋';
+        return 'list-unordered';
     }
   }
 

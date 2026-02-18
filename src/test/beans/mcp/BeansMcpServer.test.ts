@@ -6,12 +6,14 @@ describe('BeansMcpServer helpers', () => {
     const parsed = parseCliArgs([]);
     expect(parsed.cliPath).toBe('beans');
     expect(parsed.workspaceRoot.length).toBeGreaterThan(0);
+    expect(parsed.port).toBe(39173);
   });
 
-  it('parseCliArgs reads workspace and cli path flags', () => {
-    const parsed = parseCliArgs(['--workspace', '/tmp/repo', '--cli-path', '/usr/local/bin/beans']);
+  it('parseCliArgs reads workspace, cli path, and port flags', () => {
+    const parsed = parseCliArgs(['--workspace', '/tmp/repo', '--cli-path', '/usr/local/bin/beans', '--port', '49731']);
     expect(parsed.workspaceRoot).toBe('/tmp/repo');
     expect(parsed.cliPath).toBe('/usr/local/bin/beans');
+    expect(parsed.port).toBe(49731);
   });
 
   it('sortBeans status-priority-type-title mode prioritizes in-progress and critical', () => {
