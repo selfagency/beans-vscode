@@ -273,8 +273,8 @@ Copilot: [References Beans skill guidance]
 ```json
 {
   "beans.ai.enabled": true, // Master switch
-    "beans.mcp.enabled": true, // MCP server specifically
-    "beans.mcp.port": 39173 // Port metadata passed to MCP process
+  "beans.mcp.enabled": true, // MCP server specifically
+  "beans.mcp.port": 39173 // Port metadata passed to MCP process
 }
 ```
 

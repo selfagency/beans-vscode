@@ -137,7 +137,7 @@ export class BeansHelpViewProvider implements vscode.WebviewViewProvider {
   <h3>Documentation</h3>
   <div class="button-row">
     <a class="button-link" href="command:beans.openUserGuide">User guide</a>
-    <a class="button-link secondary" href="command:beans.openAiFeaturesGuide">AI features guide</a>
+    <a class="button-link secondary" href="command:beans.openAiFeaturesGuide">AI features </a>
   </div>
 
   <h3>Support</h3>
@@ -147,7 +147,7 @@ export class BeansHelpViewProvider implements vscode.WebviewViewProvider {
   </div>
 
   <h3>About Beans</h3>
-  <p>Beans is a lightweight issue tracker that stores tasks, bugs, and features as Markdown files in a ⁠.beans folder, making them easy to version control and letting both humans and machines edit them. A CLI, built-in TUI, and GraphQL interface let you—or your AI coding agent—create, query, archive, and auto-generate roadmaps while using completed beans as project memory.</p>
+  <p>Beans is a lightweight issue tracker that stores tasks, bugs, and features as Markdown files in your repository, making them easy to version control and letting both humans and machines easily recall and edit them.</p>
 
   <div class="button-row">
     <a class="button-link secondary" href="https://github.com/hmans/beans">Beans on GitHub</a>

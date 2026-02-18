@@ -176,10 +176,34 @@ describe('BeanTreeItem', () => {
       expect((item.iconPath as vscode.ThemeIcon).id).toBe('play-circle');
     });
 
-    it('uses issues icon for todo status', () => {
+    it('uses type icon for todo status (milestone)', () => {
       const bean = makeBean({ status: 'todo', type: 'milestone' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
-      expect((item.iconPath as vscode.ThemeIcon).id).toBe('issues');
+      expect((item.iconPath as vscode.ThemeIcon).id).toBe('milestone');
+    });
+
+    it('uses bug icon for todo bug', () => {
+      const bean = makeBean({ status: 'todo', type: 'bug' });
+      const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
+      expect((item.iconPath as vscode.ThemeIcon).id).toBe('bug');
+    });
+
+    it('uses lightbulb icon for todo feature', () => {
+      const bean = makeBean({ status: 'todo', type: 'feature' });
+      const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
+      expect((item.iconPath as vscode.ThemeIcon).id).toBe('lightbulb');
+    });
+
+    it('uses zap icon for todo epic', () => {
+      const bean = makeBean({ status: 'todo', type: 'epic' });
+      const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
+      expect((item.iconPath as vscode.ThemeIcon).id).toBe('zap');
+    });
+
+    it('uses list-unordered icon for todo task', () => {
+      const bean = makeBean({ status: 'todo', type: 'task' });
+      const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
+      expect((item.iconPath as vscode.ThemeIcon).id).toBe('list-unordered');
     });
   });
 

@@ -563,11 +563,11 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       <span class="metadata-icon codicon codicon-${this.escapeHtml(this.getStatusIcon(bean.status))}" aria-hidden="true"></span>
       <span class="metadata-label">Status</span>
       <select id="status" onchange="updateField('status', this.value)" aria-label="Status">
-        <option value="todo" ${bean.status === 'todo' ? 'selected' : ''}>Todo</option>
-        <option value="in-progress" ${bean.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
-        <option value="completed" ${bean.status === 'completed' ? 'selected' : ''}>Completed</option>
-        <option value="draft" ${bean.status === 'draft' ? 'selected' : ''}>Draft</option>
-        <option value="scrapped" ${bean.status === 'scrapped' ? 'selected' : ''}>Scrapped</option>
+        <option value="todo" ${bean.status === 'todo' ? 'selected' : ''}>🔵 Todo</option>
+        <option value="in-progress" ${bean.status === 'in-progress' ? 'selected' : ''}>▶️ In Progress</option>
+        <option value="completed" ${bean.status === 'completed' ? 'selected' : ''}>✅ Completed</option>
+        <option value="draft" ${bean.status === 'draft' ? 'selected' : ''}>📝 Draft</option>
+        <option value="scrapped" ${bean.status === 'scrapped' ? 'selected' : ''}>🚫 Scrapped</option>
       </select>
     </div>
 
@@ -575,15 +575,16 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       <span class="metadata-icon codicon codicon-${this.escapeHtml(this.getTypeIconName(bean.type))}" aria-hidden="true"></span>
       <span class="metadata-label">Type</span>
       <select id="type" onchange="updateField('type', this.value)" aria-label="Type">
-        <option value="task" ${bean.type === 'task' ? 'selected' : ''}>Task</option>
-        <option value="bug" ${bean.type === 'bug' ? 'selected' : ''}>Bug</option>
-        <option value="feature" ${bean.type === 'feature' ? 'selected' : ''}>Feature</option>
-        <option value="epic" ${bean.type === 'epic' ? 'selected' : ''}>Epic</option>
-        <option value="milestone" ${bean.type === 'milestone' ? 'selected' : ''}>Milestone</option>
+        <option value="task" ${bean.type === 'task' ? 'selected' : ''}>📋 Task</option>
+        <option value="bug" ${bean.type === 'bug' ? 'selected' : ''}>🐛 Bug</option>
+        <option value="feature" ${bean.type === 'feature' ? 'selected' : ''}>💡 Feature</option>
+        <option value="epic" ${bean.type === 'epic' ? 'selected' : ''}>⚡ Epic</option>
+        <option value="milestone" ${bean.type === 'milestone' ? 'selected' : ''}>🏁 Milestone</option>
       </select>
     </div>
 
     <div class="metadata-row">
+      <span class="metadata-icon codicon codicon-list-ordered" aria-hidden="true"></span>
       <span class="metadata-label">Priority</span>
       <select id="priority" onchange="updateField('priority', this.value)" aria-label="Priority">
         <option value="" ${!bean.priority ? 'selected' : ''}>\u2014 None</option>

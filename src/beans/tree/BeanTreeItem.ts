@@ -204,7 +204,26 @@ export class BeanTreeItem extends vscode.TreeItem {
         return new vscode.ThemeIcon('issue-draft', color);
       case 'todo':
       default:
-        return new vscode.ThemeIcon('issues', color);
+        return new vscode.ThemeIcon(this.getTypeIconName(), color);
+    }
+  }
+
+  /**
+   * Get the codicon id for the bean's type, used for todo-status items.
+   */
+  private getTypeIconName(): string {
+    switch (this.bean.type) {
+      case 'milestone':
+        return 'milestone';
+      case 'epic':
+        return 'zap';
+      case 'feature':
+        return 'lightbulb';
+      case 'bug':
+        return 'bug';
+      case 'task':
+      default:
+        return 'list-unordered';
     }
   }
 }

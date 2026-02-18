@@ -371,11 +371,6 @@
           "group": "navigation@1"
         },
         {
-          "command": "beans.openUserGuide",
-          "when": "view == beans.help && beans.initialized",
-          "group": "navigation@2"
-        },
-        {
           "command": "beans.details.back",
           "when": "view == beans.details && beans.hasSelectedBean && beans.detailsCanGoBack",
           "group": "navigation@1"
