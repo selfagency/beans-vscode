@@ -17,7 +17,7 @@ import { BeansOutput } from './beans/logging';
 import { BeansMcpIntegration } from './beans/mcp';
 import { Bean, BeansCLINotFoundError, BeanType } from './beans/model';
 import { BeansPreviewProvider } from './beans/preview';
-import { BeansSearchViewProvider } from './beans/search';
+import { BeansSearchTreeProvider } from './beans/search/BeansSearchTreeProvider';
 import { BeansService } from './beans/service';
 import { BeansDragAndDropController, BeansFilterManager } from './beans/tree';
 import {
@@ -107,11 +107,8 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.registerWebviewViewProvider(BeansDetailsViewProvider.viewType, detailsProvider)
     );
 
-    // Register search webview provider
-    const searchProvider = new BeansSearchViewProvider(context.extensionUri, beansService);
-    context.subscriptions.push(
-      vscode.window.registerWebviewViewProvider(BeansSearchViewProvider.viewType, searchProvider)
-    );
+    // NOTE: search previously used a webview view provider. The tree-based search view
+    // is registered later with the other tree views (when workspace is initialized).
 
     // Register filter manager (needed before tree views)
     filterManager = new BeansFilterManager();
