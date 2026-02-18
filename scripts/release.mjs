@@ -221,18 +221,15 @@ async function main() {
 
   const headSha = (await $`git rev-parse HEAD`).stdout.trim();
 
-  // --- Wait for required workflows (parallel) -------------------------------
+  // --- Wait for required workflows (sequential to avoid concurrent-spinner visual corruption) ------
 
   const shortSha = headSha.slice(0, 7);
   console.log(`🔎 Waiting for required workflows on ${shortSha}...`);
 
-  const ciSpinner = ora({ text: 'CI: queued', prefixText: '' }).start();
-  const compatSpinner = ora({ text: 'Remote Compatibility Tests: queued', prefixText: '' }).start();
-
-  await Promise.all([
-    waitForWorkflow(octokit, 'CI', owner, repo, headSha, ciSpinner),
-    waitForWorkflow(octokit, 'Remote Compatibility Tests', owner, repo, headSha, compatSpinner),
-  ]);
+  for (const name of ['CI', 'Remote Compatibility Tests']) {
+    const spinner = ora({ text: `${name}: queued` }).start();
+    await waitForWorkflow(octokit, name, owner, repo, headSha, spinner);
+  }
 
   // --- Tag + publish --------------------------------------------------------
 
@@ -281,6 +278,9 @@ async function waitForWorkflow(
 
   const deadline = Date.now() + timeoutMs;
   let triggered = false;
+  // Track cancelled run IDs so we skip them on subsequent polls and don't
+  // mistake them for the new run that was re-dispatched.
+  const cancelledRunIds = new Set();
 
   while (Date.now() < deadline) {
     const runsResp = await octokit.actions.listWorkflowRuns({
@@ -289,10 +289,11 @@ async function waitForWorkflow(
       workflow_id: workflow.id,
       branch: 'main',
       head_sha: headSha,
-      per_page: 5,
+      per_page: 10,
     });
 
-    const run = runsResp.data.workflow_runs[0];
+    // Find the latest run that isn't one we already marked as cancelled.
+    const run = runsResp.data.workflow_runs.find((r) => !cancelledRunIds.has(r.id));
 
     if (!run) {
       if (!triggered) {
@@ -318,6 +319,12 @@ async function waitForWorkflow(
     } else if (run.conclusion === 'success') {
       spinner.succeed(`${name}: passed`);
       return;
+    } else if (run.conclusion === 'cancelled') {
+      // Cancelled runs are often caused by a concurrent push racing with CI startup.
+      // Record this run so we skip it on future polls, then re-dispatch.
+      cancelledRunIds.add(run.id);
+      spinner.text = `${name}: run was cancelled — re-dispatching...`;
+      triggered = false;
     } else {
       spinner.fail(`${name}: ${run.conclusion}`);
       throw new Error(`[${name}] conclusion=${run.conclusion}\n   Run: ${run.html_url}`);
