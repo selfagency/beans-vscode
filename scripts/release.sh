@@ -307,8 +307,39 @@ wait_for_workflow_success() {
   done
 }
 
-wait_for_workflow_success "CI"
-wait_for_workflow_success "Remote Compatibility Tests"
+# Run both workflow checks in parallel so we don't wait for CI to finish
+# before starting to poll Remote Compatibility Tests.
+ci_log="$(mktemp)"
+compat_log="$(mktemp)"
+trap 'rm -f "$ci_log" "$compat_log"' EXIT
+
+echo "🔎 Waiting for required workflows in parallel..."
+
+wait_for_workflow_success "CI" >"$ci_log" 2>&1 &
+ci_pid=$!
+wait_for_workflow_success "Remote Compatibility Tests" >"$compat_log" 2>&1 &
+compat_pid=$!
+
+# Stream prefixed output while both workers run (portable; works on Linux and macOS).
+tail -f "$ci_log"     | sed "s/^/[CI] /" &
+ci_tail=$!
+tail -f "$compat_log" | sed "s/^/[Remote Compat] /" &
+compat_tail=$!
+
+ci_exit=0
+compat_exit=0
+wait "$ci_pid"     || ci_exit=$?
+wait "$compat_pid" || compat_exit=$?
+
+# Give tail a moment to flush remaining output, then stop it.
+sleep 0.5
+kill "$ci_tail" "$compat_tail" 2>/dev/null || true
+wait "$ci_tail" "$compat_tail" 2>/dev/null || true
+
+if (( ci_exit != 0 )) || (( compat_exit != 0 )); then
+  echo "❌ One or more required workflows failed."
+  exit 1
+fi
 
 echo "🏷️ Pushing tag ${TAG}..."
 TAG_SUBJECT="Release ${TAG}"
