@@ -1,10 +1,11 @@
 ---
 # beans-vscode-v4tm
 title: Interactive checklists in details view
-status: draft
+status: todo
 type: feature
+priority: normal
 created_at: 2026-02-18T05:17:09Z
-updated_at: 2026-02-18T05:17:09Z
+updated_at: 2026-02-18T21:16:07Z
 ---
 
 ## Goal

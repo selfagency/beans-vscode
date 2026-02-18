@@ -107,13 +107,20 @@ export class BeansService {
   /**
    * Apply local filtering for cached beans in offline mode.
    */
-  private filterBeans(beans: Bean[], options?: { status?: string[]; type?: string[]; search?: string }): Bean[] {
+  private filterBeans(
+    beans: Bean[],
+    options?: { status?: string[]; type?: string[]; search?: string; parent?: string }
+  ): Bean[] {
     return beans.filter(bean => {
       if (options?.status?.length && !options.status.includes(bean.status)) {
         return false;
       }
 
       if (options?.type?.length && !options.type.includes(bean.type)) {
+        return false;
+      }
+
+      if (options?.parent && bean.parent !== options.parent) {
         return false;
       }
 
@@ -446,7 +453,7 @@ export class BeansService {
    * List beans with optional filters
    * Supports offline mode with cached data fallback
    */
-  async listBeans(options?: { status?: string[]; type?: string[]; search?: string }): Promise<Bean[]> {
+  async listBeans(options?: { status?: string[]; type?: string[]; search?: string; parent?: string }): Promise<Bean[]> {
     try {
       const filter: Record<string, unknown> = {};
 
@@ -470,7 +477,12 @@ export class BeansService {
         throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
       }
 
-      const beans = data.beans || [];
+      if (options?.parent) {
+        args.push('--parent', options.parent);
+      }
+
+      const result = await this.execute<RawBeanFromCLI[]>(args);
+      const beans = result || [];
 
       // Normalize bean data to ensure arrays are always arrays
       const normalizedBeans = beans.map(bean => this.normalizeBean(bean, { allowPartial: true }));
@@ -830,11 +842,33 @@ export class BeansService {
       // changed fields). In that case, fetch the full bean as a resilience fallback.
       if (error instanceof BeansJSONParseError) {
         this.logger.warn(`Partial bean payload received from update for ${id}; fetching full bean as fallback.`);
-        return this.showBean(id);
+        updatedBean = await this.showBean(id);
+      } else {
+        throw error;
       }
-
-      throw error;
     }
+
+    // Recursively update children if status has changed
+    if (updates.status) {
+      try {
+        const children = await this.listBeans({ parent: id });
+        for (const child of children) {
+          if (child.status !== updates.status) {
+            // Propagate if moving to terminal status, or if child is not terminal,
+            // or if parent is being reopened (simplified to 'propagating always' to fulfill 'full equality' requirement).
+            this.logger.info(
+              `Parent ${id} status changed to ${updates.status}; recursively updating child ${child.id}`
+            );
+            await this.updateBeanWithConfig(child.id, { status: updates.status }, config);
+          }
+        }
+      } catch (childError) {
+        // Log but don't fail the primary update if child update fails
+        this.logger.error(`Failed to recursively update children for ${id}: ${childError}`);
+      }
+    }
+
+    return updatedBean;
   }
 
   /**

@@ -1,11 +1,11 @@
 ---
 # beans-vscode-bina
 title: 'docs: Document Copilot artifact generation & .md template loader'
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-02-18T19:11:36Z
-updated_at: 2026-02-18T19:43:43Z
+updated_at: 2026-02-18T21:15:34Z
 parent: beans-vscode-li45
 ---
 

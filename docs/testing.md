@@ -69,7 +69,25 @@ pnpm test:integration
 pnpm run pretest && pnpm test
 ```
 
-### Unit Tests (Vitest)
+### Importing Markdown Templates in Tests
+
+Certain tests (e.g., `CopilotInstructions.test.ts` and `CopilotSkill.test.ts`) require importing markdown template files from `src/beans/config/templates/*.md`.
+
+Since Vitest uses Vite's transform pipeline, and Vite does not have a built-in `.md` loader, we use a custom `mdTextPlugin` in `vitest.config.ts`. This mirrors the `esbuild.js` loader: `{ '.md': 'text' }`.
+
+**Usage in tests** (matching the real template locations):
+
+```ts
+// From src/test/beans/config/CopilotInstructions.test.ts
+import copilotInstructionsTemplate from '../../../beans/config/templates/copilot-instructions.template.md';
+
+// From src/test/beans/config/CopilotSkill.test.ts
+import copilotSkillTemplate from '../../../beans/config/templates/copilot-skill.template.md';
+
+// Each imported value is a string containing the markdown content.
+```
+
+### Writing Tests (TDD-First)
 
 **Command**: `pnpm test`
 
@@ -227,7 +245,7 @@ vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
   }),
   has: vi.fn(),
   inspect: vi.fn(),
-  update: vi.fn()
+  update: vi.fn(),
 } as any);
 ```
 
@@ -274,7 +292,7 @@ describe('BeansCommands', () => {
     mockService = {
       getBean: vi.fn(),
       updateBean: vi.fn(),
-      listBeans: vi.fn()
+      listBeans: vi.fn(),
     } as any;
 
     commands = new BeansCommands(mockService, mockContext, mockPreviewProvider, mockFilterManager, mockConfigManager);
@@ -284,7 +302,7 @@ describe('BeansCommands', () => {
     mockService.getBean.mockResolvedValue({
       id: 'beans-vscode-abc',
       title: 'Test Bean',
-      status: 'todo'
+      status: 'todo',
     });
 
     await commands.viewBean({ id: 'beans-vscode-abc' });
@@ -308,12 +326,12 @@ describe('BeansTreeDataProvider', () => {
 
   const mockBeans: Bean[] = [
     { id: 'bean-1', title: 'Bean 1', status: 'todo', type: 'task' },
-    { id: 'bean-2', title: 'Bean 2', status: 'in-progress', type: 'feature' }
+    { id: 'bean-2', title: 'Bean 2', status: 'in-progress', type: 'feature' },
   ];
 
   beforeEach(() => {
     mockService = {
-      listBeans: vi.fn().mockResolvedValue(mockBeans)
+      listBeans: vi.fn().mockResolvedValue(mockBeans),
     } as any;
 
     provider = new BeansTreeDataProvider(mockService, ['todo', 'in-progress']);
@@ -350,7 +368,7 @@ describe('Chat Prompts', () => {
   it('should format summary prompt with bean counts', () => {
     const beans = [
       { id: '1', status: 'todo', priority: 'high' },
-      { id: '2', status: 'in-progress', priority: 'critical' }
+      { id: '2', status: 'in-progress', priority: 'critical' },
     ];
 
     const prompt = formatSummaryPrompt(beans);
@@ -445,7 +463,7 @@ it('should sort beans by priority', () => {
   // Arrange: Set up test data
   const beans = [
     { id: '1', priority: 'normal' },
-    { id: '2', priority: 'critical' }
+    { id: '2', priority: 'critical' },
   ];
 
   // Act: Execute function under test
@@ -537,7 +555,7 @@ export const mockBeans = {
     status: 'todo',
     type: 'task',
     created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-01T00:00:00Z'
+    updated_at: '2026-01-01T00:00:00Z',
   }),
 
   inProgress: (): Bean => ({
@@ -547,8 +565,8 @@ export const mockBeans = {
     type: 'feature',
     priority: 'high',
     created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-02T00:00:00Z'
-  })
+    updated_at: '2026-01-02T00:00:00Z',
+  }),
 };
 
 // In tests
