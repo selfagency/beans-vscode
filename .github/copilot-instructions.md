@@ -44,7 +44,9 @@ pnpm run lint             # ESLint
   @font-face { font-family:"codicon"; src:url("${codiconFontUri}") format("truetype"); }
 ```
 
-where `codiconFontUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.ttf'))`.
+where `codiconFontUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'media', 'codicon.ttf'))`.
+
+> **Note:** `node_modules/**` is excluded from the VSIX. The build step (`scripts/copy-codicons.js`) copies `codicon.ttf` and `codicon.css` into `dist/media/` so they are packaged and available at runtime. Never reference `node_modules/@vscode/codicons/…` paths in webview URIs.
 
 **Priority labels** — use circled Unicode characters ①②③④⑤ (not codicons) for priority in all UI surfaces (tree item labels, quick picks, webview selects).
 

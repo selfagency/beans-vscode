@@ -11,15 +11,15 @@ This skill drives all Beans issue tracker operations in this workspace using the
 
 **Always use the highest available interface. Never skip levels for convenience.**
 
-1. **VS Code extension commands** (`beans.*`) — invoke via command palette or sidebar UI
-2. **`@beans` chat participant** — for guidance, summaries, and structured workflows
-3. **Beans MCP tools** — preferred programmatic interface when the UI is not in focus
+1. **Beans MCP tools** — default interface for any toolable or automated Beans operations
+2. **VS Code extension commands** (`beans.*`) — for user-initiated actions via command palette or sidebar UI, or when MCP tools are not suitable or unavailable
+3. **`@beans` chat participant** — for guidance, summaries, and structured workflows that coordinate tools and user intent
 4. **CLI** — only when extension, chat, and MCP are all genuinely unavailable; see CLI constraints
 
 ## Core rules (always enforced)
 
 - **Never start work without a bean.** Find a relevant bean or create one first. No exceptions.
-- **Always use the extension or MCP.** Do not reach for the CLI unless all other interfaces are unavailable.
+- **Prefer MCP tools, then extension commands.** Do not reach for the CLI unless all other interfaces are unavailable.
 - **The bean is the source of truth.** Keep status, type, priority, parent, blocking, and body current.
 - **Create a branch before writing code.** Name it `feature/<bean-id>-<slug>` or `fix/<bean-id>-<slug>`.
 - **Record branch and PR in bean frontmatter.** Add `branch:` and `pr:` as soon as they exist; commit immediately.
