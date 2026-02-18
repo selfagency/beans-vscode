@@ -20,7 +20,7 @@ All new features and bug fixes must start with a failing test. No exceptions.
 
 1. **🔴 Red**: Write a failing test in `src/test/` that describes the desired behavior.
    - Run `pnpm test` to confirm it fails specifically due to the missing implementation.
-2. **🟢 Green**: Write the *minimal* amount of production code in `src/` to make the test pass.
+2. **🟢 Green**: Write the _minimal_ amount of production code in `src/` to make the test pass.
    - Run `pnpm test` to confirm it passes.
 3. **🔄 Refactor**: Improve the code (structure, naming, performance) while keeping the tests green.
 
@@ -53,7 +53,7 @@ We use Beans (this extension!) to track all work in this repository.
 - **Fixes**: `fix/<bean-id>-<slug>` or `fix/<ticket>-<slug>`
 - **Docs/Chore**: `docs/<slug>` or `chore/<slug>`
 
-*Example*: `feature/beans-vscode-li45-developer-docs`
+_Example_: `feature/beans-vscode-li45-developer-docs`
 
 ---
 
