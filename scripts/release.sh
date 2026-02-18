@@ -20,6 +20,58 @@ fi
 
 TAG="v${VERSION}"
 
+# ---------------------------------------------------------------------------
+# State tracking for cleanup on failure or Ctrl-C
+# ---------------------------------------------------------------------------
+COMMIT_LOCAL=false   # local release commit exists but not yet pushed
+COMMIT_PUSHED=false  # release commit has been pushed to origin/main
+RELEASE_DONE=false   # tag pushed; release complete
+ci_log=""            # temp file for parallel CI poller output
+compat_log=""        # temp file for parallel compat poller output
+
+cleanup() {
+  local exit_code=$?
+  # Suppress further errors inside cleanup
+  set +e
+
+  # Clean up temp log files created during parallel workflow polling.
+  rm -f "${ci_log:-}" "${compat_log:-}"
+
+  if [[ "$RELEASE_DONE" == "true" ]]; then
+    exit "$exit_code"
+  fi
+
+  if [[ "$COMMIT_PUSHED" == "true" ]]; then
+    echo ""
+    echo "⚠️  Release aborted after push. Reverting release commit on origin/main..."
+    # Revert creates a new commit that undoes the release metadata changes.
+    # We push immediately so remote stays consistent.
+    if "$GIT_BIN" revert --no-edit HEAD; then
+      if "$GIT_BIN" push origin main; then
+        echo "↩️  Release commit reverted and pushed. Working tree is clean."
+      else
+        echo "❌ Revert committed locally but push failed."
+        echo "   Run: git push origin main"
+      fi
+    else
+      echo "❌ Automatic revert failed. Manually revert with:"
+      echo "   git revert HEAD && git push origin main"
+    fi
+  elif [[ "$COMMIT_LOCAL" == "true" ]]; then
+    echo ""
+    echo "⚠️  Release aborted before push. Resetting local release commit..."
+    if "$GIT_BIN" reset --hard HEAD~1; then
+      echo "↩️  Local release commit removed. Working tree restored."
+    else
+      echo "❌ Reset failed. Manually run: git reset --hard HEAD~1"
+    fi
+  fi
+
+  exit "$exit_code"
+}
+
+trap cleanup EXIT INT TERM
+
 GH_BIN=""
 
 if command -v gh >/dev/null 2>&1; then
@@ -223,10 +275,13 @@ else
   echo "📦 Committing release metadata changes..."
   "$GIT_BIN" add package.json CHANGELOG.md
   "$GIT_BIN" commit -m "chore(release): update version and changelog for ${TAG} [skip ci]"
+  COMMIT_LOCAL=true
 fi
 
 echo "🚀 Pushing main..."
 "$GIT_BIN" push origin main
+COMMIT_PUSHED=true
+COMMIT_LOCAL=false
 
 HEAD_SHA="$("$GIT_BIN" rev-parse HEAD)"
 echo "🔎 Waiting for required workflows on ${HEAD_SHA}..."
@@ -311,7 +366,6 @@ wait_for_workflow_success() {
 # before starting to poll Remote Compatibility Tests.
 ci_log="$(mktemp -t beans-ci.XXXXXX)"
 compat_log="$(mktemp -t beans-compat.XXXXXX)"
-trap 'rm -f "$ci_log" "$compat_log"' EXIT
 
 echo "🔎 Waiting for required workflows in parallel..."
 
@@ -331,8 +385,8 @@ compat_exit=0
 wait "$ci_pid"     || ci_exit=$?
 wait "$compat_pid" || compat_exit=$?
 
-# Give tail a moment to flush remaining output, then stop it.
-sleep 0.5
+# Stop tail processes FIRST, then flush any buffered output before continuing.
+# Killing before the sleep means nothing races with subsequent echo output.
 kill "$ci_tail" "$compat_tail" 2>/dev/null || true
 wait "$ci_tail" "$compat_tail" 2>/dev/null || true
 
@@ -341,7 +395,7 @@ if (( ci_exit != 0 )) || (( compat_exit != 0 )); then
   exit 1
 fi
 
-echo "🏷️ Pushing tag ${TAG}..."
+echo "🏷️  Creating annotated tag ${TAG} at ${HEAD_SHA}..."
 TAG_SUBJECT="Release ${TAG}"
 TAG_BODY="${RELEASE_NOTES}"
 
@@ -354,6 +408,8 @@ TAG_BODY+=$'\n\n'
 TAG_BODY+="Target commit: ${HEAD_SHA}"
 
 "$GIT_BIN" tag -a "$TAG" "$HEAD_SHA" -m "$TAG_SUBJECT" -m "$TAG_BODY"
+echo "🚀 Pushing tag ${TAG}..."
 "$GIT_BIN" push origin "$TAG"
 
+RELEASE_DONE=true
 echo "✅ Deploy complete: ${TAG} -> ${HEAD_SHA}"
