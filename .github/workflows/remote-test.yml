@@ -7,8 +7,6 @@ on:
       - "src/**"
   pull_request:
     branches: [main]
-    paths:
-      - "src/**"
   workflow_dispatch: # Allow manual triggering
 
 permissions:
@@ -20,8 +18,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      src: ${{ steps.filter.outputs.src }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            src:
+              - 'src/**'
+
   remote-test:
     name: Remote Test (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.src == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
 
@@ -132,6 +147,8 @@ jobs:
 
   devcontainer-test:
     name: Dev Container Test
+    needs: changes
+    if: needs.changes.outputs.src == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -332,10 +349,19 @@ jobs:
     steps:
       - name: Check test results
         run: |
-          if [ "${{ needs.remote-test.result }}" != "success" ] || \
-             [ "${{ needs.devcontainer-test.result }}" != "success" ] || \
-             [ "${{ needs.vscode-integration-test.result }}" != "success" -a "${{ needs.vscode-integration-test.result }}" != "skipped" ]; then
-            echo "❌ Some remote compatibility tests failed"
+          fail=false
+          for result in \
+            "remote-test=${{ needs.remote-test.result }}" \
+            "devcontainer-test=${{ needs.devcontainer-test.result }}" \
+            "vscode-integration-test=${{ needs.vscode-integration-test.result }}"; do
+            name="${result%%=*}"
+            value="${result##*=}"
+            if [[ "$value" == "failure" || "$value" == "cancelled" ]]; then
+              echo "❌ ${name}: ${value}"
+              fail=true
+            fi
+          done
+          if [[ "$fail" == "true" ]]; then
             exit 1
           fi
-          echo "✅ All remote compatibility tests passed!"
+          echo "✅ All remote compatibility tests passed or were skipped!"
