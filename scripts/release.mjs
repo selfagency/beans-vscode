@@ -225,6 +225,8 @@ async function main() {
 
   const shortSha = headSha.slice(0, 7);
   console.log(`🔎 Waiting for required workflows on ${shortSha}...`);
+  // Give GitHub a moment to register the push before we start polling.
+  await sleep(10_000);
 
   for (const name of ['CI', 'Remote Compatibility Tests']) {
     const spinner = ora({ text: `${name}: queued` }).start();
@@ -297,15 +299,6 @@ async function waitForWorkflow(
 
     if (!run) {
       if (!triggered) {
-        // Guard: make sure headSha is still the tip of main before dispatching.
-        const branchResp = await octokit.repos.getBranch({ owner, repo, branch: 'main' });
-        const remoteSha = branchResp.data.commit.sha;
-        if (remoteSha !== headSha) {
-          spinner.fail(`${name}: SHA mismatch — ${shortSha} is no longer tip of main`);
-          throw new Error(
-            `[${name}] HEAD_SHA (${headSha}) is no longer latest on main (remote is ${remoteSha}). Re-run release.`,
-          );
-        }
         spinner.text = `${name}: no run found — triggering workflow_dispatch...`;
         await octokit.actions.createWorkflowDispatch({ owner, repo, workflow_id: workflow.id, ref: 'main' });
         triggered = true;
