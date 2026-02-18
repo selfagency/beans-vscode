@@ -111,7 +111,7 @@ describe('BeansDetailsViewProvider', () => {
     expect(webview.html).toContain('data-bean-id="beans-vscode-parent"');
     expect(webview.html).toContain('role="img"');
     expect(webview.html).toContain('📋');
-    expect(webview.html).not.toContain('id="back-button"');
+    expect(provider.canGoBack).toBe(false);
   });
 
   it('renders unresolved parent as clickable reference using parent id', async () => {
@@ -143,24 +143,27 @@ describe('BeansDetailsViewProvider', () => {
     expect(bean.body).toBe('Depends on beans-vscode-200 and beans-vscode-300.');
   });
 
-  it('shows back button only after internal reference navigation and supports going back', async () => {
+  it('tracks navigation history after internal reference navigation and supports going back', async () => {
     const first = makeBean({ id: 'beans-vscode-10', code: '10', title: 'First bean', body: 'See beans-vscode-20' });
     const second = makeBean({ id: 'beans-vscode-20', code: '20', title: 'Second bean' });
 
     service.showBean.mockResolvedValueOnce(first).mockResolvedValueOnce(second).mockResolvedValueOnce(first);
+    const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand');
 
     provider.resolveWebviewView(view, resolveContext, cancellationToken);
     await provider.showBean(first);
     expect(webview.html).toContain('First bean');
-    expect(webview.html).not.toContain('id="back-button"');
+    expect(provider.canGoBack).toBe(false);
 
     await receivedHandler?.({ command: 'openBeanFromReference', beanId: 'beans-vscode-20' });
     expect(webview.html).toContain('Second bean');
-    expect(webview.html).toContain('id="back-button"');
+    expect(provider.canGoBack).toBe(true);
+    expect(executeCommandSpy).toHaveBeenCalledWith('setContext', 'beans.detailsCanGoBack', true);
 
-    await receivedHandler?.({ command: 'goBack' });
+    await provider.goBackFromHistory();
     expect(webview.html).toContain('First bean');
-    expect(webview.html).not.toContain('id="back-button"');
+    expect(provider.canGoBack).toBe(false);
+    expect(executeCommandSpy).toHaveBeenCalledWith('setContext', 'beans.detailsCanGoBack', false);
   });
 
   it('navigates to parent from clickable header reference and supports going back', async () => {
@@ -192,16 +195,16 @@ describe('BeansDetailsViewProvider', () => {
     expect(webview.html).toContain('Child bean');
     expect(webview.html).toContain('class="bean-ref parent-ref"');
     expect(webview.html).toContain('data-bean-id="beans-vscode-parent"');
-    expect(webview.html).not.toContain('id="back-button"');
+    expect(provider.canGoBack).toBe(false);
 
     // Simulate clicking the parent link in the webview script by posting same message.
     await receivedHandler?.({ command: 'openBeanFromReference', beanId: 'beans-vscode-parent' });
     expect(webview.html).toContain('Parent bean');
-    expect(webview.html).toContain('id="back-button"');
+    expect(provider.canGoBack).toBe(true);
 
-    await receivedHandler?.({ command: 'goBack' });
+    await provider.goBackFromHistory();
     expect(webview.html).toContain('Child bean');
-    expect(webview.html).not.toContain('id="back-button"');
+    expect(provider.canGoBack).toBe(false);
   });
 
   it('falls back when full bean fetch fails', async () => {
@@ -218,15 +221,18 @@ describe('BeansDetailsViewProvider', () => {
     expect(webview.html).toContain('No description');
   });
 
-  it('clears selected bean and resets html/context', () => {
+  it('clears selected bean and resets html/context', async () => {
     const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand');
     provider.resolveWebviewView(view, resolveContext, cancellationToken);
 
     (provider as any)._currentBean = makeBean();
     provider.clear();
+    await Promise.resolve();
+    await Promise.resolve();
 
     expect(provider.currentBean).toBeUndefined();
     expect(executeCommandSpy).toHaveBeenCalledWith('setContext', 'beans.hasSelectedBean', false);
+    expect(executeCommandSpy).toHaveBeenCalledWith('setContext', 'beans.detailsCanGoBack', false);
     expect(webview.html).toContain('Select a bean to view details');
   });
 

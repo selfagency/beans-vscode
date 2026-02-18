@@ -104,9 +104,29 @@ export class BeansSearchTreeProvider implements vscode.TreeDataProvider<BeanTree
   }
 
   private matchesQuery(bean: Bean, q: string): boolean {
-    const fields: Array<unknown> = [bean.id, bean.code, bean.title, bean.body, bean.status, bean.type, bean.priority];
+    const fields: Array<unknown> = [
+      bean.id,
+      bean.code,
+      bean.slug,
+      bean.path,
+      bean.title,
+      bean.body,
+      bean.status,
+      bean.type,
+      bean.priority,
+      bean.parent,
+      bean.etag,
+      bean.createdAt?.toString(),
+      bean.updatedAt?.toString(),
+    ];
     if (Array.isArray(bean.tags) && bean.tags.length > 0) {
       fields.push(...bean.tags);
+    }
+    if (Array.isArray(bean.blocking) && bean.blocking.length > 0) {
+      fields.push(...bean.blocking);
+    }
+    if (Array.isArray(bean.blockedBy) && bean.blockedBy.length > 0) {
+      fields.push(...bean.blockedBy);
     }
     return fields.some(field => field !== null && field !== undefined && this.toLower(field).includes(q));
   }

@@ -8,13 +8,12 @@ import { BeansService } from '../service';
 import { BeanTreeItem } from './BeanTreeItem';
 import { BeansDragAndDropController } from './BeansDragAndDropController';
 import { BeansFilterManager } from './BeansFilterManager';
-import { ActiveBeansProvider, CompletedBeansProvider, DraftBeansProvider, ScrappedBeansProvider } from './providers';
+import { ActiveBeansProvider, CompletedBeansProvider, DraftBeansProvider } from './providers';
 
 export interface RegisteredBeanProviders {
   activeProvider: ActiveBeansProvider;
   completedProvider: CompletedBeansProvider;
   draftProvider: DraftBeansProvider;
-  scrappedProvider: ScrappedBeansProvider;
 }
 
 export function registerBeansTreeViews(
@@ -29,7 +28,6 @@ export function registerBeansTreeViews(
   const activeProvider = new ActiveBeansProvider(service);
   const completedProvider = new CompletedBeansProvider(service);
   const draftProvider = new DraftBeansProvider(service);
-  const scrappedProvider = new ScrappedBeansProvider(service);
   const searchProvider = new BeansSearchTreeProvider(service);
 
   context.subscriptions.push(
@@ -55,9 +53,6 @@ export function registerBeansTreeViews(
           break;
         case 'beans.draft':
           draftProvider.setFilter(filterOptions);
-          break;
-        case 'beans.scrapped':
-          scrappedProvider.setFilter(filterOptions);
           break;
       }
     })
@@ -121,12 +116,6 @@ export function registerBeansTreeViews(
     dragAndDropController,
   });
 
-  const scrappedTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.scrapped', {
-    treeDataProvider: scrappedProvider,
-    showCollapseAll: true,
-    dragAndDropController,
-  });
-
   context.subscriptions.push(
     activeTreeView.onDidChangeSelection(e => {
       if (e.selection.length > 0) {
@@ -158,16 +147,6 @@ export function registerBeansTreeViews(
         }
       }
     }),
-    scrappedTreeView.onDidChangeSelection(e => {
-      if (e.selection.length > 0) {
-        const bean = e.selection[0].bean;
-        if (bean) {
-          details.showBean(bean).catch(error => {
-            logger.error('Failed to show bean details', error as Error);
-          });
-        }
-      }
-    }),
     searchTreeView.onDidChangeSelection(e => {
       if (e.selection.length > 0) {
         const bean = e.selection[0].bean;
@@ -180,7 +159,7 @@ export function registerBeansTreeViews(
     })
   );
 
-  context.subscriptions.push(activeTreeView, completedTreeView, draftTreeView, scrappedTreeView, searchTreeView);
+  context.subscriptions.push(activeTreeView, completedTreeView, draftTreeView, searchTreeView);
 
   logger.info('Tree views registered with drag-and-drop support and details view integration');
 
@@ -188,6 +167,5 @@ export function registerBeansTreeViews(
     activeProvider,
     completedProvider,
     draftProvider,
-    scrappedProvider,
   };
 }

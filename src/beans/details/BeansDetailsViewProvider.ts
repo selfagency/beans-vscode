@@ -4,7 +4,7 @@ import { Bean } from '../model';
 import { BeansService } from '../service';
 
 type DetailsWebviewMessage = {
-  command?: 'updateBean' | 'openBeanFromReference' | 'goBack';
+  command?: 'updateBean' | 'openBeanFromReference';
   updates?: unknown;
   beanId?: unknown;
 };
@@ -23,6 +23,11 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   /** The currently displayed bean (used by view/title edit command). */
   public get currentBean(): Bean | undefined {
     return this._currentBean;
+  }
+
+  /** Whether there is a previously visited bean in details navigation history. */
+  public get canGoBack(): boolean {
+    return this._navigationHistory.length > 0;
   }
 
   constructor(
@@ -56,9 +61,6 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
             await this.openBeanFromReference(message.beanId);
           }
           break;
-        case 'goBack':
-          await this.goBack();
-          break;
       }
     });
 
@@ -75,6 +77,8 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     } else {
       webviewView.webview.html = this.getEmptyHtml();
     }
+
+    void this.updateDetailsContextKeys();
 
     this.logger.debug('Bean details view resolved');
   }
@@ -112,7 +116,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       // Fetch full bean data including body field
       const fullBean = await this.service.showBean(bean.id);
       this._currentBean = fullBean;
-      await vscode.commands.executeCommand('setContext', 'beans.hasSelectedBean', true);
+      await this.updateDetailsContextKeys();
 
       // Resolve parent bean for display (code + title)
       this._parentBean = undefined;
@@ -132,7 +136,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       // Fall back to using the provided bean (without body)
       this._currentBean = bean;
       this._parentBean = undefined;
-      await vscode.commands.executeCommand('setContext', 'beans.hasSelectedBean', true);
+      await this.updateDetailsContextKeys();
       if (this._view) {
         this.updateView(bean);
       }
@@ -146,10 +150,15 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     this._currentBean = undefined;
     this._parentBean = undefined;
     this._navigationHistory.length = 0;
-    void vscode.commands.executeCommand('setContext', 'beans.hasSelectedBean', false);
+    void this.updateDetailsContextKeys();
     if (this._view) {
       this._view.webview.html = this.getEmptyHtml();
     }
+  }
+
+  /** Navigate back to the previously opened bean, if any history exists. */
+  public async goBackFromHistory(): Promise<void> {
+    await this.goBack();
   }
 
   /**
@@ -215,10 +224,6 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     const iconName = this.getIconName(bean);
     const iconGlyph = this.getIconGlyph(iconName);
     const iconLabel = this.getIconLabel(bean);
-    const showBackButton = this._navigationHistory.length > 0;
-    const backButtonHtml = showBackButton
-      ? '<button type="button" id="back-button" class="back-button" aria-label="Back to previous bean">← Back</button>'
-      : '';
     const csp = [
       "default-src 'none'",
       `img-src ${webview.cspSource} data: https:`,
@@ -298,25 +303,6 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       align-items: flex-start;
       gap: 8px;
       margin-bottom: 12px;
-    }
-    .back-button {
-      border: 1px solid var(--vscode-button-border, transparent);
-      background: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
-      color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
-      border-radius: 4px;
-      padding: 2px 8px;
-      font-size: 11px;
-      line-height: 1.5;
-      cursor: pointer;
-      flex-shrink: 0;
-      margin-top: 1px;
-    }
-    .back-button:hover {
-      background: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground));
-    }
-    .back-button:focus-visible {
-      outline: 1px solid var(--vscode-focusBorder);
-      outline-offset: 1px;
     }
     .title-icon {
       font-size: 16px;
@@ -535,7 +521,6 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 <body>
   <div class="header">
     <div class="title-row">
-      ${backButtonHtml}
       <span class="title-icon" role="img" aria-label="${this.escapeHtml(iconLabel)}">${this.escapeHtml(iconGlyph)}</span>
       <h1 class="title">${this.escapeHtml(bean.title)}</h1>
     </div>
@@ -621,12 +606,6 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
           });
         }
         return;
-      }
-
-      const backButton = target.closest('#back-button');
-      if (backButton instanceof Element) {
-        event.preventDefault();
-        vscode.postMessage({ command: 'goBack' });
       }
     });
   </script>
@@ -714,7 +693,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 
   private autoLinkBeanReferences(html: string, currentBeanId?: string): string {
     const tokenPattern = /(<[^>]+>|[^<]+)/g;
-    const beanIdPattern = /\b([a-z][a-z0-9-]*-\d+)\b/gi;
+    const beanIdPattern = /\b([a-z][a-z0-9-]*-[a-z0-9]+)\b/gi;
     let inAnchor = false;
     let inCode = false;
     let inPre = false;
@@ -800,6 +779,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
         this.updateView(this._currentBean);
       }
     }
+    await this.updateDetailsContextKeys();
   }
 
   private async goBack(): Promise<void> {
@@ -815,13 +795,14 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
         this.updateView(this._currentBean);
       }
     }
+    await this.updateDetailsContextKeys();
   }
 
   private async showBeanById(beanId: string): Promise<boolean> {
     try {
       const fullBean = await this.service.showBean(beanId);
       this._currentBean = fullBean;
-      await vscode.commands.executeCommand('setContext', 'beans.hasSelectedBean', true);
+      await this.updateDetailsContextKeys();
 
       this._parentBean = undefined;
       if (fullBean.parent) {
@@ -841,6 +822,11 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       vscode.window.showErrorMessage(`Failed to open bean ${beanId}: ${(error as Error).message}`);
       return false;
     }
+  }
+
+  private async updateDetailsContextKeys(): Promise<void> {
+    await vscode.commands.executeCommand('setContext', 'beans.hasSelectedBean', Boolean(this._currentBean));
+    await vscode.commands.executeCommand('setContext', 'beans.detailsCanGoBack', this.canGoBack);
   }
 
   private getNonce(): string {

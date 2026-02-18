@@ -98,6 +98,13 @@
         "when": "beans.initialized"
       },
       {
+        "command": "beans.details.back",
+        "title": "Back to Previous Bean",
+        "category": "Beans",
+        "icon": "$(arrow-left)",
+        "when": "beans.initialized"
+      },
+      {
         "command": "beans.copilotStartWork",
         "title": "Copilot: Start Work on Bean",
         "category": "Beans",
@@ -190,7 +197,7 @@
         "command": "beans.searchView.clear",
         "title": "Clear Search Filters",
         "category": "Beans",
-        "icon": "$(close)",
+        "icon": "$(circle-slash)",
         "when": "beans.initialized"
       },
       {
@@ -278,38 +285,32 @@
     "views": {
       "beans": [
         {
-          "icon": "$(search)",
-          "id": "beans.search",
-          "name": "Search",
+          "icon": "$(issue-draft)",
+          "id": "beans.draft",
+          "name": "Draft",
           "when": "beans.initialized",
-          "visibility": "collapsed"
+          "visibility": "visible"
         },
         {
           "icon": "$(issue-opened)",
           "id": "beans.active",
           "name": "Active",
-          "when": "beans.initialized"
-        },
-        {
-          "icon": "$(issue-draft)",
-          "id": "beans.draft",
-          "name": "Draft",
           "when": "beans.initialized",
-          "visibility": "collapsed"
+          "visibility": "visible"
         },
         {
           "icon": "$(issue-closed)",
           "id": "beans.completed",
           "name": "Completed",
           "when": "beans.initialized",
-          "visibility": "collapsed"
+          "visibility": "visible"
         },
         {
-          "icon": "$(error)",
-          "id": "beans.scrapped",
-          "name": "Scrapped",
+          "icon": "$(search)",
+          "id": "beans.search",
+          "name": "Search",
           "when": "beans.initialized",
-          "visibility": "collapsed"
+          "visibility": "visible"
         },
         {
           "icon": "$(info)",
@@ -343,7 +344,7 @@
           "command": "beans.searchView.clear",
           "when": "view == beans.search && beans.initialized",
           "group": "navigation@3",
-          "icon": "$(close)"
+          "icon": "$(circle-slash)"
         },
         {
           "command": "beans.create",
@@ -366,14 +367,19 @@
           "group": "navigation@4"
         },
         {
+          "command": "beans.details.back",
+          "when": "view == beans.details && beans.hasSelectedBean && beans.detailsCanGoBack",
+          "group": "navigation@1"
+        },
+        {
           "command": "beans.edit",
           "when": "view == beans.details && beans.hasSelectedBean",
-          "group": "navigation"
+          "group": "navigation@2"
         },
         {
           "command": "beans.copilotStartWork",
           "when": "view == beans.details && beans.hasSelectedBean && beans.aiEnabled",
-          "group": "navigation@2"
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [

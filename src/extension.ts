@@ -1,3 +1,4 @@
+import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { BeansChatIntegration } from './beans/chat';
@@ -19,12 +20,7 @@ import { BeansCLINotFoundError } from './beans/model';
 import { BeansPreviewProvider } from './beans/preview';
 import { BeansService } from './beans/service';
 import { BeansFilterManager } from './beans/tree';
-import {
-  ActiveBeansProvider,
-  CompletedBeansProvider,
-  DraftBeansProvider,
-  ScrappedBeansProvider,
-} from './beans/tree/providers';
+import { ActiveBeansProvider, CompletedBeansProvider, DraftBeansProvider } from './beans/tree/providers';
 import { registerBeansTreeViews } from './beans/tree/registerBeansTreeViews';
 
 let beansService: BeansService | undefined;
@@ -32,7 +28,6 @@ let logger: BeansOutput;
 let activeProvider: ActiveBeansProvider | undefined;
 let completedProvider: CompletedBeansProvider | undefined;
 let draftProvider: DraftBeansProvider | undefined;
-let scrappedProvider: ScrappedBeansProvider | undefined;
 let filterManager: BeansFilterManager | undefined;
 let detailsProvider: BeansDetailsViewProvider | undefined;
 let mcpIntegration: BeansMcpIntegration | undefined;
@@ -149,6 +144,14 @@ export async function activate(context: vscode.ExtensionContext) {
         logger.show();
       })
     );
+    context.subscriptions.push(
+      vscode.commands.registerCommand('beans.details.back', async () => {
+        if (!detailsProvider) {
+          return;
+        }
+        await detailsProvider.goBackFromHistory();
+      })
+    );
     // Register beans.init command (special case - needed before initialization)
     context.subscriptions.push(
       vscode.commands.registerCommand('beans.init', async () => {
@@ -185,7 +188,6 @@ export async function activate(context: vscode.ExtensionContext) {
         activeProvider?.refresh();
         completedProvider?.refresh();
         draftProvider?.refresh();
-        scrappedProvider?.refresh();
       })
     );
 
@@ -349,9 +351,7 @@ async function shouldGenerateCopilotInstructionsOnInit(
     return false;
   }
 
-  const instructionsExists = await workspaceFileExists(workspaceRoot, COPILOT_INSTRUCTIONS_RELATIVE_PATH);
-  const skillExists = await workspaceFileExists(workspaceRoot, COPILOT_SKILL_RELATIVE_PATH);
-  if (instructionsExists && skillExists) {
+  if (await hasCopilotArtifacts(workspaceRoot)) {
     logger.info('Copilot instruction and skill artifacts already exist; skipping generation prompt');
     return false;
   }
@@ -375,6 +375,35 @@ async function shouldGenerateCopilotInstructionsOnInit(
   }
 
   logger.info('User skipped AI artifact generation for now');
+  return false;
+}
+
+async function hasCopilotArtifacts(primaryWorkspaceRoot: string): Promise<boolean> {
+  // Check the primary workspace root first.
+  if (
+    (await workspaceFileExists(primaryWorkspaceRoot, COPILOT_INSTRUCTIONS_RELATIVE_PATH)) &&
+    (await workspaceFileExists(primaryWorkspaceRoot, COPILOT_SKILL_RELATIVE_PATH))
+  ) {
+    return true;
+  }
+
+  // In multi-root workspaces, artifacts may live in another folder root.
+  const folderRoots = (vscode.workspace.workspaceFolders || []).map(folder => folder.uri.fsPath);
+  for (const root of folderRoots) {
+    if (root === primaryWorkspaceRoot) {
+      continue;
+    }
+    const hasInstructions = await workspaceFileExists(root, COPILOT_INSTRUCTIONS_RELATIVE_PATH);
+    if (!hasInstructions) {
+      continue;
+    }
+    const hasSkill = await workspaceFileExists(root, COPILOT_SKILL_RELATIVE_PATH);
+    if (hasSkill) {
+      logger.info(`Found existing Copilot artifacts in workspace folder: ${root}`);
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -429,6 +458,15 @@ function triggerCopilotAiArtifactSync(
 }
 
 async function workspaceFileExists(workspaceRoot: string, relativePath: string): Promise<boolean> {
+  const absolutePath = path.resolve(workspaceRoot, relativePath);
+
+  try {
+    await fs.access(absolutePath);
+    return true;
+  } catch {
+    // Fall through to workspace search to support virtual/remote workspaces.
+  }
+
   try {
     const normalizedRelativePath = relativePath.replace(/\\/g, '/');
     const matches = await vscode.workspace.findFiles(
@@ -455,7 +493,6 @@ function registerTreeViews(
   activeProvider = providers.activeProvider;
   completedProvider = providers.completedProvider;
   draftProvider = providers.draftProvider;
-  scrappedProvider = providers.scrappedProvider;
 }
 
 /**

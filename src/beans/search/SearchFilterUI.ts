@@ -3,28 +3,64 @@ import { BEAN_PRIORITIES, BEAN_STATUSES, BEAN_TYPES } from '../model';
 import { BeansFilterState } from '../tree/BeansFilterManager';
 
 type SearchFilterGroup = 'status' | 'type' | 'priority';
+type SearchFilterItem = vscode.QuickPickItem & { group?: SearchFilterGroup; value?: string };
+
+const STATUS_LABELS: Record<string, string> = {
+  todo: '$(issue-opened) Todo',
+  'in-progress': '$(loading~spin) In Progress',
+  completed: '$(issue-closed) Completed',
+  draft: '$(issue-draft) Draft',
+  scrapped: '$(trash) Scrapped',
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  task: '$(issues) Task',
+  bug: '$(bug) Bug',
+  feature: '$(lightbulb) Feature',
+  epic: '$(zap) Epic',
+  milestone: '$(milestone) Milestone',
+};
+
+const PRIORITY_LABELS: Record<string, string> = {
+  critical: '$(circle-large-filled) Critical',
+  high: '$(circle-large-filled) High',
+  normal: '$(circle-large-filled) Normal',
+  low: '$(circle-large-filled) Low',
+  deferred: '$(circle-large-filled) Deferred',
+};
+
+function prettyLabel(group: SearchFilterGroup, value: string): string {
+  if (group === 'status') {
+    return STATUS_LABELS[value] ?? value;
+  }
+  if (group === 'type') {
+    return TYPE_LABELS[value] ?? value;
+  }
+  return PRIORITY_LABELS[value] ?? value;
+}
 
 function buildSearchFilterItems(): vscode.QuickPickItem[] {
-  const groups: Array<{ title: string; description: SearchFilterGroup; values: readonly string[] }> = [
-    { title: 'Status', description: 'status', values: BEAN_STATUSES },
-    { title: 'Type', description: 'type', values: BEAN_TYPES },
-    { title: 'Priority', description: 'priority', values: BEAN_PRIORITIES },
+  const groups: Array<{ title: string; group: SearchFilterGroup; values: readonly string[] }> = [
+    { title: 'Status', group: 'status', values: BEAN_STATUSES },
+    { title: 'Type', group: 'type', values: BEAN_TYPES },
+    { title: 'Priority', group: 'priority', values: BEAN_PRIORITIES },
   ];
 
-  const items: vscode.QuickPickItem[] = [];
+  const items: SearchFilterItem[] = [];
   for (const group of groups) {
-    items.push({ kind: vscode.QuickPickItemKind.Separator, label: group.title } as vscode.QuickPickItem);
+    items.push({ kind: vscode.QuickPickItemKind.Separator, label: group.title });
     for (const value of group.values) {
-      items.push({ label: value, description: group.description });
+      items.push({
+        label: prettyLabel(group.group, value),
+        group: group.group,
+        value,
+      });
     }
   }
   return items;
 }
 
-function buildPreselectedSearchFilterItems(
-  items: vscode.QuickPickItem[],
-  state: BeansFilterState
-): vscode.QuickPickItem[] {
+function buildPreselectedSearchFilterItems(items: SearchFilterItem[], state: BeansFilterState): SearchFilterItem[] {
   const selected = new Set<string>();
   for (const value of state.statuses || []) {
     selected.add(value);
@@ -35,20 +71,20 @@ function buildPreselectedSearchFilterItems(
   for (const value of state.priorities || []) {
     selected.add(value);
   }
-  return items.filter(item => selected.has(item.label));
+  return items.filter(item => !!item.value && selected.has(item.value));
 }
 
 async function pickSearchFilterItems(
-  items: vscode.QuickPickItem[],
-  selectedItems: vscode.QuickPickItem[]
-): Promise<vscode.QuickPickItem[] | undefined> {
-  const qp = vscode.window.createQuickPick<vscode.QuickPickItem>();
+  items: SearchFilterItem[],
+  selectedItems: SearchFilterItem[]
+): Promise<SearchFilterItem[] | undefined> {
+  const qp = vscode.window.createQuickPick<SearchFilterItem>();
   qp.canSelectMany = true;
   qp.title = 'Filter Search Results';
   qp.items = items;
   qp.selectedItems = selectedItems;
 
-  const pickedItems = await new Promise<vscode.QuickPickItem[] | undefined>(resolve => {
+  const pickedItems = await new Promise<SearchFilterItem[] | undefined>(resolve => {
     qp.onDidAccept(() => resolve(Array.from(qp.selectedItems)));
     qp.onDidHide(() => resolve(undefined));
     qp.show();
@@ -57,19 +93,23 @@ async function pickSearchFilterItems(
   return pickedItems;
 }
 
-function mapPickedItemsToFilterState(pickedItems: vscode.QuickPickItem[]): BeansFilterState {
+function mapPickedItemsToFilterState(pickedItems: SearchFilterItem[]): BeansFilterState {
   const result: BeansFilterState = {};
   for (const pickedItem of pickedItems) {
-    const group = pickedItem.description as SearchFilterGroup | undefined;
+    const group = pickedItem.group;
+    const value = pickedItem.value;
+    if (!value) {
+      continue;
+    }
     if (group === 'status') {
       result.statuses = result.statuses || [];
-      result.statuses.push(pickedItem.label);
+      result.statuses.push(value);
     } else if (group === 'type') {
       result.types = result.types || [];
-      result.types.push(pickedItem.label);
+      result.types.push(value);
     } else if (group === 'priority') {
       result.priorities = result.priorities || [];
-      result.priorities.push(pickedItem.label);
+      result.priorities.push(value);
     }
   }
   return result;
