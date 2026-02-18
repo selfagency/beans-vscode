@@ -27,14 +27,16 @@ When a person asks to plan an epic, use this sequence:
 1. Confirm the epic goal, constraints, and definition of done.
 2. Propose a short issue map grouped by outcomes (for example: foundation, implementation, validation, docs).
 3. For each proposed child issue, include:
-  - concise title
-  - type (task/feature/bug)
-  - status (usually todo)
-  - priority
-  - rationale and dependencies
-4. Ask for a quick approval pass before creating issues.
-5. Create approved issues and link them to the epic via parent relationships.
-6. Report created issue IDs and suggest the best first issue to start.
+
+- concise title
+- type (task/feature/bug)
+- status (usually todo)
+- priority
+- rationale and dependencies
+
+1. Ask for a quick approval pass before creating issues.
+2. Create approved issues and link them to the epic via parent relationships.
+3. Report created issue IDs and suggest the best first issue to start.
 
 ### Planning output format
 
@@ -55,18 +57,13 @@ After approval, create issues and reply with:
 - `beans.setParent`, `beans.removeParent`, `beans.editBlocking`
 - `beans.search`, `beans.filter`, `beans.sort`, `beans.refresh`
 
-## Beans CLI baseline (from `beans prime`)
+## Beans GraphQL baseline (from `beans graphql --schema`)
 
-```text
-<EXTREMELY_IMPORTANT>
-# Beans Usage Guide for Agents
+For detailed data schema, run:
 
-This project uses **beans**, an agentic-first issue tracker. Issues are called "beans", and you can use the "beans" CLI to manage them.
-
-- **Always use beans instead of TodoWrite to manage your work and tasks.**
-- **Always use beans instead of writing todo lists.**
-
-All commands support `--json` for machine-readable output. Use this flag to parse responses easily.
+```bash
+beans graphql --schema
+```
 
 ## Track All Work With Beans
 
@@ -91,43 +88,35 @@ When the user asks what to work on next:
 
 ```bash
 # Find beans ready to start (not blocked, excludes in-progress/completed/scrapped/draft)
-beans list --json --ready
+beans graphql --json --query "{ beans(filter: { ready: true }) { id title status type priority } }"
 
-# View full details of specific beans (supports multiple IDs)
-beans show --json <id> [id...]
+# View full details of specific beans
+beans graphql --json --query "{ bean(id: \"<id>\") { id title status type priority body } }"
 ```
+
 </EXTREMELY_IMPORTANT>
 
 ## CLI Commands
 
 ```bash
-# List beans
-beans list --json                      # All beans
-beans list --json --ready              # Beans ready to start (not blocked, excludes in-progress/completed/scrapped/draft)
-beans list --json -t bug -s todo       # Filter by type and status
-beans list --json -S "authentication"  # Full-text search
-beans list --help                      # Full options
+# List all beans via GraphQL
+beans graphql --json --query "{ beans { id title status type priority } }"
 
-# View beans (supports multiple IDs)
-beans show --json <id> [id...]
+# Filter by type and status
+beans graphql --json --query "{ beans(filter: { type: [\"bug\"], status: [\"todo\"] }) { id title } }"
 
-# Create a bean (always specify -t type)
-beans create --json "Title" -t task -d "Description..." -s todo
+# Full-text search
+beans graphql --json --query "{ beans(filter: { search: \"authentication\" }) { id title } }"
 
-# Update a bean (metadata, body, or both)
-beans update --json <id> -s in-progress                        # Change status
-beans update --json <id> --parent <other-id>                   # Set parent relationship
-beans update --json <id> --blocking <other-id>                 # Mark as blocking another bean
-beans update --json <id> --blocked-by <other-id>               # Mark as blocked by another bean
-beans update --json <id> --body-replace-old "old" --body-replace-new "new"  # Replace text
-beans update --json <id> --body-append "## Notes"              # Append to body
-beans update --json <id> -s completed --body-replace-old "- [ ] Task" --body-replace-new "- [x] Task"  # Combined
+# Create a bean via Mutation
+beans graphql --json --query "mutation { createBean(input: { title: \"Title\", type: \"task\", body: \"Description...\", status: \"todo\" }) { id } }"
 
-# Archive completed/scrapped beans (only when user requests)
+# Update status
+beans graphql --json --query "mutation { updateBean(id: \"<id>\", input: { status: \"in-progress\" }) { id status } }"
+
+# Archive completed/scrapped beans (direct command still supported)
 beans archive
 ```
-
-Use `beans <command> --help` for full options. Use `--json` for machine-readable output.
 
 ## Relationships
 
@@ -172,21 +161,26 @@ Beans without a priority are treated as `normal` priority for sorting purposes.
 Use `beans update` to modify body content along with metadata changes:
 
 **Replace text (exact match, must occur exactly once):**
+
 ```bash
 beans update <id> --body-replace-old "- [ ] Task 1" --body-replace-new "- [x] Task 1"
 ```
+
 - Errors if text not found or found multiple times
 - Use empty string to delete the matched text
 
 **Append content:**
+
 ```bash
 beans update <id> --body-append "## Notes\n\nAdded content"
 echo "Multi-line content" | beans update <id> --body-append -
 ```
+
 - Adds text to end of body with blank line separator
 - Use `-` to read from stdin
 
 **Combined with metadata changes:**
+
 ```bash
 beans update <id> \
   --body-replace-old "- [ ] Deploy to prod" --body-replace-new "- [x] Deploy to prod" \
@@ -194,6 +188,7 @@ beans update <id> \
 ```
 
 **Multiple replacements (via GraphQL):**
+
 ```bash
 beans query 'mutation {
   updateBean(id: "<id>", input: {
@@ -208,6 +203,7 @@ beans query 'mutation {
   }) { id body etag }
 }'
 ```
+
 - Replacements execute sequentially (each operates on result of previous)
 - Append applied after all replacements
 - All operations atomic with single etag validation
@@ -216,6 +212,7 @@ beans query 'mutation {
 ## Concurrency Control
 
 Use etags with `--if-match`:
+
 ```bash
 ETAG=$(beans show <id> --etag-only)
 beans update <id> --if-match "$ETAG" ...
@@ -247,4 +244,7 @@ beans query --json '{ beans(filter: { type: ["bug"], priority: ["critical", "hig
 # Search with text
 beans query --json '{ beans(filter: { search: "authentication" }) { id title body } }'
 ```
+
+```
+
 ```

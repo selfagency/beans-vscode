@@ -117,7 +117,7 @@ jobs:
 
           echo ""
           echo "=== Listing beans ==="
-          BEAN_COUNT=$(beans list --json | jq "length")
+          BEAN_COUNT=$(beans graphql --json "{ beans { id } }" | jq ".data.beans | length")
           echo "Found $BEAN_COUNT beans"
 
           if [ "$BEAN_COUNT" -ne 3 ]; then
@@ -127,13 +127,13 @@ jobs:
 
           echo ""
           echo "=== Testing bean operations ==="
-          FIRST_BEAN=$(beans list --json | jq -r ".[0].id")
+          FIRST_BEAN=$(beans graphql --json "{ beans { id } }" | jq -r ".data.beans[0].id")
           echo "Testing with bean: $FIRST_BEAN"
 
-          beans show "$FIRST_BEAN" --json | jq .
-          beans update "$FIRST_BEAN" -s completed
+          beans graphql --json "{ bean(id: \"$FIRST_BEAN\") { id title status } }" | jq .
+          beans graphql --json "mutation { updateBean(id: \"$FIRST_BEAN\", input: { status: \"completed\" }) { id status } }"
 
-          STATUS=$(beans show "$FIRST_BEAN" --json | jq -r ".status")
+          STATUS=$(beans graphql --json "{ bean(id: \"$FIRST_BEAN\") { status } }" | jq -r ".data.bean.status")
           if [ "$STATUS" != "completed" ]; then
             echo "ERROR: Bean status should be completed, got $STATUS"
             exit 1
@@ -141,7 +141,7 @@ jobs:
 
           echo ""
           echo "=== Testing GraphQL query ==="
-          beans query "{ beans { id title status type } }" --json | jq .
+          beans graphql --json "{ beans { id title status type } }" | jq .
 
           echo ""
           echo "✅ All remote compatibility tests passed!"
@@ -255,8 +255,8 @@ jobs:
 
             echo ""
             echo "=== Creating and listing beans ==="
-            beans create "DevContainer Test" -t task -s todo
-            beans list --json | jq .
+            beans graphql --json "mutation { createBean(input: { title: \"DevContainer Test\", type: \"task\", status: \"todo\" }) { id } }"
+            beans graphql --json "{ beans { id title } }" | jq .
 
             echo ""
             echo "✅ DevContainer test passed!"
@@ -302,8 +302,8 @@ jobs:
 
             echo ""
             echo "=== Creating and listing beans ==="
-            beans create "DevContainer Test" -t task -s todo
-            beans list --json | jq .
+            beans graphql --json "mutation { createBean(input: { title: \"DevContainer Test\", type: \"task\", status: \"todo\" }) { id } }"
+            beans graphql --json "{ beans { id title } }" | jq .
 
             echo ""
             echo "✅ DevContainer test passed!"

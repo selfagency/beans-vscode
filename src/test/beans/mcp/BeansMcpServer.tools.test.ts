@@ -68,10 +68,14 @@ function setupExecFileMock(): void {
     }
 
     if (args[0] === 'graphql') {
+      if (args.includes('--schema')) {
+        return done('prime output\n');
+      }
+
       const query = args[args.indexOf('graphql') + 2];
       const variables = args.includes('--variables') ? JSON.parse(args[args.indexOf('--variables') + 1]) : {};
 
-      if (query.includes('ListBeans')) {
+      if (query && query.includes('ListBeans')) {
         let beans = [
           { id: 'bean-active', title: 'Active', status: 'todo', type: 'task', tags: ['frontend'] },
           { id: 'bean-done', title: 'Done', status: 'completed', type: 'bug', tags: ['backend'] },

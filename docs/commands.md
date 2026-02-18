@@ -87,7 +87,7 @@ Refresh all tree views to reflect latest changes from filesystem.
 
 **What it does**:
 
-- Executes `beans list --json` to fetch all beans
+- Executes `beans graphql` to fetch all beans
 - Updates Active, Draft, Completed, and Scrapped tree views
 - Re-applies current filters and sort mode
 

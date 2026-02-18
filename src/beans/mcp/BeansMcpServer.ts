@@ -239,7 +239,7 @@ class BeansCliBackend {
   }
 
   async prime(): Promise<string> {
-    const { stdout } = await execFileAsync(this.cliPath, ['prime'], {
+    const { stdout } = await execFileAsync(this.cliPath, ['graphql', '--schema'], {
       cwd: this.workspaceRoot,
       env: process.env,
       maxBuffer: 10 * 1024 * 1024,
@@ -875,7 +875,7 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
     {
       title: 'LLM Context for Beans Workflows',
       description:
-        'Returns generated Copilot/LLM instructions based on `beans prime` and extension/MCP guidance; can optionally write instructions file to workspace.',
+        'Returns generated Copilot/LLM instructions based on `beans graphql --schema` and extension/MCP guidance; can optionally write instructions file to workspace.',
       inputSchema: z.object({
         writeToWorkspaceInstructions: z.boolean().default(false),
       }),

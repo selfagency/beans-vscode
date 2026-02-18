@@ -532,9 +532,9 @@ export class BeansService {
     const allowPartial = options?.allowPartial ?? false;
 
     // Validate additional required fields for full Bean interface payloads.
-    // Some Beans CLI responses (notably `list --json`) can omit content-heavy fields
-    // like `body` and metadata fields like `etag`, so list normalization supports
-    // partial payloads and supplies safe fallbacks.
+    // Some Beans CLI responses (notably the `beans` query) can omit content-heavy
+    // fields like `body` and metadata fields like `etag`, so list normalization
+    // supports partial payloads and supplies safe fallbacks.
     if (
       !allowPartial &&
       (rawBean.slug === undefined ||
@@ -616,7 +616,7 @@ export class BeansService {
     try {
       return this.normalizeBean(beanData);
     } catch (error) {
-      // Some Beans CLI versions can return partial payloads for `show --json`
+      // Some Beans CLI versions can return partial payloads for GraphQL queries.
       // (omitting fields like slug/path/body/etag). Keep strict validation for
       // core identity fields, but gracefully accept partial metadata.
       if (error instanceof BeansJSONParseError) {
@@ -1073,9 +1073,9 @@ export class BeansService {
   }
 
   /**
-   * Get project-focused guidance text from `beans prime`.
+   * Get project-focused guidance text from `beans graphql --schema`.
    */
   async prime(): Promise<string> {
-    return (await this.executeText(['prime'])).trim();
+    return (await this.executeText(['graphql', '--schema'])).trim();
   }
 }

@@ -835,7 +835,8 @@ describe('BeansService', () => {
   describe('prime', () => {
     it('returns guidance text', async () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('prime');
+        expect(args).toContain('graphql');
+        expect(args).toContain('--schema');
         callback(null, { stdout: 'Guidance text here\n', stderr: '' });
       });
 
