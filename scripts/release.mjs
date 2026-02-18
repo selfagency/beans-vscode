@@ -228,8 +228,10 @@ async function main() {
   // Give GitHub a moment to register the push before we start polling.
   await sleep(10_000);
 
+  const spinner = ora({ text: 'CI: queued' }).start();
   for (const name of ['CI', 'Remote Compatibility Tests']) {
-    const spinner = ora({ text: `${name}: queued` }).start();
+    spinner.text = `${name}: queued`;
+    spinner.start();
     await waitForWorkflow(octokit, name, owner, repo, headSha, spinner);
   }
 
