@@ -27,19 +27,32 @@ const tag = `v${version}`;
 // Rollback state
 //   commitLocal  — release commit exists locally but has not been pushed
 //   commitPushed — release commit has been pushed to origin/main
-//   releaseDone  — tag has been pushed; release is complete, nothing to undo
+//   tagPushed    — tag has been pushed but release workflow has not yet succeeded
+//   releaseDone  — release workflow succeeded; nothing to undo
 // ---------------------------------------------------------------------------
 
 let commitLocal = false;
 let commitPushed = false;
+let tagPushed = false;
 let releaseDone = false;
 
 async function rollback() {
   if (releaseDone) {return;}
   $.verbose = false;
   try {
+    if (tagPushed) {
+      console.log(`\n⚠️  Release workflow failed or was interrupted. Deleting remote tag ${tag}...`);
+      try {
+        await $`git push origin --delete ${tag}`;
+        await $`git tag -d ${tag}`;
+        console.log(`↩️  Tag ${tag} deleted from remote and local.`);
+      } catch {
+        console.error(`❌ Could not delete tag. Manually run:`);
+        console.error(`   git push origin --delete ${tag} && git tag -d ${tag}`);
+      }
+    }
     if (commitPushed) {
-      console.log('\n⚠️  Release aborted after push. Reverting release commit on origin/main...');
+      console.log('\n⚠️  Reverting release commit on origin/main...');
       try {
         await $`git revert --no-edit HEAD`;
         await $`git push origin main`;
@@ -252,6 +265,16 @@ async function main() {
 
   console.log(`🚀 Pushing tag ${tag}...`);
   await $`git push origin ${tag}`;
+  tagPushed = true;
+
+  // --- Watch the release workflow ------------------------------------------
+
+  spinner.text = 'Release: waiting for workflow to trigger...';
+  spinner.start();
+  await waitForWorkflow(octokit, 'Release', owner, repo, headSha, spinner, {
+    autoDispatch: false,
+    branch: null,
+  });
 
   releaseDone = true;
   console.log(`✅ Release complete: ${tag} → ${headSha}`);
@@ -268,10 +291,8 @@ async function waitForWorkflow(
   repo,
   headSha,
   spinner,
-  { timeoutMs = 3_600_000, pollMs = 15_000 } = {},
+  { timeoutMs = 3_600_000, pollMs = 15_000, autoDispatch = true, branch = 'main' } = {},
 ) {
-  const shortSha = headSha.slice(0, 7);
-
   // Resolve the workflow ID by name.
   const workflowsResp = await octokit.actions.listRepoWorkflows({ owner, repo, per_page: 100 });
   const workflow = workflowsResp.data.workflows.find((w) => w.name === name);
@@ -291,7 +312,7 @@ async function waitForWorkflow(
       owner,
       repo,
       workflow_id: workflow.id,
-      branch: 'main',
+      ...(branch ? { branch } : {}),
       head_sha: headSha,
       per_page: 10,
     });
@@ -300,7 +321,7 @@ async function waitForWorkflow(
     const run = runsResp.data.workflow_runs.find((r) => !cancelledRunIds.has(r.id));
 
     if (!run) {
-      if (!triggered) {
+      if (autoDispatch && !triggered) {
         spinner.text = `${name}: no run found — triggering workflow_dispatch...`;
         await octokit.actions.createWorkflowDispatch({ owner, repo, workflow_id: workflow.id, ref: 'main' });
         triggered = true;
