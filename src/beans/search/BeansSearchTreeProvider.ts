@@ -5,6 +5,22 @@ import { BeansService } from '../service';
 import { BeanTreeItem } from '../tree/BeanTreeItem';
 import { BeansFilterState } from '../tree/BeansFilterManager';
 
+const PRIORITY_ORDER: Record<string, number> = {
+  critical: 0,
+  high: 1,
+  normal: 2,
+  low: 3,
+  deferred: 4,
+};
+
+const STATUS_ORDER: Record<string, number> = {
+  'in-progress': 0,
+  todo: 1,
+  draft: 2,
+  completed: 3,
+  scrapped: 4,
+};
+
 /**
  * TreeDataProvider showing flat search results for beans.
  * Single-level, non-hierarchical list suitable for the sidebar.
@@ -53,8 +69,8 @@ export class BeansSearchTreeProvider implements vscode.TreeDataProvider<BeanTree
       if (this.currentFilter?.types && this.currentFilter.types.length > 0) {
         options.type = this.currentFilter.types as string[];
       }
-      if ((this.currentFilter as any)?.statuses && (this.currentFilter as any).statuses.length > 0) {
-        options.status = (this.currentFilter as any).statuses as string[];
+      if (this.currentFilter?.statuses && this.currentFilter.statuses.length > 0) {
+        options.status = this.currentFilter.statuses;
       }
 
       // Request beans from service
@@ -88,58 +104,86 @@ export class BeansSearchTreeProvider implements vscode.TreeDataProvider<BeanTree
   }
 
   private matchesQuery(bean: Bean, q: string): boolean {
-    const fields = [bean.id, bean.code || '', bean.title, bean.body || '', bean.status, bean.type, bean.priority || ''];
-    if (bean.tags && bean.tags.length > 0) {
+    const fields: Array<unknown> = [bean.id, bean.code, bean.title, bean.body, bean.status, bean.type, bean.priority];
+    if (Array.isArray(bean.tags) && bean.tags.length > 0) {
       fields.push(...bean.tags);
     }
-    return fields.some(f => f.toLowerCase().includes(q));
+    return fields.some(field => this.toLower(field).includes(q));
   }
 
   private scoreRelevance(bean: Bean, q: string): number {
     if (!q) {
       return 0;
     }
-    let score = 0;
-    const idLower = bean.id.toLowerCase();
-    const codeLower = (bean.code || '').toLowerCase();
-    const titleLower = bean.title.toLowerCase();
+    return (
+      this.scoreIdentityMatch(bean, q) +
+      this.scoreTitleMatch(bean, q) +
+      this.scoreContentMatch(bean, q) +
+      this.scoreMetadataMatch(bean, q)
+    );
+  }
+
+  private scoreIdentityMatch(bean: Bean, q: string): number {
+    const idLower = this.toLower(bean.id);
+    const codeLower = this.toLower(bean.code);
 
     if (idLower === q || codeLower === q) {
-      score += 1000;
-    } else if (idLower.startsWith(q) || codeLower.startsWith(q)) {
-      score += 500;
-    } else if (idLower.includes(q) || codeLower.includes(q)) {
-      score += 300;
+      return 1000;
     }
+    if (idLower.startsWith(q) || codeLower.startsWith(q)) {
+      return 500;
+    }
+    if (idLower.includes(q) || codeLower.includes(q)) {
+      return 300;
+    }
+    return 0;
+  }
 
+  private scoreTitleMatch(bean: Bean, q: string): number {
+    const titleLower = this.toLower(bean.title);
     if (titleLower === q) {
-      score += 200;
-    } else if (titleLower.startsWith(q)) {
-      score += 150;
-    } else if (titleLower.includes(q)) {
-      score += 100;
+      return 200;
     }
+    if (titleLower.startsWith(q)) {
+      return 150;
+    }
+    if (titleLower.includes(q)) {
+      return 100;
+    }
+    return 0;
+  }
 
-    if ((bean.body || '').toLowerCase().includes(q)) {
+  private scoreContentMatch(bean: Bean, q: string): number {
+    let score = 0;
+    if (this.toLower(bean.body).includes(q)) {
       score += 20;
     }
-    if ((bean.tags || []).some(t => t.toLowerCase().includes(q))) {
+    if ((bean.tags || []).some(t => this.toLower(t).includes(q))) {
       score += 15;
     }
-    if (
-      bean.status.toLowerCase().includes(q) ||
-      bean.type.toLowerCase().includes(q) ||
-      (bean.priority || '').toLowerCase().includes(q)
-    ) {
-      score += 10;
-    }
-
     return score;
+  }
+
+  private scoreMetadataMatch(bean: Bean, q: string): number {
+    if (
+      this.toLower(bean.status).includes(q) ||
+      this.toLower(bean.type).includes(q) ||
+      this.toLower(bean.priority).includes(q)
+    ) {
+      return 10;
+    }
+    return 0;
+  }
+
+  private toLower(value: unknown): string {
+    if (typeof value === 'string') {
+      return value.toLowerCase();
+    }
+    return '';
   }
 
   private sortBeans(beans: Bean[]): Bean[] {
     const q = (this.currentFilter?.text || '').toLowerCase();
-    const priorityOrder: Record<string, number> = { critical: 0, high: 1, normal: 2, low: 3, deferred: 4 };
 
     return [...beans].sort((a, b) => {
       if (q) {
@@ -150,16 +194,15 @@ export class BeansSearchTreeProvider implements vscode.TreeDataProvider<BeanTree
         }
       }
 
-      const pa = priorityOrder[a.priority || 'normal'] ?? 2;
-      const pb = priorityOrder[b.priority || 'normal'] ?? 2;
+      const pa = PRIORITY_ORDER[a.priority || 'normal'] ?? 2;
+      const pb = PRIORITY_ORDER[b.priority || 'normal'] ?? 2;
       if (pa !== pb) {
         return pa - pb;
       }
 
       // Keep in-progress higher
-      const statusOrder: Record<string, number> = { 'in-progress': 0, todo: 1, draft: 2, completed: 3, scrapped: 4 };
-      const sa = statusOrder[a.status] ?? 5;
-      const sb = statusOrder[b.status] ?? 5;
+      const sa = STATUS_ORDER[a.status] ?? 5;
+      const sb = STATUS_ORDER[b.status] ?? 5;
       if (sa !== sb) {
         return sa - sb;
       }

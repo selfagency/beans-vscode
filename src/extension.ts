@@ -15,7 +15,7 @@ import {
 import { BeansDetailsViewProvider } from './beans/details';
 import { BeansOutput } from './beans/logging';
 import { BeansMcpIntegration } from './beans/mcp';
-import { Bean, BeansCLINotFoundError, BeanType } from './beans/model';
+import { Bean, BEAN_PRIORITIES, BEAN_STATUSES, BEAN_TYPES, BeansCLINotFoundError, BeanType } from './beans/model';
 import { BeansPreviewProvider } from './beans/preview';
 import { BeansSearchTreeProvider } from './beans/search/BeansSearchTreeProvider';
 import { BeansService } from './beans/service';
@@ -551,13 +551,14 @@ function registerTreeViews(
 
   // Helper: hierarchical QuickPick UI for search filters
   async function showSearchFilterUI(current?: import('./beans/tree/BeansFilterManager').BeansFilterState) {
+    const normalizedCurrent = sanitizeSearchFilterState(current);
     const qp = vscode.window.createQuickPick();
     qp.canSelectMany = true;
     qp.title = 'Filter Search Results';
 
-    const statuses = ['in-progress', 'todo', 'draft', 'completed', 'scrapped'];
-    const types = ['milestone', 'epic', 'feature', 'bug', 'task'];
-    const priorities = ['critical', 'high', 'normal', 'low', 'deferred'];
+    const statuses = [...BEAN_STATUSES];
+    const types = [...BEAN_TYPES];
+    const priorities = [...BEAN_PRIORITIES];
 
     const items: vscode.QuickPickItem[] = [];
     items.push({ kind: vscode.QuickPickItemKind.Separator, label: 'Status' } as any);
@@ -577,14 +578,14 @@ function registerTreeViews(
 
     // Preselect existing values if present
     const preselect: vscode.QuickPickItem[] = [];
-    if (current?.types) {
-      preselect.push(...qp.items.filter(i => current.types!.includes(i.label)));
+    if (normalizedCurrent.types) {
+      preselect.push(...qp.items.filter(i => normalizedCurrent.types!.includes(i.label)));
     }
-    if (current?.priorities) {
-      preselect.push(...qp.items.filter(i => current.priorities!.includes(i.label)));
+    if (normalizedCurrent.priorities) {
+      preselect.push(...qp.items.filter(i => normalizedCurrent.priorities!.includes(i.label)));
     }
-    if (current?.tags) {
-      preselect.push(...qp.items.filter(i => current.tags!.includes(i.label)));
+    if (normalizedCurrent.statuses) {
+      preselect.push(...qp.items.filter(i => normalizedCurrent.statuses!.includes(i.label)));
     }
     qp.selectedItems = preselect;
 
@@ -599,7 +600,7 @@ function registerTreeViews(
       return undefined;
     }
 
-    const result: any = {};
+    const result: import('./beans/tree/BeansFilterManager').BeansFilterState = {};
     for (const p of picked) {
       const desc = p.description;
       if (desc === 'type') {
@@ -614,7 +615,61 @@ function registerTreeViews(
       }
     }
 
-    return result as import('./beans/tree/BeansFilterManager').BeansFilterState;
+    return sanitizeSearchFilterState(result);
+  }
+
+  function sanitizeSearchFilterState(
+    current?: import('./beans/tree/BeansFilterManager').BeansFilterState
+  ): import('./beans/tree/BeansFilterManager').BeansFilterState {
+    if (!current) {
+      return {};
+    }
+
+    const normalized: import('./beans/tree/BeansFilterManager').BeansFilterState = {};
+
+    if (typeof current.text === 'string') {
+      const text = current.text.trim();
+      if (text.length > 0) {
+        normalized.text = text;
+      }
+    }
+
+    if (Array.isArray(current.tags)) {
+      normalized.tags = current.tags.filter((t): t is string => typeof t === 'string' && t.trim().length > 0);
+      if (normalized.tags.length === 0) {
+        delete normalized.tags;
+      }
+    }
+
+    if (Array.isArray(current.statuses)) {
+      const allowedStatuses = new Set(BEAN_STATUSES);
+      normalized.statuses = current.statuses.filter(
+        (s): s is string => typeof s === 'string' && allowedStatuses.has(s as any)
+      );
+      if (normalized.statuses.length === 0) {
+        delete normalized.statuses;
+      }
+    }
+
+    if (Array.isArray(current.types)) {
+      const allowedTypes = new Set(BEAN_TYPES);
+      normalized.types = current.types.filter((t): t is string => typeof t === 'string' && allowedTypes.has(t as any));
+      if (normalized.types.length === 0) {
+        delete normalized.types;
+      }
+    }
+
+    if (Array.isArray(current.priorities)) {
+      const allowedPriorities = new Set(BEAN_PRIORITIES);
+      normalized.priorities = current.priorities.filter(
+        (p): p is string => typeof p === 'string' && allowedPriorities.has(p as any)
+      );
+      if (normalized.priorities.length === 0) {
+        delete normalized.priorities;
+      }
+    }
+
+    return normalized;
   }
 
   const completedTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.completed', {
