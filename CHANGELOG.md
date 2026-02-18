@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-02-18
+
+## What's Changed
+* feat: native search tree, details back nav, and pane layout updates by @selfagency in https://github.com/selfagency/beans-vscode/pull/28
+* fix: handle resolveReviewThread permission errors gracefully by @selfagency in https://github.com/selfagency/beans-vscode/pull/29
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.0.5...v1.1.0
+
+_Source: changes from v1.0.5 to v1.1.0._
+
+
 ### Changed
 
 - Renamed generated Copilot instructions artifact path from `.github/instructions/beans.instructions.md` to `.github/instructions/tasks.instructions.md` across init flows, code references, and tests.
