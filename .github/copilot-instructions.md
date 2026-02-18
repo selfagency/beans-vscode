@@ -60,8 +60,6 @@ where `codiconFontUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 
 
 `vitest.config.ts` aliases `vscode` → `src/test/mocks/vscode.ts`. Tests live under `src/test/`. Do not import `vscode` directly in tests — use the mock.
 
-## Security constraints
-
 ## Tool usage priority
 
 **Always prefer extension commands and MCP tools over CLIs.** The priority depends on context:
