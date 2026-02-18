@@ -63,7 +63,7 @@ This skill drives all Beans issue tracker operations in this workspace using the
 | `beans.view`             | Open bean details sidebar                                 |
 | `beans.edit`             | Edit bean body/frontmatter in editor                      |
 | `beans.setStatus`        | Change status (todo → in-progress → completed / scrapped) |
-| `beans.setType`          | Change type (task / feature / bug / milestone)            |
+| `beans.setType`          | Change type (task / feature / bug / epic / milestone)     |
 | `beans.setPriority`      | Change priority (① critical … ⑤ low)                      |
 | `beans.setParent`        | Link a bean to a parent epic                              |
 | `beans.removeParent`     | Remove parent link                                        |
@@ -141,6 +141,8 @@ Group proposed child issues by outcome phase. Present a compact checklist for us
 ```text
 - [ ] <title> — type=<task|feature|bug>, priority=<①–⑤>, depends_on=<bean-ids or none>
 ```
+
+Child beans for an epic typically use `task`, `feature`, or `bug` types. `epic` and `milestone` are valid bean types in Beans, but reserve them for higher-level work or nested structures when the user explicitly asks for additional epics or milestones.
 
 Example phases: **Foundation**, **Implementation**, **Validation**, **Documentation**, **Deployment**.
 
