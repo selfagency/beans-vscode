@@ -9,24 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [1.1.1] - 2026-02-18
-
-## What's Changed
-* fix: resolve codicon icons and font not loading in details/search webviews by @selfagency in https://github.com/selfagency/beans-vscode/pull/30
-* fix: explicitly pass github-token to github-script + docs: MCP/command priority by @selfagency in https://github.com/selfagency/beans-vscode/pull/33
-* feat: improve Copilot instructions and skills generation by @selfagency in https://github.com/selfagency/beans-vscode/pull/32
-* fix(release): trigger missing CI workflows instead of blocking by @selfagency in https://github.com/selfagency/beans-vscode/pull/36
-* fix: remove unneeded defensive code flagged by CodeQL by @selfagency in https://github.com/selfagency/beans-vscode/pull/37
-* fix(release): guard against dispatch race condition and improve error handling by @selfagency in https://github.com/selfagency/beans-vscode/pull/38
-* feat(release): poll CI and Remote Compatibility Tests in parallel by @selfagency in https://github.com/selfagency/beans-vscode/pull/39
-* feat(ci): cache dependencies; fix release gating for workflow-only merges by @selfagency in https://github.com/selfagency/beans-vscode/pull/40
-
-
-**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.1.0...v1.1.1
-
-_Source: changes from v1.1.0 to v1.1.1._
-
-
 ## [1.1.0] - 2026-02-18
 
 ## What's Changed
