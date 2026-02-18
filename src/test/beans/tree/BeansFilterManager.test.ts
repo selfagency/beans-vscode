@@ -155,6 +155,15 @@ describe('BeansFilterManager', () => {
     await expect(manager.showFilterUI()).resolves.toEqual({ priorities: undefined });
   });
 
+  it('sets selected priorities from multi-select using value field', async () => {
+    showQuickPick.mockResolvedValueOnce({ label: 'Filter by Priority', value: 'priorities' }).mockResolvedValueOnce([
+      { label: '① Critical', value: 'critical' },
+      { label: '④ Low', value: 'low' },
+    ]);
+
+    await expect(manager.showFilterUI()).resolves.toEqual({ priorities: ['critical', 'low'] });
+  });
+
   it('disposes internal resources', () => {
     expect(() => manager.dispose()).not.toThrow();
   });

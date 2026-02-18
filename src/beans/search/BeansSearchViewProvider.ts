@@ -280,11 +280,9 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
   private getHtml(webview: vscode.Webview): string {
     const nonce = this.getNonce();
     const codiconStylesUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
+      vscode.Uri.joinPath(this.extensionUri, 'dist', 'media', 'codicon.css')
     );
-    const codiconFontUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.ttf')
-    );
+    const codiconFontUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'media', 'codicon.ttf'));
     const csp = [
       "default-src 'none'",
       `font-src ${webview.cspSource}`,
