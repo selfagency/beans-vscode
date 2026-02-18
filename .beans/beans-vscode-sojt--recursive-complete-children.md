@@ -6,7 +6,8 @@ type: epic
 priority: high
 created_at: 2026-02-18T22:03:04Z
 updated_at: 2026-02-18T22:03:17Z
-branch: feature/beans-vscode-aiks-recursive-complete-children
+branch: feature/graphql
+pr: 45
 ---
 
 Implement recursive status propagation from parent to all children in BeansService. Ensure idempotency and bulk operations for efficiency.
