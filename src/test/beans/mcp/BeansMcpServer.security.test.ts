@@ -95,19 +95,23 @@ describe('BeansMcpServer security review', () => {
       );
     });
 
-    it('should reject flags provided as beanIds if not handled carefully', async () => {
-      // In this case, we're testing if we could pass "--version" as a beanId and have it be interpreted as a flag
+    it('should treat flag-like beanIds as literal positional arguments', async () => {
+      // In this case, we're testing that passing "--version" as a beanId does NOT inject an extra CLI flag,
+      // but is instead forwarded as the bean identifier positional argument.
       const viewTool = toolHandlers.get('beans_vscode_view')!;
       await viewTool({ beanId: '--version' });
 
-      // We should check exactly what the call was
-      expect(execFileMock).toHaveBeenCalled();
+      // Validate the exact execFile invocation to ensure safe argument ordering.
+      expect(execFileMock).toHaveBeenCalledTimes(1);
       const call = execFileMock.mock.calls[0];
-      const args = call[1];
-      // It should look like: ["show", "--json", "--version"]
-      // Actually, since it's execFile, this is okay as long as `show` doesn't interpret "--version" as an override for its own command line.
-      // But we can harden it if `beans` supported `--`.
-      expect(args).toContain('--version');
+      const cliArgs = call[1];
+      // Expected layout: ["show", "--json", beanId]
+      expect(Array.isArray(cliArgs)).toBe(true);
+      expect(cliArgs[0]).toBe('show');
+      expect(cliArgs[1]).toBe('--json');
+      // Here, "--version" is the beanId positional, not a separate flag injected before or after.
+      expect(cliArgs[2]).toBe('--version');
+      expect(cliArgs.length).toBe(3);
     });
   });
 
