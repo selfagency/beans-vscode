@@ -36,6 +36,7 @@ jobs:
         id: tag
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -159,6 +160,7 @@ jobs:
         id: changelog_notes
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -194,21 +196,24 @@ jobs:
             core.setOutput('previous_tag', previousTag);
             core.setOutput('notes', notesResponse.data.body ?? '');
 
+      - name: Write release notes to file
+        run: printf '%s' "$RELEASE_NOTES" > release-notes.md
+        env:
+          RELEASE_NOTES: ${{ steps.changelog_notes.outputs.notes }}
+
       # NOTE: Version/changelog mutation and commit/tag operations were moved to
       # local automation (`scripts/deploy.sh`) to comply with branch rules that
       # require PR-based changes on main.
       - name: Skip repo mutation in release workflow
         run: echo "Version/changelog updates are performed locally before tagging."
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "22"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -224,7 +229,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.detect-tag.outputs.release_tag }}
-          body: ${{ steps.changelog_notes.outputs.notes }}
+          body_path: release-notes.md
           files: "beans-vscode.vsix"
           draft: false
           prerelease: false
