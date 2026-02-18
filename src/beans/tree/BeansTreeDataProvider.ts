@@ -1,3 +1,15 @@
+/**
+ * Module: beans/tree
+ *
+ * Provides tree data providers to render Beans as hierarchical or flat lists
+ * in the VS Code UI. This module contains caching strategies tuned for
+ * performance (parent->children map and in-progress descendant markers) so
+ * that tree operations remain fast on large repositories.
+ *
+ * Contributor notes:
+ * - Keep `rebuildCaches` and sorting logic deterministic and covered by tests
+ * - `flatList` mode intentionally flattens parent relationships for filtered views
+ */
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
 import { Bean, BeanStatus, BeanType } from '../model';

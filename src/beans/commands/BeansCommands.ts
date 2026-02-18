@@ -1,3 +1,20 @@
+/**
+ * Module: beans/commands
+ *
+ * Implements the commands surface for the Beans extension. This module maps
+ * user-invoked commands (from the palette, tree, or webviews) to business logic
+ * implemented by `BeansService` and coordinates UI interactions (quick picks,
+ * notifications, and webviews).
+ *
+ * Key responsibilities:
+ * - Register all contributed commands with VS Code
+ * - Provide user-friendly error handling via `handleBeansError`
+ * - Compose Copilot prompts and handle different VS Code chat command shapes
+ *
+ * Contributor notes:
+ * - Keep command handlers small and delegate CLI work to `BeansService`
+ * - When adding commands, update `package.json` contributions and tests
+ */
 import * as vscode from 'vscode';
 import { BeansConfigManager } from '../config';
 import { BeansDetailsViewProvider } from '../details';

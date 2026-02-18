@@ -1,3 +1,20 @@
+/**
+ * Module: extension
+ *
+ * Entry point for the Beans VS Code extension. This module wires up the
+ * extension activation lifecycle, registers providers (trees, webviews,
+ * preview), command handlers, and optional AI integrations (MCP / chat).
+ *
+ * High-level responsibilities:
+ * - Initialize and validate workspace + Beans CLI availability
+ * - Register MCP and Chat integrations when `beans.ai.enabled` is true
+ * - Register tree providers and webviews when workspace is initialized
+ * - Provide file-system watchers and configuration change handlers
+ *
+ * Notes for contributors:
+ * - Keep activation fast; avoid long-running work on startup
+ * - Use `BeansOutput` for logging (mirrored to .beans/.vscode/beans-output.log)
+ */
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as vscode from 'vscode';

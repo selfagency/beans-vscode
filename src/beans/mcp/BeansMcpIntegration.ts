@@ -1,3 +1,19 @@
+/**
+ * Module: beans/mcp
+ *
+ * Exposes an MCP (Model Context Protocol) server definition for the Beans
+ * CLI. This integration allows external LLM-backed features (Copilot/MCP)
+ * to connect to a local node-based MCP server that proxies requests to the
+ * Beans CLI.
+ *
+ * Notes for contributors:
+ * - The MCP server script lives in `dist/beans-mcp-server.js` and is launched
+ *   via `process.execPath` to preserve Node resolution inside the extension
+ * - `BEANS_VSCODE_MCP` and `BEANS_VSCODE_OUTPUT_LOG` env vars are set so the
+ *   server can detect it runs inside the extension and mirror logs
+ * - Provide unit tests that mock `vscode.workspace.getConfiguration` and the
+ *   extension context to verify command/args/env composition
+ */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';

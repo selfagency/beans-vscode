@@ -1,11 +1,11 @@
 ---
 # beans-vscode-4z9g
 title: Fix PR conversation cleanup workflow permissions error
-status: in-progress
+status: completed
 type: task
 priority: high
 created_at: 2026-02-18T06:02:19Z
-updated_at: 2026-02-18T06:02:19Z
+updated_at: 2026-02-18T19:44:16Z
 ---
 
 ## Problem
