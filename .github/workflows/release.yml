@@ -148,6 +148,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      deployments: write
 
     steps:
       - name: Checkout repository
@@ -236,15 +237,88 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create VS Code Marketplace deployment
+        id: deploy_vsce
+        if: "!contains(needs.detect-tag.outputs.release_tag, '-')"
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: '${{ needs.detect-tag.outputs.release_tag }}',
+              environment: 'vscode-marketplace',
+              description: 'Publish to VS Code Marketplace',
+              auto_merge: false,
+              required_contexts: [],
+              production_environment: true,
+            });
+            core.setOutput('deployment_id', deployment.data.id);
+
       - name: Publish to VS Code Marketplace
+        id: publish_vsce
         if: "!contains(needs.detect-tag.outputs.release_tag, '-')"
         run: pnpm dlx @vscode/vsce publish --packagePath beans-vscode.vsix -p ${{ secrets.VSCE_PAT }}
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
-      - name: Publish to Open VSX
+      - name: Update VS Code Marketplace deployment status
+        if: "always() && !contains(needs.detect-tag.outputs.release_tag, '-') && steps.deploy_vsce.outputs.deployment_id != ''"
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const outcome = '${{ steps.publish_vsce.outcome }}';
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.deploy_vsce.outputs.deployment_id }},
+              state: outcome === 'success' ? 'success' : 'failure',
+              description: `VS Code Marketplace publish ${outcome}`,
+              environment_url: 'https://marketplace.visualstudio.com/items?itemName=selfagency.beans-vscode',
+              auto_inactive: false,
+            });
+
+      - name: Create Open VSX deployment
+        id: deploy_ovsx
         if: "!contains(needs.detect-tag.outputs.release_tag, '-')"
-        run: |
-          pnpm dlx ovsx publish beans-vscode.vsix -p ${{ secrets.OVSX_PAT }}
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: '${{ needs.detect-tag.outputs.release_tag }}',
+              environment: 'open-vsx',
+              description: 'Publish to Open VSX Registry',
+              auto_merge: false,
+              required_contexts: [],
+              production_environment: true,
+            });
+            core.setOutput('deployment_id', deployment.data.id);
+
+      - name: Publish to Open VSX
+        id: publish_ovsx
+        if: "!contains(needs.detect-tag.outputs.release_tag, '-')"
+        run: pnpm dlx ovsx publish beans-vscode.vsix -p ${{ secrets.OVSX_PAT }}
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
+      - name: Update Open VSX deployment status
+        if: "always() && !contains(needs.detect-tag.outputs.release_tag, '-') && steps.deploy_ovsx.outputs.deployment_id != ''"
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const outcome = '${{ steps.publish_ovsx.outcome }}';
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.deploy_ovsx.outputs.deployment_id }},
+              state: outcome === 'success' ? 'success' : 'failure',
+              description: `Open VSX publish ${outcome}`,
+              environment_url: 'https://open-vsx.org/extension/selfagency/beans-vscode',
+              auto_inactive: false,
+            });
