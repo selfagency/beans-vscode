@@ -1,3 +1,12 @@
+---
+# beans-vscode-hm49
+title: ""
+status: completed
+type: task
+priority: normal
+created_at: 2026-02-18T23:45:30Z
+updated_at: 2026-02-18T23:45:51Z
+---
 
 use beans graphql api instead of cli to ensure better safey
 
