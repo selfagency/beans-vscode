@@ -1,235 +1,93 @@
 # Copilot Instructions for `beans-vscode`
 
-## Mission
+## What this is
 
-Build a production-quality VS Code extension for the Beans issue tracker that **faithfully emulates the Beans TUI workflows** while feeling native in VS Code.
+A VS Code extension for the [Beans](https://github.com/hmans/beans) issue tracker. It wraps the `beans` CLI, provides sidebar tree views, webview details/search panels, an MCP server, and a `@beans` chat participant.
 
-Use Beans as the source of truth for issue operations and model behavior after the upstream TUI (`internal/tui/*`), especially list/detail interactions, keyboard-first actions, and batch edit flows.
+## Build & test
 
-## Product goals (non-negotiable)
+```bash
+pnpm run compile          # esbuild bundle + tsc type-check (one-shot)
+pnpm run watch:esbuild    # incremental bundle (dev)
+pnpm run watch:tsc        # incremental type-check (dev)
+pnpm run test             # Vitest (vscode API mocked)
+pnpm run lint             # ESLint
+```
 
-1. Provide a sidebar-first workflow for browsing, filtering, and editing Beans.
-2. Match core TUI operations in VS Code commands and context menus.
-3. Integrate with Copilot via MCP + chat participant + prompt templates.
-4. Work in local and remote environments.
-5. Ship with robust tests and CI.
+`esbuild.js` is the bundler config. It uses `loader: { '.md': 'text' }` to inline Markdown template files as string constants — used for Copilot instructions/skill templates in `src/beans/config/templates/`.
 
-## Core user experience requirements
+## Module map
 
-### Sidebar and tree behavior
+| Module                                          | Purpose                                                                                                               |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `src/extension.ts`                              | Activation: wires all providers, registers disposables                                                                |
+| `src/beans/service/BeansService.ts`             | Typed CLI wrapper — **all** `beans` invocations go through here as argument arrays                                    |
+| `src/beans/tree/BeansTreeDataProvider.ts`       | Base tree provider; status-specific subclasses in `tree/providers/`                                                   |
+| `src/beans/tree/registerBeansTreeViews.ts`      | Registers all five pane tree views (active/completed/draft/scrapped/archived)                                         |
+| `src/beans/commands/BeansCommands.ts`           | All command registration and orchestration                                                                            |
+| `src/beans/details/BeansDetailsViewProvider.ts` | Webview sidebar — bean detail view + inline metadata selects                                                          |
+| `src/beans/search/BeansSearchViewProvider.ts`   | Webview search panel                                                                                                  |
+| `src/beans/mcp/BeansMcpIntegration.ts`          | Stdio MCP server lifecycle; port from `beans.mcp.port` (default 39173)                                                |
+| `src/beans/chat/BeansChatIntegration.ts`        | `@beans` chat participant + slash commands                                                                            |
+| `src/beans/config/BeansConfigManager.ts`        | Reads/writes `.beans.yml`, generates `.github/instructions/tasks.instructions.md` and `.github/skills/beans/SKILL.md` |
+| `src/beans/config/templates/`                   | Markdown templates for generated Copilot artifacts; `{{PRIME_OUTPUT}}` placeholder replaced at write time             |
+| `src/beans/model/`                              | `Bean` type, `errors.ts` typed error classes, `config.ts` workspace config types                                      |
 
-- Provide a dedicated Beans activity bar view container and at least one tree view.
-- Render beans in a hierarchical tree:
-  - Group and order by type and parent relationships.
-  - Show `code/id`, `type`, `status`, and `priority` in tree item label/description/tooltip.
-- Provide dedicated collapsible panes in the sidebar for:
-  - Active beans
-  - Completed beans
-  - Draft beans
-  - Scrapped beans
-  - Archived beans
-- These panes must be independently expandable/collapsible and persist user expand/collapse state when possible.
-- Support sorting options (at minimum):
-  - status/priority/type/title (default)
-  - updated_at
-  - created_at
-  - id/code
+## Tool usage priority
 
-### Open/edit flows
+**Always prefer extension commands and MCP tools over CLIs.** The priority depends on context:
 
-- Opening a bean must be possible via:
-  - selecting tree item + Enter
-  - tree item context action
-  - command palette
-- Editing a bean must be possible via:
-  - explicit pencil/edit action in item context
-  - command palette
-- If true double-click is not available for tree items, use single-click + open command semantics and document this limitation clearly in code comments and docs.
+### For Beans work tracking (using this extension)
 
-### TUI parity actions
+When tracking your own work with Beans in this repository:
 
-Implement commands + UI affordances for:
+1. **VS Code extension commands/UI first** — use command palette, sidebar, or webviews (`beans.create`, `beans.edit`, `beans.setStatus`, etc.). Best user experience.
+2. **@beans chat participant second** — conversational interface for guidance, summaries, and workflows.
+3. **MCP tools third** — programmatic interface when integrated into automated workflows.
+4. **CLI last resort only** — via `BeansService` argument arrays; never shell strings.
 
-- view bean
-- create bean
-- edit bean
-- set/remove parent
-- set status
-- set type
-- set priority
-- edit blocking links
-- delete scrapped/draft issue
-- copy bean id
-- filter/tag filter
-- clear filter
-- refresh/reload
+### For testing extension code
 
-Support multi-select batch operations where VS Code APIs allow it.
+When writing tests or verifying extension functionality:
 
-### Command palette behavior
+1. **MCP tools first** — programmatic, deterministic testing of Beans operations.
+2. **Extension commands second** — for UI/UX verification and integration testing.
+3. **Direct TypeScript calls third** — when testing internal APIs (`BeansService`, etc.).
+4. **CLI last resort only** — via `BeansService` argument arrays; never shell strings.
 
-- Include all major Beans operations.
-- Provide dedicated reopen/revive flows that include completed/scrapped.
-- Deletion flows must only allow deleting scrapped and draft issues (not active/completed by default), and should require explicit confirmation.
+Both contexts: never build shell command strings; always use `BeansService` with argument arrays when CLI invocation is unavoidable.
 
-### Visual design
+## Key patterns
 
-- Inspiration can be taken from the Beads extension patterns (issues tree + details + actionable commands), but implementation must be visually and structurally distinct.
-- Follow VS Code UX guidance for views, view actions, quick picks, and notifications.
+**Process execution** — never build shell strings. `BeansService` always calls `beans` via an argument array with `child_process.execFile` or similar. Treat all bean content as untrusted input.
 
-## Missing-project initialization
+**Codicons in webviews** — `@vscode/codicons` ships a `@font-face` with a relative URL that fails in `vscode-webview:` context. Always add an explicit override at the top of inline `<style>`:
 
-When a workspace is opened and Beans is not initialized:
+```html
+<style>
+  @font-face { font-family:"codicon"; src:url("${codiconFontUri}") format("truetype"); }
+```
 
-- Detect missing `.beans` and/or `.beans.yml`.
-- Prompt user with actionable options:
-  - Initialize Beans now
-  - Learn more
-  - Dismiss
-- Provide setting to disable this prompt.
-- Do not repeatedly nag after explicit dismissal in a workspace session.
+where `codiconFontUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.ttf'))`.
 
-## Architecture expectations
+**Priority labels** — use circled Unicode characters ①②③④⑤ (not codicons) for priority in all UI surfaces (tree item labels, quick picks, webview selects).
 
-### Recommended module boundaries
+**Context keys** — dynamic UI state (e.g. navigation back-button visibility) uses the pattern: expose a getter → call `executeCommand('setContext', 'beans.<key>', value)` → reference in `package.json` `when` clauses. See `BeansDetailsViewProvider.updateDetailsContextKeys`.
 
-- `BeansService`: typed wrapper around Beans CLI/GraphQL operations.
-- `BeansRepository`: data normalization, mapping to extension models.
-- `BeansTreeDataProvider`: tree shaping, sorting, filtering, refresh events.
-- `BeansCommands`: command registration and orchestration.
-- `BeansPreviewProvider`: markdown/details rendering.
-- `BeansConfigManager`: reads/writes `.beans.yml` safely.
-- `BeansMcpIntegration`: MCP server definition provider and related commands.
-- `BeansChatIntegration`: Copilot chat participant and prompt composition.
+**Tree providers** — each status pane is a subclass of `BeansTreeDataProvider` with a fixed `statusFilter`. Shared sort/filter/refresh logic lives in the base class. Registered and disposed in `registerBeansTreeViews.ts`.
 
-### Data access strategy
+**Markdown templates** — `CopilotInstructions.ts` and `CopilotSkill.ts` import from `.md` template files (inlined by esbuild). Use `{{PRIME_OUTPUT}}` as the sole placeholder; no complex interpolation in TS.
 
-- Prefer stable machine-readable Beans outputs (`--json`) when available.
-- Avoid fragile plain-text parsing.
-- Normalize status/type/priority values against workspace config.
-- Use explicit error types for CLI invocation, parse failures, missing config, and permission errors.
+## Testing
 
-### Process execution + security
+`vitest.config.ts` aliases `vscode` → `src/test/mocks/vscode.ts`. Tests live under `src/test/`. Do not import `vscode` directly in tests — use the mock.
 
-- Never build shell strings with unsanitized input.
-- Use argument arrays for process execution.
-- Treat workspace content as untrusted input.
-- Never hardcode secrets.
-- If future features need credentials, use environment variables or VS Code secret storage.
+## Security constraints
 
-## Copilot + AI integration requirements
-
-### MCP integration
-
-- Support MCP server integration for Beans workflows:
-  - contribute/start/manage server definitions as appropriate for extension capabilities.
-  - align with VS Code MCP config model (`mcp.json` and provider APIs).
-- Provide commands for troubleshooting (open MCP output/log guidance).
-- Respect trust and security expectations for MCP servers.
-
-### Chat participant integration
-
-- Add a Beans-focused chat participant that can:
-  - summarize issue status
-  - suggest next actions
-  - create/update beans from structured user intent
-- Use prompt templates (prompt-tsx) to keep prompts structured and maintainable.
-- Explicitly scope tool usage to Beans operations to reduce accidental side effects.
-
-### Copilot instructions interplay
-
-- Keep this file current as extension capabilities evolve.
-- Add concise tool-selection guidance for Beans workflows.
-
-## Settings and configuration
-
-Contribute extension settings for at least:
-
-- auto-init prompt enable/disable
-- default sort mode
-- default expanded/collapsed state per pane (active/completed/scrapped/archived)
-- default command palette scope (active vs all)
-- beans CLI path override
-- log verbosity
-- preview behavior
-
-Use clear names, descriptions, defaults, and validation.
-
-## Notifications and UX feedback
-
-- Use concise, actionable notifications.
-- Distinguish between info/warn/error.
-- Include “Open Logs” / “Retry” actions when relevant.
-- Avoid repeated spam notifications for the same root cause.
-
-## Keyboard and accessibility requirements
-
-- Ensure all major actions are command-accessible (keyboard-first).
-- Respect focus behavior in tree, quick picks, and editors.
-- Follow WCAG 2.2 AA intent for extension UI surfaces.
-- Use semantic labels and accessible names in quick picks and action titles.
-
-## Remote compatibility requirements
-
-- Design extension to work in SSH/WSL/devcontainer/Codespaces scenarios.
-- Ensure Beans CLI invocation resolves correctly in remote extension host.
-- Handle absent CLI with guided install/help messaging.
-- Avoid assumptions about local file paths.
-
-## Testing strategy (required)
-
-### Unit tests
-
-- Tree shaping/sorting/filtering logic.
-- Command argument mapping.
-- Config parsing and defaults.
-- Error mapping.
-
-### Integration tests
-
-- Extension activation + command registration.
-- Tree population from fixture Beans workspaces.
-- Create/edit/status/type/priority/blocking flows.
-- Init prompt behavior with and without `.beans.yml`.
-- Command palette filtering for completed/scrapped.
-
-### AI integration tests
-
-- MCP provider registration and definition refresh behavior.
-- Chat participant prompt assembly and guardrails.
-
-### CI expectations
-
-- Run lint, typecheck, unit, and integration tests in CI.
-- Fail fast on type or lint regressions.
-- Publish test artifacts/logs on failure.
-
-## Implementation sequencing guidance
-
-1. Build Beans service + models.
-2. Implement tree view + refresh + sorting/filtering.
-3. Add open/edit/create and core metadata mutations.
-4. Add blocking/parent/tag workflows.
-5. Add init detection and settings.
-6. Add Copilot MCP + chat integration.
-7. Harden remote behavior.
-8. Finalize tests + CI.
+- No shell-interpolated strings anywhere in CLI invocation.
+- CSP in all webviews: `default-src 'none'`; explicitly allowlist `font-src ${webview.cspSource}` and `img-src ${webview.cspSource} data:`.
+- `localResourceRoots: [extensionUri]` on all webviews.
 
 ## Definition of done
 
-A feature is done only when:
-
-- command(s) implemented
-- tree/context/menu wiring complete
-- settings and docs updated
-- tests added/updated
-- remote behavior considered
-- errors surfaced with actionable messages
-
-## Quality guardrails for contributors
-
-- Keep changes modular and testable.
-- Prefer small PRs with focused scope.
-- Do not rewrite unrelated code.
-- Preserve existing public command IDs unless intentionally versioned.
-- Update this file whenever behavior contracts change.
+A change is complete when: command wired in `package.json` + `BeansCommands.ts`, errors surface via `BeansOutput` logger, unit test added/updated, and compile passes.

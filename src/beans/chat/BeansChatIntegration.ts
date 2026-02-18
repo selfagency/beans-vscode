@@ -154,7 +154,7 @@ export class BeansChatIntegration {
     }
 
     stream.markdown(
-      '\nUse Beans commands to update one, for example: set status, set priority, or edit blocking relationships.'
+      '\nTo start work on a bean: right-click it in the tree and choose **Copilot: Start Work on Bean** (`beans.copilotStartWork`), or use `beans.setStatus` to set it to `in-progress`.'
     );
   }
 
@@ -241,11 +241,13 @@ export class BeansChatIntegration {
     stream.markdown('## Create a new issue\n\n');
     stream.markdown('Tell me these fields and I will draft it:\n');
     stream.markdown('- **Title**\n');
-    stream.markdown('- **Type** (`task`, `bug`, `feature`, `epic`, `milestone`)\n');
+    stream.markdown('- **Type** (`task`, `bug`, `feature`, `milestone`)\n');
     stream.markdown('- **Priority** (`critical`, `high`, `normal`, `low`, `deferred`)\n');
     stream.markdown('- **Description**\n');
     stream.markdown('- **Parent** (optional bean id)\n\n');
-    stream.markdown('You can also create directly in VS Code using the `beans.create` command.');
+    stream.markdown(
+      'You can also create directly in VS Code using the `beans.create` command — it will prompt for each field interactively.'
+    );
   }
 
   private async handleIssueRelatedCommit(stream: vscode.ChatResponseStream): Promise<void> {
@@ -257,24 +259,26 @@ export class BeansChatIntegration {
         }
         return b.updatedAt.getTime() - a.updatedAt.getTime();
       })
-      .slice(0, 5);
+      .slice(0, 8);
 
     stream.markdown('## Create an issue-related commit\n\n');
-    stream.markdown('Suggested workflow:\n');
-    stream.markdown('1. Confirm which bean(s) this change belongs to.\n');
-    stream.markdown('2. Stage only the relevant files.\n');
-    stream.markdown('3. Use a conventional commit message and include bean id(s).\n\n');
 
     if (likely.length > 0) {
-      stream.markdown('Likely beans for this workspace context:\n');
+      stream.markdown('Likely beans for this change:\n');
       for (const bean of likely) {
         stream.markdown(`- \`${bean.id}\` — ${bean.title} (${bean.status})\n`);
       }
       stream.markdown('\n');
     }
 
-    stream.markdown('Example commit subject:\n');
-    stream.markdown('- `feat(scope): concise description (bean-id)`\n');
+    stream.markdown('**Commit format:** `<type>(<scope>): <description> (<bean-id>)`\n\n');
+    stream.markdown('Examples:\n');
+    stream.markdown('- `feat(auth): add token refresh (bean-abc123)`\n');
+    stream.markdown('- `fix(tree): correct sort order (bean-abc123)`\n');
+    stream.markdown('- `chore(beans): complete bean-abc123 — add summary`\n\n');
+    stream.markdown(
+      'After committing: update the bean body (`beans.edit`) and set status to `completed` if the work is done (`beans.setStatus`).'
+    );
   }
 
   private async handleGeneral(

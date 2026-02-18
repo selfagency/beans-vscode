@@ -38,6 +38,7 @@ async function main() {
 		outdir: 'dist',
 		entryNames: '[name]',
 		external: ['vscode'],
+		loader: { '.md': 'text' },
 		logLevel: 'silent',
 		plugins: [
 			/* add to the end of plugins array */
