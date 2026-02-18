@@ -371,7 +371,7 @@ export function parseCliArgs(argv: string[]): { workspaceRoot: string; cliPath: 
       i += 1;
     } else if (arg === '--cli-path' && argv[i + 1]) {
       cliPath = argv[i + 1]!;
-      if (/[\s;&|><$(){}]/.test(cliPath)) {
+      if (/[\s;&|><$(){}\[\]`]/.test(cliPath)) {
         throw new Error('Invalid CLI path');
       }
       i += 1;
