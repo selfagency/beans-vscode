@@ -225,7 +225,8 @@ describe('BeansDetailsViewProvider', () => {
     const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand');
     provider.resolveWebviewView(view, resolveContext, cancellationToken);
 
-    (provider as any)._currentBean = makeBean();
+    const providerWithPrivate = provider as unknown as { _currentBean: Bean | undefined };
+    providerWithPrivate._currentBean = makeBean();
     provider.clear();
     await Promise.resolve();
     await Promise.resolve();
