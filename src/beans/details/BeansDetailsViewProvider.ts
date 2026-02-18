@@ -228,6 +228,9 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     const codiconStylesUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
     );
+    const codiconFontUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.ttf')
+    );
     const csp = [
       "default-src 'none'",
       `img-src ${webview.cspSource} data: https:`,
@@ -302,12 +305,12 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     );
     const priorityOptions = this.escapeHtml(
       JSON.stringify([
-        { value: '', label: '— None', icon: 'dash' },
-        { value: 'critical', label: '① Critical', icon: 'error' },
-        { value: 'high', label: '② High', icon: 'arrow-up' },
-        { value: 'normal', label: '③ Normal', icon: 'circle-outline' },
-        { value: 'low', label: '④ Low', icon: 'arrow-down' },
-        { value: 'deferred', label: '⑤ Deferred', icon: 'clock' },
+        { value: '', label: '— None', icon: '' },
+        { value: 'critical', label: '① Critical', icon: '' },
+        { value: 'high', label: '② High', icon: '' },
+        { value: 'normal', label: '③ Normal', icon: '' },
+        { value: 'low', label: '④ Low', icon: '' },
+        { value: 'deferred', label: '⑤ Deferred', icon: '' },
       ])
     );
 
@@ -320,6 +323,11 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   <link href="${codiconStylesUri}" rel="stylesheet" />
   <title>Bean Details</title>
   <style>
+    @font-face {
+      font-family: "codicon";
+      font-display: block;
+      src: url("${codiconFontUri}") format("truetype");
+    }
     body {
       padding: 0;
       margin: 0;
