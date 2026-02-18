@@ -27,7 +27,6 @@ const state = vi.hoisted(() => ({
     active: undefined as any,
     completed: undefined as any,
     draft: undefined as any,
-    scrapped: undefined as any,
   },
 }));
 
@@ -167,13 +166,7 @@ vi.mock('../../beans/tree/providers', () => {
       state.providerInstances.draft = this;
     }
   }
-  class ScrappedBeansProvider extends BaseProvider {
-    constructor() {
-      super();
-      state.providerInstances.scrapped = this;
-    }
-  }
-  return { ActiveBeansProvider, CompletedBeansProvider, DraftBeansProvider, ScrappedBeansProvider };
+  return { ActiveBeansProvider, CompletedBeansProvider, DraftBeansProvider };
 });
 
 function makeContext(): any {
@@ -210,7 +203,7 @@ describe('Extension lifecycle coverage', () => {
     state.selectionHandlers = new Map();
     state.watcherCallbacks = [];
     state.configChangeHandler = undefined;
-    state.providerInstances = { active: undefined, completed: undefined, draft: undefined, scrapped: undefined };
+    state.providerInstances = { active: undefined, completed: undefined, draft: undefined };
 
     vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue([
       { uri: vscode.Uri.file('/ws'), name: 'ws', index: 0 } as any,
@@ -314,13 +307,10 @@ describe('Extension lifecycle coverage', () => {
     state.filterListener?.('beans.completed');
     state.filters.set('beans.draft', { text: 'z' });
     state.filterListener?.('beans.draft');
-    state.filters.set('beans.scrapped', { text: 'w' });
-    state.filterListener?.('beans.scrapped');
 
     expect(state.providerInstances.active.setFilter).toHaveBeenCalled();
     expect(state.providerInstances.completed.setFilter).toHaveBeenCalled();
     expect(state.providerInstances.draft.setFilter).toHaveBeenCalled();
-    expect(state.providerInstances.scrapped.setFilter).toHaveBeenCalled();
 
     state.detailsShouldReject = true;
     await state.registeredCommands.get('beans.openBean')?.({ id: 'bean-1' });

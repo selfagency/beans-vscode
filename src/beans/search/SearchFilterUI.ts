@@ -177,5 +177,14 @@ export async function showSearchFilterUI(current?: BeansFilterState): Promise<Be
     return undefined;
   }
 
-  return sanitizeSearchFilterState(mapPickedItemsToFilterState(picked));
+  const pickedFilter = mapPickedItemsToFilterState(picked);
+  const merged: BeansFilterState = {
+    ...normalizedCurrent,
+    ...pickedFilter,
+    // This UI edits only status/type/priority; preserve text and tags.
+    text: normalizedCurrent.text,
+    tags: normalizedCurrent.tags,
+  };
+
+  return sanitizeSearchFilterState(merged);
 }

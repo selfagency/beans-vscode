@@ -150,7 +150,9 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     this._currentBean = undefined;
     this._parentBean = undefined;
     this._navigationHistory.length = 0;
-    void this.updateDetailsContextKeys();
+    this.updateDetailsContextKeys().catch(error => {
+      this.logger.error('Failed to update details context keys after clear', error as Error);
+    });
     if (this._view) {
       this._view.webview.html = this.getEmptyHtml();
     }
@@ -693,7 +695,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 
   private autoLinkBeanReferences(html: string, currentBeanId?: string): string {
     const tokenPattern = /(<[^>]+>|[^<]+)/g;
-    const beanIdPattern = /\b([a-z][a-z0-9-]*-[a-z0-9]+)\b/gi;
+    const beanIdPattern = /\b([a-z][a-z0-9-]*-\d[a-z0-9]*)\b/gi;
     let inAnchor = false;
     let inCode = false;
     let inPre = false;
@@ -778,8 +780,8 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       if (this._currentBean) {
         this.updateView(this._currentBean);
       }
+      await this.updateDetailsContextKeys();
     }
-    await this.updateDetailsContextKeys();
   }
 
   private async goBack(): Promise<void> {
@@ -794,8 +796,8 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       if (this._currentBean) {
         this.updateView(this._currentBean);
       }
+      await this.updateDetailsContextKeys();
     }
-    await this.updateDetailsContextKeys();
   }
 
   private async showBeanById(beanId: string): Promise<boolean> {

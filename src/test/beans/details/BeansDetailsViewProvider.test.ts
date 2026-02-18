@@ -228,13 +228,13 @@ describe('BeansDetailsViewProvider', () => {
     const providerWithPrivate = provider as unknown as { _currentBean: Bean | undefined };
     providerWithPrivate._currentBean = makeBean();
     provider.clear();
-    await Promise.resolve();
-    await Promise.resolve();
 
-    expect(provider.currentBean).toBeUndefined();
-    expect(executeCommandSpy).toHaveBeenCalledWith('setContext', 'beans.hasSelectedBean', false);
-    expect(executeCommandSpy).toHaveBeenCalledWith('setContext', 'beans.detailsCanGoBack', false);
-    expect(webview.html).toContain('Select a bean to view details');
+    await vi.waitFor(() => {
+      expect(provider.currentBean).toBeUndefined();
+      expect(executeCommandSpy).toHaveBeenCalledWith('setContext', 'beans.hasSelectedBean', false);
+      expect(executeCommandSpy).toHaveBeenCalledWith('setContext', 'beans.detailsCanGoBack', false);
+      expect(webview.html).toContain('Select a bean to view details');
+    });
   });
 
   it('updates bean via message handler and refreshes tree', async () => {

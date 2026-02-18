@@ -85,7 +85,6 @@ export function registerBeansTreeViews(
       const newFilter = await showSearchFilterUI(current);
       if (newFilter) {
         manager.setFilter('beans.search', newFilter);
-        searchProvider.setFilter(newFilter);
       }
     } catch (error) {
       logger.error('Failed to apply search filter', error as Error);
@@ -95,7 +94,6 @@ export function registerBeansTreeViews(
   const clearSearchFilterCmd = vscode.commands.registerCommand('beans.searchView.clear', () => {
     try {
       manager.clearFilter('beans.search');
-      searchProvider.setFilter(undefined);
       vscode.window.showInformationMessage('Search filters cleared');
     } catch (error) {
       logger.error('Failed to clear search filters', error as Error);

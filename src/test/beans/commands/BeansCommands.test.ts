@@ -285,23 +285,24 @@ describe('BeansCommands', () => {
     );
   });
 
-  it('applies search text to all panes', async () => {
+  it('applies search text to search pane only', async () => {
     showInputBox.mockResolvedValueOnce('auth');
     filterManager.getFilter.mockReturnValue({});
 
     await (commands as any).search();
 
-    expect(filterManager.setFilter).toHaveBeenCalledWith('beans.active', { text: 'auth' });
-    expect(filterManager.setFilter).toHaveBeenCalledWith('beans.archived', { text: 'auth' });
+    expect(executeCommand).toHaveBeenCalledWith('workbench.view.extension.beans');
+    expect(filterManager.setFilter).toHaveBeenCalledWith('beans.search', { text: 'auth' });
   });
 
-  it('clears search text from panes when empty', async () => {
+  it('clears search text from search pane when empty', async () => {
     showInputBox.mockResolvedValueOnce('');
     filterManager.getFilter.mockReturnValue({ text: 'old', tags: ['x'] });
 
     await (commands as any).search();
 
-    expect(filterManager.setFilter).toHaveBeenCalledWith('beans.active', { tags: ['x'] });
+    expect(executeCommand).toHaveBeenCalledWith('workbench.view.extension.beans');
+    expect(filterManager.setFilter).toHaveBeenCalledWith('beans.search', { tags: ['x'] });
   });
 
   it('changes sort mode via configuration update', async () => {
