@@ -73,7 +73,7 @@ jobs:
         with:
           path: |
             ~/go/pkg/mod
-            ~/.cache/go-build
+            ${{ runner.os == 'Windows' && '~\AppData\Local\go-build' || '~/.cache/go-build' }}
           key: go-${{ runner.os }}-1.23-${{ hashFiles('**/go.sum') || 'nochecksum' }}
           restore-keys: |
             go-${{ runner.os }}-1.23-
