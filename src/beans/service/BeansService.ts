@@ -27,38 +27,34 @@ import {
   BeansTimeoutError,
   BeanType,
 } from '../model';
+import * as graphql from './graphql';
 
 const execFileAsync = promisify(execFile);
 
 /**
  * Raw bean data structure as returned by Beans CLI
+ * Matches the GraphQL schema fragments in graphql.ts
  */
 interface RawBeanFromCLI {
   id: string;
-  title: string;
   slug: string;
   path: string;
+  title: string;
   body: string;
   status: string;
   type: string;
   priority?: string;
-  tags?: string[];
-  parent?: string;
-  parent_id?: string;
-  parentId?: string;
-  blocking?: string[];
-  blocking_ids?: string[];
-  blockingIds?: string[];
-  blocked_by?: string[];
-  blocked_by_ids?: string[];
-  blockedBy?: string[];
-  blockedByIds?: string[];
-  created_at?: string;
-  createdAt?: string;
-  updated_at?: string;
-  updatedAt?: string;
-  code?: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
   etag: string;
+  parentId: string;
+  code?: string;
+  parent?: string;
+  blocking?: string[];
+  blockingIds: string[];
+  blockedBy?: string[];
+  blockedByIds: string[];
 }
 
 /**
@@ -329,6 +325,87 @@ export class BeansService {
   }
 
   /**
+   * Execute beans GraphQL query/mutation.
+   * Security: Uses execFile with argument array to prevent shell injection.
+   * Request deduplication: Identical concurrent requests share the same promise.
+   * @param query GraphQL query or mutation string.
+   * @param variables Optional variables as JSON object.
+   * @returns GraphQL result with data and optional errors.
+   */
+  private async executeGraphQL<T>(
+    query: string,
+    variables?: Record<string, unknown>
+  ): Promise<{ data: T; errors?: any[] }> {
+    const args = ['graphql', '--json', query];
+    if (variables) {
+      args.push('--variables', JSON.stringify(variables));
+    }
+
+    // Create a unique key for this request based on query and variables
+    const requestKey = `graphql:${JSON.stringify({ query, variables })}`;
+
+    // Check for in-flight request with same key
+    const existingRequest = this.inFlightRequests.get(requestKey);
+    if (existingRequest) {
+      this.logger.debug(`Deduplicating GraphQL request: ${requestKey.substring(0, 100)}...`);
+      return existingRequest as Promise<{ data: T; errors?: any[] }>;
+    }
+
+    // Create new request with retry logic
+    this.logger.info(`Executing GraphQL: ${query.substring(0, 100)}...`);
+
+    const requestPromise = (async () => {
+      try {
+        // Wrap execution with retry logic for transient failures
+        return await this.withRetry(async () => {
+          const { stdout, stderr } = await execFileAsync(this.cliPath, args, {
+            cwd: this.workspaceRoot,
+            maxBuffer: 10 * 1024 * 1024, // 10MB
+            timeout: 30000, // 30s
+          });
+
+          // Log CLI stderr
+          if (stderr && !stderr.includes('[INFO]')) {
+            this.logger.warn(`GraphQL CLI stderr: ${stderr}`);
+          }
+
+          try {
+            const parsed = JSON.parse(stdout);
+            return {
+              data: parsed.data as T,
+              errors: parsed.errors,
+            };
+          } catch (parseError) {
+            throw new BeansJSONParseError('Failed to parse beans GraphQL JSON output', stdout, parseError as Error);
+          }
+        });
+      } catch (error: unknown) {
+        const err = error as NodeJS.ErrnoException & { killed?: boolean; signal?: string };
+
+        if (err.code === 'ENOENT') {
+          throw new BeansCLINotFoundError(
+            `Beans CLI not found at: ${this.cliPath}. Please install beans or configure beans.cliPath setting.`
+          );
+        }
+
+        if (err.killed && err.signal === 'SIGTERM') {
+          throw new BeansTimeoutError('Beans CLI operation timed out');
+        }
+
+        throw error;
+      } finally {
+        // Remove from in-flight map when complete (success or failure)
+        this.inFlightRequests.delete(requestKey);
+      }
+    })();
+
+    // Track the in-flight request
+    this.inFlightRequests.set(requestKey, requestPromise);
+
+    return requestPromise;
+  }
+
+  /**
    * Check if the current workspace is initialized with Beans
    */
   async checkInitialized(): Promise<boolean> {
@@ -371,27 +448,29 @@ export class BeansService {
    */
   async listBeans(options?: { status?: string[]; type?: string[]; search?: string }): Promise<Bean[]> {
     try {
-      const args = ['list', '--json'];
+      const filter: Record<string, unknown> = {};
 
-      // Status and type filters use repeated flags, not comma-separated values
       if (options?.status && options.status.length > 0) {
-        for (const status of options.status) {
-          args.push('--status', status);
-        }
+        filter.status = options.status;
       }
 
       if (options?.type && options.type.length > 0) {
-        for (const type of options.type) {
-          args.push('--type', type);
-        }
+        filter.type = options.type;
       }
 
       if (options?.search) {
-        args.push('--search', options.search);
+        filter.search = options.search;
       }
 
-      const result = await this.execute<RawBeanFromCLI[]>(args);
-      const beans = result || [];
+      const { data, errors } = await this.executeGraphQL<{ beans: RawBeanFromCLI[] }>(graphql.LIST_BEANS_QUERY, {
+        filter,
+      });
+
+      if (errors && errors.length > 0) {
+        throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
+      }
+
+      const beans = data.beans || [];
 
       // Normalize bean data to ensure arrays are always arrays
       const normalizedBeans = beans.map(bean => this.normalizeBean(bean, { allowPartial: true }));
@@ -474,32 +553,30 @@ export class BeansService {
       );
     }
 
-    const bean = rawBean;
     // Derive short code from ID: last segment after final hyphen
-    const code = bean.code || (bean.id ? bean.id.split('-').pop() : '') || '';
+    const code = rawBean.code || (rawBean.id ? rawBean.id.split('-').pop() : '') || '';
 
     // Parse and validate dates
-    const createdAt = this.parseDate(bean.createdAt || bean.created_at, 'created_at', bean.id);
-    const updatedAt = this.parseDate(bean.updatedAt || bean.updated_at, 'updated_at', bean.id);
+    const createdAt = this.parseDate(rawBean.createdAt, 'createdAt', rawBean.id);
+    const updatedAt = this.parseDate(rawBean.updatedAt, 'updatedAt', rawBean.id);
 
     return {
-      id: bean.id,
+      id: rawBean.id,
       code,
-      slug: bean.slug ?? '',
-      path: bean.path ?? '',
-      title: bean.title,
-      body: bean.body ?? '',
-      status: bean.status as BeanStatus,
-      type: bean.type as BeanType,
-      priority: bean.priority as BeanPriority | undefined,
-      tags: bean.tags || [],
-      parent: bean.parent || bean.parentId || bean.parent_id,
-      blocking: bean.blocking || bean.blockingIds || bean.blocking_ids || [],
-      // Prefer canonical *_ids fields when both canonical and legacy keys are present.
-      blockedBy: bean.blockedBy || bean.blockedByIds || bean.blocked_by_ids || bean.blocked_by || [],
+      slug: rawBean.slug ?? '',
+      path: rawBean.path ?? '',
+      title: rawBean.title,
+      body: rawBean.body ?? '',
+      status: rawBean.status as BeanStatus,
+      type: rawBean.type as BeanType,
+      priority: rawBean.priority as BeanPriority | undefined,
+      tags: rawBean.tags || [],
+      parent: rawBean.parent || rawBean.parentId,
+      blocking: rawBean.blocking || rawBean.blockingIds || [],
+      blockedBy: rawBean.blockedBy || rawBean.blockedByIds || [],
       createdAt,
       updatedAt,
-      etag: bean.etag ?? '',
+      etag: rawBean.etag ?? '',
     };
   }
 
@@ -524,16 +601,27 @@ export class BeansService {
    * Get a single bean by ID
    */
   async showBean(id: string): Promise<Bean> {
-    const result = await this.execute<RawBeanFromCLI>(['show', '--json', id]);
+    const { data, errors } = await this.executeGraphQL<{ bean: RawBeanFromCLI }>(graphql.SHOW_BEAN_QUERY, { id });
+
+    if (errors && errors.length > 0) {
+      throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
+    }
+
+    const beanData = data.bean;
+
+    if (!beanData) {
+      throw new Error(`Bean not found: ${id}`);
+    }
+
     try {
-      return this.normalizeBean(result);
+      return this.normalizeBean(beanData);
     } catch (error) {
       // Some Beans CLI versions can return partial payloads for `show --json`
       // (omitting fields like slug/path/body/etag). Keep strict validation for
       // core identity fields, but gracefully accept partial metadata.
       if (error instanceof BeansJSONParseError) {
         this.logger.warn(`Partial bean payload received from show for ${id}; using safe defaults for missing fields.`);
-        return this.normalizeBean(result, { allowPartial: true });
+        return this.normalizeBean(beanData, { allowPartial: true });
       }
 
       throw error;
@@ -630,26 +718,25 @@ export class BeansService {
       this.validatePriority(data.priority, config.priorities ?? []);
     }
 
-    const args = ['create', '--json', data.title, '-t', data.type];
+    const input: Record<string, unknown> = {
+      title: data.title,
+      type: data.type,
+      status: data.status,
+      priority: data.priority,
+      body: data.description,
+      parent: data.parent,
+    };
 
-    if (data.status) {
-      args.push('-s', data.status);
+    const { data: resp, errors } = await this.executeGraphQL<{ createBean: RawBeanFromCLI }>(
+      graphql.CREATE_BEAN_MUTATION,
+      { input }
+    );
+
+    if (errors && errors.length > 0) {
+      throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
     }
 
-    if (data.priority) {
-      args.push('-p', data.priority);
-    }
-
-    if (data.description) {
-      args.push('-d', data.description);
-    }
-
-    if (data.parent) {
-      args.push('--parent', data.parent);
-    }
-
-    const result = await this.execute<RawBeanFromCLI>(args);
-    return this.normalizeBean(result);
+    return this.normalizeBean(resp.createBean);
   }
 
   /**
@@ -700,45 +787,44 @@ export class BeansService {
       this.validatePriority(updates.priority, config.priorities ?? []);
     }
 
-    const args = ['update', '--json', id];
-
-    if (updates.status) {
-      args.push('-s', updates.status);
-    }
-
-    if (updates.type) {
-      args.push('-t', updates.type);
-    }
-
-    if (updates.priority) {
-      args.push('-p', updates.priority);
-    }
-
     if (updates.parent !== undefined && updates.clearParent) {
       throw new Error('Cannot set parent and clear parent in the same update');
     }
 
-    if (updates.parent !== undefined) {
-      args.push('--parent', updates.parent);
-    }
+    const input: Record<string, unknown> = {
+      status: updates.status,
+      type: updates.type,
+      priority: updates.priority,
+    };
 
-    if (updates.clearParent) {
-      // Beans CLI clears parent when --parent is passed with an empty value.
-      args.push('--parent', '');
+    if (updates.parent !== undefined) {
+      input.parent = updates.parent;
+    } else if (updates.clearParent) {
+      input.parent = '';
     }
 
     if (updates.blocking) {
-      args.push('--blocking', updates.blocking.join(','));
+      input.addBlocking = updates.blocking;
     }
 
     if (updates.blockedBy) {
-      args.push('--blocked-by', updates.blockedBy.join(','));
+      input.addBlockedBy = updates.blockedBy;
     }
 
-    const result = await this.execute<RawBeanFromCLI>(args);
+    const { data: resp, errors } = await this.executeGraphQL<{ updateBean: RawBeanFromCLI }>(
+      graphql.UPDATE_BEAN_MUTATION,
+      {
+        id,
+        input,
+      }
+    );
+
+    if (errors && errors.length > 0) {
+      throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
+    }
 
     try {
-      return this.normalizeBean(result);
+      return this.normalizeBean(resp.updateBean);
     } catch (error) {
       // Some Beans CLI update responses may be partial (for example, only returning
       // changed fields). In that case, fetch the full bean as a resilience fallback.
@@ -755,7 +841,7 @@ export class BeansService {
    * Delete a bean (only works for scrapped and draft beans)
    */
   async deleteBean(id: string): Promise<void> {
-    await this.execute<Record<string, unknown>>(['delete', '--json', id]);
+    await this.executeGraphQL<Record<string, unknown>>(graphql.DELETE_BEAN_MUTATION, { id });
   }
 
   /**
@@ -774,19 +860,61 @@ export class BeansService {
       parent?: string;
     }>
   ): Promise<Array<{ success: true; bean: Bean } | { success: false; error: Error; data: (typeof batchData)[0] }>> {
-    // Fetch config once for the entire batch to avoid multiple I/O operations
-    const config = await this.getConfig();
+    if (batchData.length === 0) {
+      return [];
+    }
 
-    const promises = batchData.map(async data => {
-      try {
-        const bean = await this.createBeanWithConfig(data, config);
-        return { success: true as const, bean };
-      } catch (error) {
-        return { success: false as const, error: error as Error, data };
-      }
+    // Build batch mutation with aliases
+    const aliases: string[] = [];
+    const variables: Record<string, unknown> = {};
+    const mutationParts: string[] = [];
+
+    batchData.forEach((data, i) => {
+      const alias = `c${i}`;
+      aliases.push(alias);
+
+      const input: Record<string, unknown> = {
+        title: data.title,
+        type: data.type,
+        status: data.status,
+        priority: data.priority,
+        body: data.description,
+        parent: data.parent,
+      };
+
+      variables[alias] = input;
+      mutationParts.push(`${alias}: createBean(input: $${alias}) { ...BeanFields }`);
     });
 
-    return Promise.all(promises);
+    const mutation = `
+      ${graphql.BEAN_FIELDS}
+      mutation BatchCreate(${aliases.map(a => `$${a}: CreateBeanInput!`).join(', ')}) {
+        ${mutationParts.join('\n        ')}
+      }
+    `;
+
+    try {
+      const { data: resp, errors } = await this.executeGraphQL<Record<string, RawBeanFromCLI>>(mutation, variables);
+
+      return batchData.map((data, i) => {
+        const alias = aliases[i];
+        const error = errors?.find(e => e.path?.includes(alias));
+
+        if (error) {
+          return { success: false, error: new Error(error.message), data };
+        }
+
+        const beanData = resp[alias];
+        if (!beanData) {
+          return { success: false, error: new Error('Internal error: Mutation results missing for alias'), data };
+        }
+
+        return { success: true, bean: this.normalizeBean(beanData) };
+      });
+    } catch (error) {
+      // Entire batch failed
+      return batchData.map(data => ({ success: false, error: error as Error, data }));
+    }
   }
 
   /**
@@ -809,19 +937,76 @@ export class BeansService {
       };
     }>
   ): Promise<Array<{ success: true; bean: Bean } | { success: false; error: Error; id: string }>> {
-    // Fetch config once for the entire batch to avoid multiple I/O operations
-    const config = await this.getConfig();
+    if (batchUpdates.length === 0) {
+      return [];
+    }
 
-    const promises = batchUpdates.map(async ({ id, updates }) => {
-      try {
-        const bean = await this.updateBeanWithConfig(id, updates, config);
-        return { success: true as const, bean };
-      } catch (error) {
-        return { success: false as const, error: error as Error, id };
+    // Build batch mutation with aliases
+    const aliases: string[] = [];
+    const variables: Record<string, unknown> = {};
+    const mutationParts: string[] = [];
+
+    batchUpdates.forEach(({ id, updates }, i) => {
+      const alias = `u${i}`;
+      aliases.push(alias);
+
+      const input: Record<string, unknown> = {
+        id,
+        status: updates.status,
+        type: updates.type,
+        priority: updates.priority,
+      };
+
+      if (updates.parent !== undefined) {
+        input.parent = updates.parent;
+      } else if (updates.clearParent) {
+        input.parent = '';
       }
+
+      if (updates.blocking) {
+        input.addBlocking = updates.blocking;
+      }
+
+      if (updates.blockedBy) {
+        input.addBlockedBy = updates.blockedBy;
+      }
+
+      variables[alias] = input;
+      mutationParts.push(`${alias}: updateBean(id: $id${i}, input: $${alias}) { ...BeanFields }`);
+      variables[`id${i}`] = id;
     });
 
-    return Promise.all(promises);
+    const mutationDefs = aliases.map((a, i) => `$id${i}: ID!, $${a}: UpdateBeanInput!`).join(', ');
+
+    const mutation = `
+      ${graphql.BEAN_FIELDS}
+      mutation BatchUpdate(${mutationDefs}) {
+        ${mutationParts.join('\n        ')}
+      }
+    `;
+
+    try {
+      const { data: resp, errors } = await this.executeGraphQL<Record<string, RawBeanFromCLI>>(mutation, variables);
+
+      return batchUpdates.map(({ id }, i) => {
+        const alias = aliases[i];
+        const error = errors?.find(e => e.path?.includes(alias));
+
+        if (error) {
+          return { success: false, error: new Error(error.message), id };
+        }
+
+        const beanData = resp[alias];
+        if (!beanData) {
+          return { success: false, error: new Error('Internal error: Mutation results missing for alias'), id };
+        }
+
+        return { success: true, bean: this.normalizeBean(beanData) };
+      });
+    } catch (error) {
+      // Entire batch failed
+      return batchUpdates.map(({ id }) => ({ success: false, error: error as Error, id }));
+    }
   }
 
   /**
@@ -833,16 +1018,37 @@ export class BeansService {
   async batchDeleteBeans(
     ids: string[]
   ): Promise<Array<{ success: true; id: string } | { success: false; error: Error; id: string }>> {
-    const promises = ids.map(async id => {
-      try {
-        await this.deleteBean(id);
-        return { success: true as const, id };
-      } catch (error) {
-        return { success: false as const, error: error as Error, id };
-      }
-    });
+    if (ids.length === 0) {
+      return [];
+    }
 
-    return Promise.all(promises);
+    const mutationParts = ids.map((_, i) => `d${i}: deleteBean(id: $id${i})`);
+    const variableDefs = ids.map((_, i) => `$id${i}: ID!`).join(', ');
+    const variables = ids.reduce((acc, id, i) => ({ ...acc, [`id${i}`]: id }), {});
+
+    const mutation = `
+      mutation BatchDelete(${variableDefs}) {
+        ${mutationParts.join('\n        ')}
+      }
+    `;
+
+    try {
+      const { errors } = await this.executeGraphQL<Record<string, boolean>>(mutation, variables);
+
+      return ids.map((id, i) => {
+        const alias = `d${i}`;
+        const error = errors?.find(e => e.path?.includes(alias));
+
+        if (error) {
+          return { success: false, error: new Error(error.message), id };
+        }
+
+        return { success: true, id };
+      });
+    } catch (error) {
+      // Entire batch failed
+      return ids.map(id => ({ success: false, error: error as Error, id }));
+    }
   }
 
   /**

@@ -8,6 +8,7 @@ import { createInterface } from 'node:readline';
 import { promisify } from 'node:util';
 import { z } from 'zod';
 import { buildBeansCopilotInstructions, writeBeansCopilotInstructions } from '../config/CopilotInstructions';
+import * as graphql from '../service/graphql';
 
 const execFileAsync = promisify(execFile);
 
@@ -15,23 +16,23 @@ type SortMode = 'status-priority-type-title' | 'updated' | 'created' | 'id';
 
 type BeanRecord = {
   id: string;
+  slug: string;
+  path: string;
   title: string;
+  body: string;
   status: string;
   type: string;
   priority?: string;
   tags?: string[];
-  parent?: string;
-  path?: string;
-  blocking?: string[];
-  blocked_by?: string[];
-  created_at?: string;
-  updated_at?: string;
-  [key: string]: unknown;
+  parentId?: string;
+  blockingIds?: string[];
+  blockedByIds?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+  etag?: string;
 };
 
 const DEFAULT_MCP_PORT = 39173;
-
-type BeansCliResult<T> = T;
 
 function makeTextAndStructured<T extends Record<string, unknown>>(value: T) {
   return {
@@ -67,7 +68,19 @@ class BeansCliBackend {
     return target;
   }
 
-  private async executeJson<T>(args: string[]): Promise<BeansCliResult<T>> {
+  /**
+   * Execute a GraphQL query via the Beans CLI.
+   */
+  private async executeGraphQL<T>(
+    query: string,
+    variables?: Record<string, unknown>
+  ): Promise<{ data: T; errors?: any[] }> {
+    const args = ['graphql', '--json', query];
+
+    if (variables) {
+      args.push('--variables', JSON.stringify(variables));
+    }
+
     const { stdout } = await execFileAsync(this.cliPath, args, {
       cwd: this.workspaceRoot,
       env: process.env,
@@ -76,9 +89,11 @@ class BeansCliBackend {
     });
 
     try {
-      return JSON.parse(stdout) as T;
+      return JSON.parse(stdout) as { data: T; errors?: any[] };
     } catch (error) {
-      throw new Error(`Failed to parse Beans CLI JSON output: ${(error as Error).message}`);
+      throw new Error(
+        `Failed to parse Beans CLI GraphQL output: ${(error as Error).message}\nOutput: ${stdout.slice(0, 1000)}`
+      );
     }
   }
 
@@ -98,29 +113,41 @@ class BeansCliBackend {
   }
 
   async list(options?: { status?: string[]; type?: string[]; search?: string }): Promise<BeanRecord[]> {
-    const args = ['list', '--json'];
+    const filter: Record<string, any> = {};
 
-    if (options?.status) {
-      for (const status of options.status) {
-        args.push('--status', status);
-      }
+    if (options?.status && options.status.length > 0) {
+      filter.status = options.status;
     }
 
-    if (options?.type) {
-      for (const type of options.type) {
-        args.push('--type', type);
-      }
+    if (options?.type && options.type.length > 0) {
+      filter.type = options.type;
     }
 
     if (options?.search) {
-      args.push('--search', options.search);
+      filter.search = options.search;
     }
 
-    return this.executeJson<BeanRecord[]>(args);
+    const { data, errors } = await this.executeGraphQL<{ beans: BeanRecord[] }>(graphql.LIST_BEANS_QUERY, { filter });
+
+    if (errors && errors.length > 0) {
+      throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
+    }
+
+    return data.beans;
   }
 
   async show(beanId: string): Promise<BeanRecord> {
-    return this.executeJson<BeanRecord>(['show', '--json', beanId]);
+    const { data, errors } = await this.executeGraphQL<{ bean: BeanRecord }>(graphql.SHOW_BEAN_QUERY, { id: beanId });
+
+    if (errors && errors.length > 0) {
+      throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
+    }
+
+    if (!data.bean) {
+      throw new Error(`Bean not found: ${beanId}`);
+    }
+
+    return data.bean;
   }
 
   async create(input: {
@@ -131,21 +158,24 @@ class BeansCliBackend {
     description?: string;
     parent?: string;
   }): Promise<BeanRecord> {
-    const args = ['create', '--json', input.title, '-t', input.type];
-    if (input.status) {
-      args.push('-s', input.status);
-    }
-    if (input.priority) {
-      args.push('-p', input.priority);
-    }
-    if (input.description) {
-      args.push('-d', input.description);
-    }
-    if (input.parent) {
-      args.push('--parent', input.parent);
+    const createInput: Record<string, unknown> = {
+      title: input.title,
+      type: input.type,
+      status: input.status,
+      priority: input.priority,
+      body: input.description,
+      parent: input.parent,
+    };
+
+    const { data, errors } = await this.executeGraphQL<{ createBean: BeanRecord }>(graphql.CREATE_BEAN_MUTATION, {
+      input: createInput,
+    });
+
+    if (errors && errors.length > 0) {
+      throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
     }
 
-    return this.executeJson<BeanRecord>(args);
+    return data.createBean;
   }
 
   async update(
@@ -160,35 +190,45 @@ class BeansCliBackend {
       blockedBy?: string[];
     }
   ): Promise<BeanRecord> {
-    const args = ['update', '--json', beanId];
+    const updateInput: Record<string, unknown> = {
+      status: updates.status,
+      type: updates.type,
+      priority: updates.priority,
+    };
 
-    if (updates.status) {
-      args.push('-s', updates.status);
+    if (updates.parent !== undefined) {
+      updateInput.parent = updates.parent;
+    } else if (updates.clearParent) {
+      updateInput.parent = '';
     }
-    if (updates.type) {
-      args.push('-t', updates.type);
-    }
-    if (updates.priority) {
-      args.push('-p', updates.priority);
-    }
-    if (updates.parent) {
-      args.push('--parent', updates.parent);
-    }
-    if (updates.clearParent) {
-      args.push('--parent', '');
-    }
+
     if (updates.blocking) {
-      args.push('--blocking', updates.blocking.join(','));
-    }
-    if (updates.blockedBy) {
-      args.push('--blocked-by', updates.blockedBy.join(','));
+      updateInput.addBlocking = updates.blocking;
     }
 
-    return this.executeJson<BeanRecord>(args);
+    if (updates.blockedBy) {
+      updateInput.addBlockedBy = updates.blockedBy;
+    }
+
+    const { data, errors } = await this.executeGraphQL<{ updateBean: BeanRecord }>(graphql.UPDATE_BEAN_MUTATION, {
+      id: beanId,
+      input: updateInput,
+    });
+
+    if (errors && errors.length > 0) {
+      throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
+    }
+
+    return data.updateBean;
   }
 
   async delete(beanId: string): Promise<Record<string, unknown>> {
-    await this.executeJson<object>(['delete', '--json', beanId]);
+    const { errors } = await this.executeGraphQL<{ deleteBean: boolean }>(graphql.DELETE_BEAN_MUTATION, { id: beanId });
+
+    if (errors && errors.length > 0) {
+      throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
+    }
+
     return { deleted: true, beanId };
   }
 
@@ -305,11 +345,11 @@ export function sortBeans(beans: BeanRecord[], mode: SortMode): BeanRecord[] {
   };
 
   if (mode === 'updated') {
-    return sorted.sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''));
+    return sorted.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   }
 
   if (mode === 'created') {
-    return sorted.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    return sorted.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   }
 
   if (mode === 'id') {
@@ -654,8 +694,8 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
     }) => {
       const bean = await backend.show(beanId);
 
-      const currentBlocking = [...(bean.blocking || [])];
-      const currentBlockedBy = [...(bean.blocked_by || [])];
+      const currentBlocking = (bean.blockingIds as string[]) || [];
+      const currentBlockedBy = (bean.blockedByIds as string[]) || [];
 
       const mutate = (current: string[]) => {
         if (operation === 'add') {

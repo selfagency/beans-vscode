@@ -19,9 +19,36 @@ describe('BeansMcpServer helpers', () => {
   it('sortBeans status-priority-type-title mode prioritizes in-progress and critical', () => {
     const sorted = sortBeans(
       [
-        { id: 'a', title: 'Zeta', status: 'todo', type: 'task', priority: 'normal' },
-        { id: 'b', title: 'Alpha', status: 'in-progress', type: 'bug', priority: 'high' },
-        { id: 'c', title: 'Beta', status: 'in-progress', type: 'task', priority: 'critical' },
+        {
+          id: 'a',
+          title: 'Zeta',
+          slug: 'zeta',
+          path: 'zeta.md',
+          body: '',
+          status: 'todo',
+          type: 'task',
+          priority: 'normal',
+        },
+        {
+          id: 'b',
+          title: 'Alpha',
+          slug: 'alpha',
+          path: 'alpha.md',
+          body: '',
+          status: 'in-progress',
+          type: 'bug',
+          priority: 'high',
+        },
+        {
+          id: 'c',
+          title: 'Beta',
+          slug: 'beta',
+          path: 'beta.md',
+          body: '',
+          status: 'in-progress',
+          type: 'task',
+          priority: 'critical',
+        },
       ],
       'status-priority-type-title'
     );
@@ -34,8 +61,8 @@ describe('BeansMcpServer helpers', () => {
   it('sortBeans id mode sorts lexicographically', () => {
     const sorted = sortBeans(
       [
-        { id: 'bean-2', title: 'Two', status: 'todo', type: 'task' },
-        { id: 'bean-1', title: 'One', status: 'todo', type: 'task' },
+        { id: 'bean-2', title: 'Two', slug: 'two', path: 'two.md', body: '', status: 'todo', type: 'task' },
+        { id: 'bean-1', title: 'One', slug: 'one', path: 'one.md', body: '', status: 'todo', type: 'task' },
       ],
       'id'
     );
