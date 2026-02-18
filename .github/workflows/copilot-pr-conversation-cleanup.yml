@@ -119,13 +119,39 @@ jobs:
               }
 
               core.info(`Resolving ${unresolved.length} unresolved conversation(s) on closed PR #${prNumber}...`);
+
+              let resolved = 0;
+              let failed = 0;
               for (const threadId of unresolved) {
-                await resolveThread(threadId);
+                try {
+                  await resolveThread(threadId);
+                  resolved++;
+                } catch (err) {
+                  failed++;
+                  core.warning(
+                    `Could not resolve thread ${threadId}: ${err.message}. ` +
+                    `This may be a token permissions issue — the default GITHUB_TOKEN may not be ` +
+                    `allowed to resolve threads authored by other integrations. ` +
+                    `Resolve the conversation manually on the PR if needed.`
+                  );
+                }
+              }
+
+              if (failed > 0 && resolved === 0) {
+                core.warning(
+                  `Unable to resolve any of the ${failed} conversation(s) on PR #${prNumber} due to permissions. ` +
+                  `Ensure the workflow token has sufficient access, or resolve them manually.`
+                );
               }
 
               core.summary
                 .addHeading('PR conversation cleanup complete')
-                .addRaw(`Resolved ${unresolved.length} conversation(s) on PR #${prNumber}.`)
+                .addRaw(
+                  resolved > 0
+                    ? `Resolved ${resolved} conversation(s) on PR #${prNumber}.` +
+                      (failed > 0 ? ` ${failed} conversation(s) could not be resolved due to permissions (see warnings).` : '')
+                    : `Could not resolve ${failed} conversation(s) on PR #${prNumber} — see warnings for details.`
+                )
                 .write();
 
               return;
