@@ -26,8 +26,6 @@ const logger = vi.hoisted(() => ({
   show: vi.fn(),
 }));
 
-let nextQuickPickAcceptSelection: any;
-
 vi.mock('vscode', () => {
   class Uri {
     constructor(
@@ -131,8 +129,6 @@ describe('BeansCommands', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     commandHandlers.clear();
-    nextQuickPickAcceptSelection = undefined;
-
     createQuickPickMock.mockImplementation(() => {
       let acceptHandler: (() => void) | undefined;
       let hideHandler: (() => void) | undefined;
@@ -151,12 +147,7 @@ describe('BeansCommands', () => {
           hideHandler = cb;
         }),
         show: vi.fn(() => {
-          if (nextQuickPickAcceptSelection !== undefined) {
-            qp.selectedItems = [nextQuickPickAcceptSelection];
-            acceptHandler?.();
-          } else {
-            hideHandler?.();
-          }
+          hideHandler?.();
         }),
         dispose: vi.fn(),
       };
