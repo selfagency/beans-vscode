@@ -241,7 +241,7 @@ export class BeansChatIntegration {
     stream.markdown('## Create a new issue\n\n');
     stream.markdown('Tell me these fields and I will draft it:\n');
     stream.markdown('- **Title**\n');
-    stream.markdown('- **Type** (`task`, `bug`, `feature`, `epic`, `milestone`)\n');
+    stream.markdown('- **Type** (`task`, `bug`, `feature`, `milestone`)\n');
     stream.markdown('- **Priority** (`critical`, `high`, `normal`, `low`, `deferred`)\n');
     stream.markdown('- **Description**\n');
     stream.markdown('- **Parent** (optional bean id)\n\n');

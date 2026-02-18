@@ -11,9 +11,9 @@ This skill drives all Beans issue tracker operations in this workspace using the
 
 **Always use the highest available interface. Never skip levels for convenience.**
 
-1. **Beans MCP tools** — default interface for any toolable or automated Beans operations
-2. **VS Code extension commands** (`beans.*`) — for user-initiated actions via command palette or sidebar UI, or when MCP tools are not suitable or unavailable
-3. **`@beans` chat participant** — for guidance, summaries, and structured workflows that coordinate tools and user intent
+1. **Beans MCP tools** — preferred programmatic interface when the UI is not in focus
+2. **VS Code extension commands** (`beans.*`) — invoke via command palette or sidebar UI
+3. **`@beans` chat participant** — for guidance, summaries, and structured workflows
 4. **CLI** — only when extension, chat, and MCP are all genuinely unavailable; see CLI constraints
 
 ## Core rules (always enforced)
@@ -205,6 +205,8 @@ Use CLI only when extension, `@beans`, and MCP tools are all unavailable.
 
 ## Beans CLI baseline (from `beans prime`)
 
-```text
-{{PRIME_OUTPUT}}
+For detailed CLI usage instructions, run:
+
+```bash
+beans prime
 ```

@@ -2,7 +2,7 @@
 
 ## What this is
 
-A VS Code extension for the [Beans](https://github.com/selfagency/beans) issue tracker. It wraps the `beans` CLI, provides sidebar tree views, webview details/search panels, an MCP server, and a `@beans` chat participant.
+A VS Code extension for the [Beans](https://github.com/hmans/beans) issue tracker. It wraps the `beans` CLI, provides sidebar tree views, webview details/search panels, an MCP server, and a `@beans` chat participant.
 
 ## Build & test
 
@@ -47,6 +47,57 @@ pnpm run lint             # ESLint
 where `codiconFontUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'media', 'codicon.ttf'))`.
 
 > **Note:** `node_modules/**` is excluded from the VSIX. The build step (`scripts/copy-codicons.js`) copies `codicon.ttf` and `codicon.css` into `dist/media/` so they are packaged and available at runtime. Never reference `node_modules/@vscode/codicons/…` paths in webview URIs.
+
+**Priority labels** — use circled Unicode characters ①②③④⑤ (not codicons) for priority in all UI surfaces (tree item labels, quick picks, webview selects).
+
+**Context keys** — dynamic UI state (e.g. navigation back-button visibility) uses the pattern: expose a getter → call `executeCommand('setContext', 'beans.<key>', value)` → reference in `package.json` `when` clauses. See `BeansDetailsViewProvider.updateDetailsContextKeys`.
+
+**Tree providers** — each status pane is a subclass of `BeansTreeDataProvider` with a fixed `statusFilter`. Shared sort/filter/refresh logic lives in the base class. Registered and disposed in `registerBeansTreeViews.ts`.
+
+**Markdown templates** — `CopilotInstructions.ts` and `CopilotSkill.ts` import from `.md` template files (inlined by esbuild). Use `{{PRIME_OUTPUT}}` as the sole placeholder; no complex interpolation in TS.
+
+## Testing
+
+`vitest.config.ts` aliases `vscode` → `src/test/mocks/vscode.ts`. Tests live under `src/test/`. Do not import `vscode` directly in tests — use the mock.
+
+## Security constraints
+
+## Tool usage priority
+
+**Always prefer extension commands and MCP tools over CLIs.** The priority depends on context:
+
+### For Beans work tracking (using this extension)
+
+When tracking your own work with Beans in this repository:
+
+1. **VS Code extension commands/UI first** — use command palette, sidebar, or webviews (`beans.create`, `beans.edit`, `beans.setStatus`, etc.). Best user experience.
+2. **@beans chat participant second** — conversational interface for guidance, summaries, and workflows.
+3. **MCP tools third** — programmatic interface when integrated into automated workflows.
+4. **CLI last resort only** — via `BeansService` argument arrays; never shell strings.
+
+### For testing extension code
+
+When writing tests or verifying extension functionality:
+
+1. **MCP tools first** — programmatic, deterministic testing of Beans operations.
+2. **Extension commands second** — for UI/UX verification and integration testing.
+3. **Direct TypeScript calls third** — when testing internal APIs (`BeansService`, etc.).
+4. **CLI last resort only** — via `BeansService` argument arrays; never shell strings.
+
+Both contexts: never build shell command strings; always use `BeansService` with argument arrays when CLI invocation is unavoidable.
+
+## Key patterns
+
+**Process execution** — never build shell strings. `BeansService` always calls `beans` via an argument array with `child_process.execFile` or similar. Treat all bean content as untrusted input.
+
+**Codicons in webviews** — `@vscode/codicons` ships a `@font-face` with a relative URL that fails in `vscode-webview:` context. Always add an explicit override at the top of inline `<style>`:
+
+```html
+<style>
+  @font-face { font-family:"codicon"; src:url("${codiconFontUri}") format("truetype"); }
+```
+
+where `codiconFontUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.ttf'))`.
 
 **Priority labels** — use circled Unicode characters ①②③④⑤ (not codicons) for priority in all UI surfaces (tree item labels, quick picks, webview selects).
 

@@ -226,8 +226,9 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     const iconName = this.getIconName(bean);
     const iconLabel = this.getIconLabel(bean);
     const codiconStylesUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
+      vscode.Uri.joinPath(this.extensionUri, 'dist', 'media', 'codicon.css')
     );
+    const codiconFontUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'media', 'codicon.ttf'));
     const csp = [
       "default-src 'none'",
       `img-src ${webview.cspSource} data: https:`,
@@ -302,12 +303,12 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     );
     const priorityOptions = this.escapeHtml(
       JSON.stringify([
-        { value: '', label: '— None', icon: 'dash' },
-        { value: 'critical', label: '① Critical', icon: 'error' },
-        { value: 'high', label: '② High', icon: 'arrow-up' },
-        { value: 'normal', label: '③ Normal', icon: 'circle-outline' },
-        { value: 'low', label: '④ Low', icon: 'arrow-down' },
-        { value: 'deferred', label: '⑤ Deferred', icon: 'clock' },
+        { value: '', label: '— None', icon: '' },
+        { value: 'critical', label: '① Critical', icon: '' },
+        { value: 'high', label: '② High', icon: '' },
+        { value: 'normal', label: '③ Normal', icon: '' },
+        { value: 'low', label: '④ Low', icon: '' },
+        { value: 'deferred', label: '⑤ Deferred', icon: '' },
       ])
     );
 
@@ -320,6 +321,11 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   <link href="${codiconStylesUri}" rel="stylesheet" />
   <title>Bean Details</title>
   <style>
+    @font-face {
+      font-family: "codicon";
+      font-display: block;
+      src: url("${codiconFontUri}") format("truetype");
+    }
     body {
       padding: 0;
       margin: 0;
@@ -683,7 +689,8 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       function renderBtnInner() {
         var cur = options.find(function(o) { return o.value === el.dataset.value; });
         if (!cur) { cur = options[0]; }
-        return '<span class="codicon codicon-' + (cur ? cur.icon : '') + '" aria-hidden="true"></span>'
+        var iconHtml = cur && cur.icon ? '<span class="codicon codicon-' + cur.icon + '" aria-hidden="true"></span>' : '';
+        return iconHtml
           + '<span>' + (cur ? cur.label : '') + '</span>'
           + '<span class="codicon codicon-chevron-down icon-select-chevron" aria-hidden="true"></span>';
       }
@@ -699,7 +706,8 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
         li.setAttribute('data-value', o.value);
         li.setAttribute('aria-selected', o.value === el.dataset.value ? 'true' : 'false');
         li.setAttribute('tabindex', '-1');
-        li.innerHTML = '<span class="codicon codicon-' + o.icon + '" aria-hidden="true"></span><span>' + o.label + '</span>';
+        var iconHtml = o.icon ? '<span class="codicon codicon-' + o.icon + '" aria-hidden="true"></span>' : '';
+        li.innerHTML = iconHtml + '<span>' + o.label + '</span>';
         list.appendChild(li);
       });
 

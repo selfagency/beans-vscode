@@ -33,8 +33,6 @@ jobs:
             base-image: "node:20-alpine"
           - node-version: "22"
             base-image: "node:22-bookworm"
-          - node-version: "22"
-            base-image: "mcr.microsoft.com/devcontainers/typescript-node:22"
 
     steps:
       - name: Checkout
@@ -42,8 +40,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -176,8 +172,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -331,8 +325,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
