@@ -767,7 +767,7 @@ export class BeansService {
       try {
         const children = await this.listBeans({ parent: id });
         for (const child of children) {
-          // If child is not already terminal (completed/scrapped/archived), mark as completed
+          // If child is not already terminal (completed/scrapped), mark as completed
           if (child.status !== 'completed' && child.status !== 'scrapped') {
             this.logger.info(`Parent ${id} completed; recursively completing child ${child.id}`);
             await this.updateBeanWithConfig(child.id, { status: 'completed' }, config);
