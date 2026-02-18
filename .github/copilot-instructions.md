@@ -2,7 +2,7 @@
 
 ## What this is
 
-A VS Code extension for the [Beans](https://github.com/selfagency/beans) issue tracker. It wraps the `beans` CLI, provides sidebar tree views, webview details/search panels, an MCP server, and a `@beans` chat participant.
+A VS Code extension for the [Beans](https://github.com/hmans/beans) issue tracker. It wraps the `beans` CLI, provides sidebar tree views, webview details/search panels, an MCP server, and a `@beans` chat participant.
 
 ## Build & test
 
