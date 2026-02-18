@@ -82,12 +82,12 @@ pnpm run watch:tsc     # Type-check only
 
 ### Testing
 
-We use **Vitest** for unit and integration testing.
+We use **Vitest** for unit tests and mocked integration suites, and `vscode-test` for extension-host integration tests.
 
 ```bash
-pnpm test              # Run all unit tests
-pnpm run test:watch    # Watch mode for tests
-pnpm run test:integration # Run integration tests (extension activation)
+pnpm test                 # Run all Vitest suites (unit + mocked integration in src/test/**/*.test.ts)
+pnpm run test:watch       # Watch mode for Vitest tests
+pnpm run test:integration # Run real extension-host integration tests via vscode-test (VS Code Test Electron/CLI)
 ```
 
 **Markdown Templates in Tests**:
