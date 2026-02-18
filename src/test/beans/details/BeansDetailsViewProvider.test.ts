@@ -347,12 +347,12 @@ describe('BeansDetailsViewProvider', () => {
     expect(webview.html).not.toContain('Goal\\nRename generated file');
   });
 
-  it('returns expected icon names by status/type', () => {
-    expect((provider as any).getIconName(makeBean({ status: 'completed' }))).toBe('issue-closed');
-    expect((provider as any).getIconName(makeBean({ status: 'scrapped' }))).toBe('stop');
-    expect((provider as any).getIconName(makeBean({ status: 'draft' }))).toBe('issue-draft');
-    expect((provider as any).getIconName(makeBean({ status: 'in-progress', type: 'feature' }))).toBe('play-circle');
-    expect((provider as any).getIconName(makeBean({ status: 'todo', type: 'milestone' }))).toBe('issues');
+  it('returns expected icon names by type', () => {
+    expect((provider as any).getIconName(makeBean({ type: 'task' }))).toBe('list-unordered');
+    expect((provider as any).getIconName(makeBean({ type: 'bug' }))).toBe('bug');
+    expect((provider as any).getIconName(makeBean({ type: 'feature' }))).toBe('lightbulb');
+    expect((provider as any).getIconName(makeBean({ type: 'epic' }))).toBe('zap');
+    expect((provider as any).getIconName(makeBean({ type: 'milestone' }))).toBe('milestone');
     expect((provider as any).getTypeIconName('epic')).toBe('zap');
     expect((provider as any).getTypeIconName('bug')).toBe('bug');
     expect((provider as any).getTypeIconName('unknown')).toBe('list-unordered');

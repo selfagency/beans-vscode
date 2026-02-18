@@ -284,6 +284,35 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
           )}"><span class="parent-code">${this.escapeHtml(bean.parent.split('-').pop() || bean.parent)}</span></a>`
         : '';
 
+    const statusOptions = this.escapeHtml(
+      JSON.stringify([
+        { value: 'todo', label: 'Todo', icon: 'issues' },
+        { value: 'in-progress', label: 'In Progress', icon: 'play-circle' },
+        { value: 'completed', label: 'Completed', icon: 'issue-closed' },
+        { value: 'draft', label: 'Draft', icon: 'issue-draft' },
+        { value: 'scrapped', label: 'Scrapped', icon: 'stop' },
+      ])
+    );
+    const typeOptions = this.escapeHtml(
+      JSON.stringify([
+        { value: 'task', label: 'Task', icon: 'list-unordered' },
+        { value: 'bug', label: 'Bug', icon: 'bug' },
+        { value: 'feature', label: 'Feature', icon: 'lightbulb' },
+        { value: 'epic', label: 'Epic', icon: 'zap' },
+        { value: 'milestone', label: 'Milestone', icon: 'milestone' },
+      ])
+    );
+    const priorityOptions = this.escapeHtml(
+      JSON.stringify([
+        { value: '', label: '— None', icon: 'dash' },
+        { value: 'critical', label: '① Critical', icon: 'error' },
+        { value: 'high', label: '② High', icon: 'arrow-up' },
+        { value: 'normal', label: '③ Normal', icon: 'circle-outline' },
+        { value: 'low', label: '④ Low', icon: 'arrow-down' },
+        { value: 'deferred', label: '⑤ Deferred', icon: 'clock' },
+      ])
+    );
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -402,20 +431,25 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       padding: 12px 16px;
       border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
       border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      column-gap: 8px;
+      row-gap: 6px;
       align-items: center;
     }
     .metadata-row {
+      display: contents;
+    }
+    .metadata-label-group {
       display: flex;
-      gap: 20px;
       align-items: center;
-      margin-bottom: 8px;
+      gap: 5px;
+      min-width: 85px;
+      flex-shrink: 0;
     }
     .metadata-label {
       font-size: 12px;
       color: var(--vscode-descriptionForeground);
-      min-width: 60px;
     }
     .metadata-icon {
       font-size: 12px;
@@ -424,18 +458,68 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       text-align: center;
       flex-shrink: 0;
     }
-    select {
+    .icon-select {
+      position: relative;
+    }
+    .icon-select-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      width: 100%;
       background: var(--vscode-dropdown-background);
       color: var(--vscode-dropdown-foreground);
       border: 1px solid var(--vscode-dropdown-border);
-      padding: 6px 8px;
+      padding: 3px 6px;
       font-size: 12px;
       border-radius: 2px;
       cursor: pointer;
-      min-width: 150px;
+      font-family: var(--vscode-font-family);
+      text-align: left;
+      box-sizing: border-box;
     }
-    select:focus {
+    .icon-select-btn:focus {
       outline: 1px solid var(--vscode-focusBorder);
+    }
+    .icon-select-chevron {
+      margin-left: auto;
+      opacity: 0.6;
+    }
+    .icon-select-list {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      background: var(--vscode-dropdown-background);
+      border: 1px solid var(--vscode-dropdown-border);
+      border-radius: 2px;
+      margin-top: 1px;
+      padding: 2px 0;
+      list-style: none;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .icon-select-list.open {
+      display: block;
+    }
+    .icon-select-option {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--vscode-dropdown-foreground);
+    }
+    .icon-select-option:hover,
+    .icon-select-option:focus {
+      background: var(--vscode-list-hoverBackground);
+      outline: none;
+    }
+    .icon-select-option.selected {
+      background: var(--vscode-list-activeSelectionBackground);
+      color: var(--vscode-list-activeSelectionForeground);
     }
     .badge {
       display: inline-block;
@@ -560,43 +644,30 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   </div>
   <div class="metadata-section">
     <div class="metadata-row">
-      <span class="metadata-icon codicon codicon-${this.escapeHtml(this.getStatusIcon(bean.status))}" aria-hidden="true"></span>
-      <span class="metadata-label">Status</span>
-      <select id="status" onchange="updateField('status', this.value)" aria-label="Status">
-        <option value="todo" ${bean.status === 'todo' ? 'selected' : ''}>🔵 Todo</option>
-        <option value="in-progress" ${bean.status === 'in-progress' ? 'selected' : ''}>▶️ In Progress</option>
-        <option value="completed" ${bean.status === 'completed' ? 'selected' : ''}>✅ Completed</option>
-        <option value="draft" ${bean.status === 'draft' ? 'selected' : ''}>📝 Draft</option>
-        <option value="scrapped" ${bean.status === 'scrapped' ? 'selected' : ''}>🚫 Scrapped</option>
-      </select>
+      <div class="metadata-label-group">
+        <span class="metadata-icon codicon codicon-pulse" aria-hidden="true"></span>
+        <span class="metadata-label">Status</span>
+      </div>
+      <div class="icon-select" data-field="status" data-value="${this.escapeHtml(bean.status)}" data-options="${statusOptions}" aria-label="Status" role="group"></div>
     </div>
 
     <div class="metadata-row">
-      <span class="metadata-icon codicon codicon-${this.escapeHtml(this.getTypeIconName(bean.type))}" aria-hidden="true"></span>
-      <span class="metadata-label">Type</span>
-      <select id="type" onchange="updateField('type', this.value)" aria-label="Type">
-        <option value="task" ${bean.type === 'task' ? 'selected' : ''}>📋 Task</option>
-        <option value="bug" ${bean.type === 'bug' ? 'selected' : ''}>🐛 Bug</option>
-        <option value="feature" ${bean.type === 'feature' ? 'selected' : ''}>💡 Feature</option>
-        <option value="epic" ${bean.type === 'epic' ? 'selected' : ''}>⚡ Epic</option>
-        <option value="milestone" ${bean.type === 'milestone' ? 'selected' : ''}>🏁 Milestone</option>
-      </select>
+      <div class="metadata-label-group">
+        <span class="metadata-icon codicon codicon-folder" aria-hidden="true"></span>
+        <span class="metadata-label">Type</span>
+      </div>
+      <div class="icon-select" data-field="type" data-value="${this.escapeHtml(bean.type)}" data-options="${typeOptions}" aria-label="Type" role="group"></div>
     </div>
 
     <div class="metadata-row">
-      <span class="metadata-icon codicon codicon-list-ordered" aria-hidden="true"></span>
-      <span class="metadata-label">Priority</span>
-      <select id="priority" onchange="updateField('priority', this.value)" aria-label="Priority">
-        <option value="" ${!bean.priority ? 'selected' : ''}>\u2014 None</option>
-        <option value="critical" ${bean.priority === 'critical' ? 'selected' : ''}>\uD83D\uDD34 Critical</option>
-        <option value="high" ${bean.priority === 'high' ? 'selected' : ''}>\uD83D\uDFE0 High</option>
-        <option value="normal" ${bean.priority === 'normal' ? 'selected' : ''}>\uD83D\uDFE1 Normal</option>
-        <option value="low" ${bean.priority === 'low' ? 'selected' : ''}>\uD83D\uDFE2 Low</option>
-        <option value="deferred" ${bean.priority === 'deferred' ? 'selected' : ''}>\uD83D\uDD35 Deferred</option>
-      </select>
+      <div class="metadata-label-group">
+        <span class="metadata-icon codicon codicon-list-ordered" aria-hidden="true"></span>
+        <span class="metadata-label">Priority</span>
+      </div>
+      <div class="icon-select" data-field="priority" data-value="${this.escapeHtml(bean.priority || '')}" data-options="${priorityOptions}" aria-label="Priority" role="group"></div>
     </div>
 
-    ${tagsBadges ? `<div class="metadata">${tagsBadges}</div>` : ''}
+    ${tagsBadges ? `<div class="metadata" style="grid-column:1/-1">${tagsBadges}</div>` : ''}
   </div>
   <div class="content">
     <div class="body-content">
@@ -607,6 +678,128 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   </div>
 
   <script nonce="${nonce}">
+    function initIconSelect(el) {
+      var field = el.dataset.field;
+      var options = JSON.parse(el.dataset.options || '[]');
+
+      function renderBtnInner() {
+        var cur = options.find(function(o) { return o.value === el.dataset.value; });
+        if (!cur) { cur = options[0]; }
+        return '<span class="codicon codicon-' + (cur ? cur.icon : '') + '" aria-hidden="true"></span>'
+          + '<span>' + (cur ? cur.label : '') + '</span>'
+          + '<span class="codicon codicon-chevron-down icon-select-chevron" aria-hidden="true"></span>';
+      }
+
+      var list = document.createElement('ul');
+      list.className = 'icon-select-list';
+      list.setAttribute('role', 'listbox');
+      list.setAttribute('aria-label', el.getAttribute('aria-label') || field);
+      options.forEach(function(o) {
+        var li = document.createElement('li');
+        li.className = 'icon-select-option' + (o.value === el.dataset.value ? ' selected' : '');
+        li.setAttribute('role', 'option');
+        li.setAttribute('data-value', o.value);
+        li.setAttribute('aria-selected', o.value === el.dataset.value ? 'true' : 'false');
+        li.setAttribute('tabindex', '-1');
+        li.innerHTML = '<span class="codicon codicon-' + o.icon + '" aria-hidden="true"></span><span>' + o.label + '</span>';
+        list.appendChild(li);
+      });
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'icon-select-btn';
+      btn.setAttribute('aria-haspopup', 'listbox');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.setAttribute('aria-label', el.getAttribute('aria-label') || field);
+      btn.innerHTML = renderBtnInner();
+
+      el.innerHTML = '';
+      el.appendChild(btn);
+      el.appendChild(list);
+
+      function openList() {
+        list.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+        var sel = list.querySelector('.selected') || list.querySelector('[role="option"]');
+        if (sel) { sel.focus(); }
+      }
+
+      function closeList() {
+        list.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+
+      function selectVal(value) {
+        el.dataset.value = value;
+        btn.innerHTML = renderBtnInner();
+        list.querySelectorAll('[role="option"]').forEach(function(opt) {
+          var isSelected = opt.dataset.value === value;
+          opt.classList.toggle('selected', isSelected);
+          opt.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+        });
+        closeList();
+        btn.focus();
+        updateField(field, value);
+      }
+
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        list.classList.contains('open') ? closeList() : openList();
+      });
+
+      btn.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          list.classList.contains('open') ? closeList() : openList();
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (!list.classList.contains('open')) { openList(); }
+          else {
+            var items = Array.from(list.querySelectorAll('[role="option"]'));
+            var idx = items.indexOf(document.activeElement);
+            if (items[idx + 1]) { items[idx + 1].focus(); }
+          }
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          closeList();
+          btn.focus();
+        }
+      });
+
+      list.addEventListener('click', function(e) {
+        var option = e.target.closest('[role="option"]');
+        if (option) { selectVal(option.dataset.value); }
+      });
+
+      list.addEventListener('keydown', function(e) {
+        var items = Array.from(list.querySelectorAll('[role="option"]'));
+        var idx = items.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (items[idx + 1]) { items[idx + 1].focus(); }
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (idx <= 0) { closeList(); btn.focus(); }
+          else if (items[idx - 1]) { items[idx - 1].focus(); }
+        } else if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (document.activeElement && document.activeElement.hasAttribute('data-value')) {
+            selectVal(document.activeElement.dataset.value);
+          }
+        } else if (e.key === 'Escape' || e.key === 'Tab') {
+          e.preventDefault();
+          closeList();
+          btn.focus();
+        } else if (e.key === 'Home') {
+          e.preventDefault();
+          if (items[0]) { items[0].focus(); }
+        } else if (e.key === 'End') {
+          e.preventDefault();
+          if (items[items.length - 1]) { items[items.length - 1].focus(); }
+        }
+      });
+    }
+
     const vscode = acquireVsCodeApi();
 
     function updateField(field, value) {
@@ -618,7 +811,19 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       });
     }
 
+    document.querySelectorAll('.icon-select').forEach(initIconSelect);
+
     document.addEventListener('click', event => {
+      // Close any open dropdowns when clicking outside
+      document.querySelectorAll('.icon-select-list.open').forEach(function(openList) {
+        openList.classList.remove('open');
+        var selectEl = openList.closest('.icon-select');
+        if (selectEl) {
+          var selectBtn = selectEl.querySelector('.icon-select-btn');
+          if (selectBtn) { selectBtn.setAttribute('aria-expanded', 'false'); }
+        }
+      });
+
       const target = event.target;
       if (!(target instanceof Element)) {
         return;
@@ -866,35 +1071,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
    * Get icon name for bean based on status and type
    */
   private getIconName(bean: Bean): string {
-    switch (bean.status) {
-      case 'completed':
-        return 'issue-closed';
-      case 'in-progress':
-        return 'play-circle';
-      case 'scrapped':
-        return 'stop';
-      case 'draft':
-        return 'issue-draft';
-      case 'todo':
-      default:
-        return 'issues';
-    }
-  }
-
-  private getStatusIcon(status: Bean['status']): string {
-    switch (status) {
-      case 'completed':
-        return 'issue-closed';
-      case 'in-progress':
-        return 'play-circle';
-      case 'scrapped':
-        return 'stop';
-      case 'draft':
-        return 'issue-draft';
-      case 'todo':
-      default:
-        return 'issues';
-    }
+    return this.getTypeIconName(bean.type);
   }
 
   /**

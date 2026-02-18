@@ -34,22 +34,22 @@ export class BeansHelpViewProvider implements vscode.WebviewViewProvider {
   <title>Beans Help</title>
   <style>
     body {
-      padding: 12px;
+      padding: 8px;
       color: var(--vscode-foreground);
       font-family: var(--vscode-font-family);
       font-size: var(--vscode-font-size);
-      line-height: 1.5;
+      line-height: 1.4;
     }
 
     h2 {
-      margin: 0 0 8px;
-      font-size: 13px;
+      margin: 0 0 6px;
+      font-size: 12px;
       font-weight: 600;
     }
 
     h3 {
-      margin: 14px 0 6px;
-      font-size: 12px;
+      margin: 10px 0 4px;
+      font-size: 11px;
       font-weight: 600;
       color: var(--vscode-descriptionForeground);
       text-transform: uppercase;
@@ -57,7 +57,8 @@ export class BeansHelpViewProvider implements vscode.WebviewViewProvider {
     }
 
     p {
-      margin: 0 0 8px;
+      margin: 0 0 6px;
+      font-size: 11px;
     }
 
     ul {
@@ -81,21 +82,21 @@ export class BeansHelpViewProvider implements vscode.WebviewViewProvider {
     .button-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin: 8px 0 0;
+      gap: 6px;
+      margin: 6px 0 0;
     }
 
     .button-link {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 6px 10px;
-      border-radius: 6px;
+      padding: 4px 8px;
+      border-radius: 4px;
       border: 1px solid var(--vscode-button-border, transparent);
       background: var(--vscode-button-background);
       color: var(--vscode-button-foreground);
       text-decoration: none;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 500;
       line-height: 1.2;
     }
