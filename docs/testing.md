@@ -69,7 +69,20 @@ pnpm test:integration
 pnpm run pretest && pnpm test
 ```
 
-### Unit Tests (Vitest)
+### Importing Markdown Templates in Tests
+
+Certain tests (e.g., `CopilotInstructions.test.ts` and `CopilotSkill.test.ts`) require importing markdown template files from `src/beans/config/templates/*.md`.
+
+Since Vitest uses Vite's transform pipeline, and Vite does not have a built-in `.md` loader, we use a custom `mdTextPlugin` in `vitest.config.ts`. This mirrors the `esbuild.js` loader: `{ '.md': 'text' }`.
+
+**Usage in tests**:
+
+```typescript
+import template from '../templates/CopilotInstructions.md';
+// `template` is a string containing the markdown content
+```
+
+### Writing Tests (TDD-First)
 
 **Command**: `pnpm test`
 
