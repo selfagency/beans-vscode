@@ -28,7 +28,7 @@ This skill drives all Beans issue tracker operations in this workspace using the
 
 ## Starting work on a bean
 
-1. Search for a relevant bean: `beans.search` or `@beans /search <keywords>`.
+1. Orient yourself first: `@beans /next` (what should I work on?) or `@beans /search <keywords>` (does a bean already exist?). Use `beans.search` if you know what you are looking for.
 2. If none found, create one: `beans.create` → fill title, type, priority, description.
 3. Set status to `in-progress`: `beans.setStatus`.
 4. Create a branch named `feature/<bean-id>-<slug>` and push it.
@@ -57,38 +57,51 @@ This skill drives all Beans issue tracker operations in this workspace using the
 
 ## VS Code extension command reference
 
-| Command | Purpose |
-| --- | --- |
-| `beans.create` | Create a new bean |
-| `beans.view` | Open bean details sidebar |
-| `beans.edit` | Edit bean body/frontmatter in editor |
-| `beans.setStatus` | Change status (todo → in-progress → completed / scrapped) |
-| `beans.setType` | Change type (task / feature / bug / milestone) |
-| `beans.setPriority` | Change priority (① critical … ⑤ low) |
-| `beans.setParent` | Link a bean to a parent epic |
-| `beans.removeParent` | Remove parent link |
-| `beans.editBlocking` | Edit blocking/blocked-by relationships |
-| `beans.copyId` | Copy bean ID to clipboard |
-| `beans.delete` | Delete a bean (only draft or scrapped) |
-| `beans.search` | Full-text search across all beans |
-| `beans.filter` | Filter tree by status/type/priority/tag |
-| `beans.sort` | Change tree sort mode |
-| `beans.refresh` | Force reload from disk |
-| `beans.reopenCompleted` | Reopen a completed bean |
-| `beans.reopenScrapped` | Reopen a scrapped bean |
-| `beans.copilotStartWork` | Ask Copilot to start work on the selected bean |
+| Command                  | Purpose                                                   |
+| ------------------------ | --------------------------------------------------------- |
+| `beans.create`           | Create a new bean                                         |
+| `beans.view`             | Open bean details sidebar                                 |
+| `beans.edit`             | Edit bean body/frontmatter in editor                      |
+| `beans.setStatus`        | Change status (todo → in-progress → completed / scrapped) |
+| `beans.setType`          | Change type (task / feature / bug / milestone)            |
+| `beans.setPriority`      | Change priority (① critical … ⑤ low)                      |
+| `beans.setParent`        | Link a bean to a parent epic                              |
+| `beans.removeParent`     | Remove parent link                                        |
+| `beans.editBlocking`     | Edit blocking/blocked-by relationships                    |
+| `beans.copyId`           | Copy bean ID to clipboard                                 |
+| `beans.delete`           | Delete a bean (only draft or scrapped)                    |
+| `beans.search`           | Full-text search across all beans                         |
+| `beans.filter`           | Filter tree by status/type/priority/tag                   |
+| `beans.sort`             | Change tree sort mode                                     |
+| `beans.refresh`          | Force reload from disk                                    |
+| `beans.reopenCompleted`  | Reopen a completed bean                                   |
+| `beans.reopenScrapped`   | Reopen a scrapped bean                                    |
+| `beans.copilotStartWork` | Ask Copilot to start work on the selected bean            |
 
-## Chat participant (`@beans`) command reference
+## Chat participant (`@beans`) guidance
 
-| Slash command | Purpose |
-| --- | --- |
-| `/summary` | Status overview of all open beans |
-| `/priority` | Top-priority active beans |
-| `/stale` | Beans that haven't been updated recently |
-| `/next` | Suggest the best bean to start next |
-| `/create` | Guided bean creation workflow |
-| `/search <query>` | Search beans by text |
-| `/commit` | Suggest a commit message for current work |
+`@beans` is the human-facing conversational interface. Use it for orientation, guidance, and structured workflows — especially when you need to reason about what to work on next, confirm an epic plan before acting, or draft a commit message. It reads beans and returns natural-language responses; it does **not** mutate state. To create, edit, or change status, use extension commands or MCP tools.
+
+**When to reach for `@beans`:**
+
+- Before starting work: `/next` or `/priority` to orient yourself
+- Before creating an epic: use it to propose the issue map (step 3 of planning mode) and confirm with the user before creating anything
+- After finishing a step: `/commit` to draft a conventional commit message with the right bean reference
+- At any time: `/summary` or `/stale` for a workspace health check
+
+**Slash commands:**
+
+| Command              | When to use                                                                                 | What it returns                                              |
+| -------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `/summary`           | Start of session or sprint; workspace health check                                          | Count by status + list of up to 10 in-progress beans         |
+| `/priority`          | Before picking up new work; see what matters most                                           | Up to 8 active beans sorted by status then priority          |
+| `/stale`             | Triage/cleanup; find forgotten work                                                         | Beans not updated in 21+ days, sorted oldest-first           |
+| `/next`              | Deciding what to start; replaces manually scanning the tree                                 | Up to 8 todo/in-progress beans ranked by status + priority   |
+| `/create`            | When you want guided prompting for all fields before calling `beans.create`                 | Field checklist (title, type, priority, description, parent) |
+| `/search <query>`    | Finding a bean by keyword before starting work or linking a parent                          | Up to 20 matching beans with id, title, status, type         |
+| `/commit`            | After completing a step; drafts a conventional commit referencing the most relevant bean(s) | Likely bean IDs in context + example commit subject line     |
+
+**Follow-up suggestions** — after any `@beans` response, VS Code surfaces quick-pick follow-ups for `/summary`, `/priority`, `/stale`, `/create`, and `/commit`. Use them to stay in flow without typing commands.
 
 ## MCP tool guidance
 
@@ -140,7 +153,7 @@ For each child issue include:
 
 ### Step 4 — Get approval
 
-Do not create any beans until the user approves the plan. Ask for a quick pass:
+Do not create any beans until the user approves the plan. Present the issue map as a chat reply (this is an `@beans` conversation step, not a mutation). Ask for a quick pass:
 
 - "Does the issue map look right? Any changes before I create these?"
 
