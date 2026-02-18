@@ -1,9 +1,10 @@
 #!/usr/bin/env zx
 
+import { Octokit } from '@octokit/rest';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Octokit } from '@octokit/rest';
+import ora from 'ora';
 
 $.verbose = false;
 
@@ -207,7 +208,7 @@ async function main() {
   if (hasChanges) {
     console.log('📦 Committing release metadata changes...');
     await $`git add package.json CHANGELOG.md`;
-    await $`git commit -m ${'chore(release): update version and changelog for ' + tag + ' [skip ci]'}`;
+    await $`git commit -m ${'chore(release): update version and changelog for ' + tag}`;
     commitLocal = true;
   } else {
     console.log('ℹ️  No version/changelog changes detected; nothing to commit.');
@@ -222,11 +223,15 @@ async function main() {
 
   // --- Wait for required workflows (parallel) -------------------------------
 
-  console.log(`🔎 Waiting for required workflows on ${headSha}...`);
+  const shortSha = headSha.slice(0, 7);
+  console.log(`🔎 Waiting for required workflows on ${shortSha}...`);
+
+  const ciSpinner = ora({ text: 'CI: queued', prefixText: '' }).start();
+  const compatSpinner = ora({ text: 'Remote Compatibility Tests: queued', prefixText: '' }).start();
 
   await Promise.all([
-    waitForWorkflow(octokit, 'CI', owner, repo, headSha),
-    waitForWorkflow(octokit, 'Remote Compatibility Tests', owner, repo, headSha),
+    waitForWorkflow(octokit, 'CI', owner, repo, headSha, ciSpinner),
+    waitForWorkflow(octokit, 'Remote Compatibility Tests', owner, repo, headSha, compatSpinner),
   ]);
 
   // --- Tag + publish --------------------------------------------------------
@@ -261,14 +266,16 @@ async function waitForWorkflow(
   owner,
   repo,
   headSha,
+  spinner,
   { timeoutMs = 3_600_000, pollMs = 15_000 } = {},
 ) {
-  const log = (msg) => console.log(`[${name}] ${msg}`);
+  const shortSha = headSha.slice(0, 7);
 
   // Resolve the workflow ID by name.
   const workflowsResp = await octokit.actions.listRepoWorkflows({ owner, repo, per_page: 100 });
   const workflow = workflowsResp.data.workflows.find((w) => w.name === name);
   if (!workflow) {
+    spinner.fail(`${name}: workflow not found in ${owner}/${repo}`);
     throw new Error(`[${name}] workflow not found in ${owner}/${repo}`);
   }
 
@@ -293,29 +300,33 @@ async function waitForWorkflow(
         const branchResp = await octokit.repos.getBranch({ owner, repo, branch: 'main' });
         const remoteSha = branchResp.data.commit.sha;
         if (remoteSha !== headSha) {
+          spinner.fail(`${name}: SHA mismatch — ${shortSha} is no longer tip of main`);
           throw new Error(
             `[${name}] HEAD_SHA (${headSha}) is no longer latest on main (remote is ${remoteSha}). Re-run release.`,
           );
         }
-        log(`no run for ${headSha}; triggering via workflow_dispatch...`);
+        spinner.text = `${name}: no run found — triggering workflow_dispatch...`;
         await octokit.actions.createWorkflowDispatch({ owner, repo, workflow_id: workflow.id, ref: 'main' });
         triggered = true;
-        log('workflow_dispatch triggered; waiting for run to appear...');
+        spinner.text = `${name}: waiting for run to appear...`;
       } else {
-        log('no run yet; waiting...');
+        spinner.text = `${name}: waiting for run to appear...`;
       }
     } else if (run.status !== 'completed') {
-      log(`status=${run.status}; waiting...`);
+      const elapsed = Math.round((Date.now() - new Date(run.created_at).getTime()) / 1000);
+      spinner.text = `${name}: ${run.status} (${elapsed}s elapsed)`;
     } else if (run.conclusion === 'success') {
-      log('✅ passed');
+      spinner.succeed(`${name}: passed`);
       return;
     } else {
+      spinner.fail(`${name}: ${run.conclusion}`);
       throw new Error(`[${name}] conclusion=${run.conclusion}\n   Run: ${run.html_url}`);
     }
 
     await sleep(pollMs);
   }
 
+  spinner.fail(`${name}: timed out`);
   throw new Error(`[${name}] timed out after ${timeoutMs / 1000}s`);
 }
 
