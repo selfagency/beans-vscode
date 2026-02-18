@@ -77,8 +77,6 @@ jobs:
           key: go-${{ runner.os }}-1.23-${{ hashFiles('**/go.sum') || 'nochecksum' }}
           restore-keys: |
             go-${{ runner.os }}-1.23-
-            go-${{ runner.os }}-
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
