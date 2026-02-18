@@ -314,7 +314,7 @@ describe('BeansCommands', () => {
     );
     showQuickPick.mockResolvedValueOnce({ label: 'Bean ID', value: 'id' });
 
-    await (commands as any).sort();
+    await (commands as unknown as { sort(): Promise<void> }).sort();
 
     expect(config.update).toHaveBeenCalledWith('defaultSortMode', 'id', (vscode as any).ConfigurationTarget.Workspace);
     expect(executeCommand).toHaveBeenCalledWith('beans.refreshAll');

@@ -1,4 +1,3 @@
-import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
 import { Bean, BEAN_PRIORITIES, BEAN_STATUSES, BEAN_TYPES } from '../model';
@@ -280,9 +279,8 @@ export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
 
   private getHtml(webview: vscode.Webview): string {
     const nonce = this.getNonce();
-    const extensionRootPath = (this.extensionUri as vscode.Uri & { fsPath?: string }).fsPath || this.extensionUri.path;
     const codiconStylesUri = webview.asWebviewUri(
-      vscode.Uri.file(path.join(extensionRootPath, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css'))
+      vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
     );
     const csp = [
       "default-src 'none'",

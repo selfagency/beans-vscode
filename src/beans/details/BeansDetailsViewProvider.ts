@@ -1,4 +1,3 @@
-import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
 import { Bean } from '../model';
@@ -226,9 +225,8 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     const tagsBadges = bean.tags?.map(tag => this.renderBadge(tag, 'tag')).join('') || '';
     const iconName = this.getIconName(bean);
     const iconLabel = this.getIconLabel(bean);
-    const extensionRootPath = (this.extensionUri as vscode.Uri & { fsPath?: string }).fsPath || this.extensionUri.path;
     const codiconStylesUri = webview.asWebviewUri(
-      vscode.Uri.file(path.join(extensionRootPath, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css'))
+      vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
     );
     const csp = [
       "default-src 'none'",

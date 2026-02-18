@@ -76,7 +76,7 @@ export class BeanTreeItem extends vscode.TreeItem {
   };
 
   /**
-   * Build label — only show ⏳ prefix for in-progress items.
+   * Build label — returns the bean title.
    */
   private buildLabel(): string {
     return this.bean.title;
@@ -91,7 +91,7 @@ export class BeanTreeItem extends vscode.TreeItem {
 
   /**
    * Build detailed tooltip styled like the details pane, using
-   * full emoji + title-case labels for status, type, and priority.
+   * full codicon + title-case labels for status, type, and priority.
    */
   private buildTooltip(): vscode.MarkdownString {
     const tooltip = new vscode.MarkdownString();

@@ -29,12 +29,6 @@ const PRIORITY_LABELS: Record<string, string> = {
   deferred: '$(circle-large-filled) Deferred',
 };
 
-const GROUP_DESCRIPTIONS: Record<SearchFilterGroup, string> = {
-  status: 'status',
-  type: 'type',
-  priority: 'priority',
-};
-
 function prettyLabel(group: SearchFilterGroup, value: string): string {
   if (group === 'status') {
     return STATUS_LABELS[value] ?? value;
@@ -57,7 +51,6 @@ function buildSearchFilterItems(): vscode.QuickPickItem[] {
     for (const value of group.values) {
       items.push({
         label: prettyLabel(group.group, value),
-        description: GROUP_DESCRIPTIONS[group.group],
         group: group.group,
         value,
       });

@@ -175,7 +175,7 @@ vi.mock('../../beans/tree/providers', () => {
   return { ActiveBeansProvider, CompletedBeansProvider, DraftBeansProvider };
 });
 
-function makeContext(): any {
+function makeContext(): vscode.ExtensionContext {
   return {
     subscriptions: [],
     extensionUri: vscode.Uri.file('/ext'),
@@ -185,7 +185,7 @@ function makeContext(): any {
       get: vi.fn(() => undefined),
       update: vi.fn(async () => undefined),
     },
-  };
+  } as unknown as vscode.ExtensionContext;
 }
 
 describe('Extension lifecycle coverage', () => {

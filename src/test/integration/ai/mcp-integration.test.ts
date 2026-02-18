@@ -23,7 +23,7 @@ describe('MCP Integration', () => {
     } as unknown as vscode.ExtensionContext;
 
     // Mock vscode.lm API
-    (vscode.lm as any) = {
+    (vscode as unknown as { lm: unknown }).lm = {
       registerMcpServerDefinitionProvider: vi.fn((id: string, provider: any) => {
         registeredProviders.set(id, provider);
         return { dispose: vi.fn() };
@@ -85,7 +85,7 @@ describe('MCP Integration', () => {
     });
 
     it('should not register when lm API is unavailable', () => {
-      (vscode.lm as any) = undefined;
+      (vscode as unknown as { lm: unknown }).lm = undefined;
 
       mcpIntegration.register();
 
