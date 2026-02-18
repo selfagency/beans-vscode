@@ -309,8 +309,8 @@ wait_for_workflow_success() {
 
 # Run both workflow checks in parallel so we don't wait for CI to finish
 # before starting to poll Remote Compatibility Tests.
-ci_log="$(mktemp)"
-compat_log="$(mktemp)"
+ci_log="$(mktemp -t beans-ci.XXXXXX)"
+compat_log="$(mktemp -t beans-compat.XXXXXX)"
 trap 'rm -f "$ci_log" "$compat_log"' EXIT
 
 echo "🔎 Waiting for required workflows in parallel..."
