@@ -469,6 +469,10 @@ export class BeansService {
         filter.search = options.search;
       }
 
+      if (options?.parent) {
+        filter.parent = options.parent;
+      }
+
       const { data, errors } = await this.executeGraphQL<{ beans: RawBeanFromCLI[] }>(graphql.LIST_BEANS_QUERY, {
         filter,
       });
@@ -477,12 +481,7 @@ export class BeansService {
         throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
       }
 
-      if (options?.parent) {
-        args.push('--parent', options.parent);
-      }
-
-      const result = await this.execute<RawBeanFromCLI[]>(args);
-      const beans = result || [];
+      const beans = data.beans || [];
 
       // Normalize bean data to ensure arrays are always arrays
       const normalizedBeans = beans.map(bean => this.normalizeBean(bean, { allowPartial: true }));
@@ -835,8 +834,9 @@ export class BeansService {
       throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
     }
 
+    let updatedBean: Bean;
     try {
-      return this.normalizeBean(resp.updateBean);
+      updatedBean = this.normalizeBean(resp.updateBean);
     } catch (error) {
       // Some Beans CLI update responses may be partial (for example, only returning
       // changed fields). In that case, fetch the full bean as a resilience fallback.

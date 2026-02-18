@@ -118,7 +118,7 @@ describe('BeansService', () => {
   describe('checkInitialized', () => {
     it('returns true when workspace is initialized', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: '{"initialized":true}', stderr: '' });
+        callback(null, { stdout: JSON.stringify({ data: { initialized: true } }), stderr: '' });
       });
 
       const initialized = await service.checkInitialized();
@@ -678,87 +678,110 @@ describe('BeansService', () => {
 
       beforeEach(() => {
         mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-          if (args.includes('list')) {
-            const parentFilterIndex = args.indexOf('--parent');
-            const parentFilter = parentFilterIndex !== -1 ? args[parentFilterIndex + 1] : undefined;
+          if (args.includes('graphql')) {
+            const query = args[args.indexOf('graphql') + 2];
+            const vars = args.includes('--variables') ? JSON.parse(args[args.indexOf('--variables') + 1]) : {};
 
-            if (parentFilter === parentId) {
+            if (query.includes('query ListBeans')) {
+              const filter = vars.filter || {};
+              const parentFilter = filter.parent;
+
+              if (parentFilter === parentId) {
+                callback(null, {
+                  stdout: JSON.stringify({
+                    data: {
+                      beans: [
+                        {
+                          id: childId,
+                          title: 'Child',
+                          status: 'todo',
+                          type: 'task',
+                          parent: parentId,
+                          slug: 'c',
+                          path: 'c.md',
+                          body: '',
+                          createdAt: '2026-01-01T00:00:00Z',
+                          updatedAt: '2026-01-02T00:00:00Z',
+                          etag: 'e2',
+                        },
+                      ],
+                    },
+                  }),
+                  stderr: '',
+                });
+              } else if (parentFilter === childId) {
+                callback(null, {
+                  stdout: JSON.stringify({
+                    data: {
+                      beans: [
+                        {
+                          id: grandChildId,
+                          title: 'Grandchild',
+                          status: 'todo',
+                          type: 'task',
+                          parent: childId,
+                          slug: 'gc',
+                          path: 'gc.md',
+                          body: '',
+                          createdAt: '2026-01-01T00:00:00Z',
+                          updatedAt: '2026-01-02T00:00:00Z',
+                          etag: 'e3',
+                        },
+                      ],
+                    },
+                  }),
+                  stderr: '',
+                });
+              } else {
+                callback(null, { stdout: JSON.stringify({ data: { beans: [] } }), stderr: '' });
+              }
+            } else if (query.includes('mutation UpdateBean')) {
+              const id = vars.id;
+              const input = vars.input || {};
+              const status = input.status || 'todo';
               callback(null, {
-                stdout: JSON.stringify([
-                  {
-                    id: childId,
-                    title: 'Child',
-                    status: 'todo',
-                    type: 'task',
-                    parent: parentId,
-                    slug: 'c',
-                    path: 'c.md',
-                    body: '',
-                    created_at: '2026-01-01T00:00:00Z',
-                    updated_at: '2026-01-02T00:00:00Z',
-                    etag: 'e2',
+                stdout: JSON.stringify({
+                  data: {
+                    updateBean: {
+                      id,
+                      title: 'Updated',
+                      status,
+                      type: 'task',
+                      slug: 'u',
+                      path: 'u.md',
+                      body: '',
+                      createdAt: '2026-01-01T00:00:00Z',
+                      updatedAt: '2026-01-02T00:00:00Z',
+                      etag: 'eu',
+                    },
                   },
-                ]),
+                }),
                 stderr: '',
               });
-            } else if (parentFilter === childId) {
+            } else if (query.includes('query ShowBean')) {
+              const id = vars.id;
               callback(null, {
-                stdout: JSON.stringify([
-                  {
-                    id: grandChildId,
-                    title: 'Grandchild',
-                    status: 'todo',
-                    type: 'task',
-                    parent: childId,
-                    slug: 'gc',
-                    path: 'gc.md',
-                    body: '',
-                    created_at: '2026-01-01T00:00:00Z',
-                    updated_at: '2026-01-02T00:00:00Z',
-                    etag: 'e3',
+                stdout: JSON.stringify({
+                  data: {
+                    bean: {
+                      id,
+                      title: 'Shown',
+                      status: 'todo',
+                      type: 'task',
+                      slug: 's',
+                      path: 's.md',
+                      body: '',
+                      createdAt: '2026-01-01T00:00:00Z',
+                      updatedAt: '2026-01-02T00:00:00Z',
+                      etag: 'es',
+                    },
                   },
-                ]),
+                }),
                 stderr: '',
               });
             } else {
-              callback(null, { stdout: '[]', stderr: '' });
+              callback(null, { stdout: JSON.stringify({ data: {} }), stderr: '' });
             }
-          } else if (args.includes('update')) {
-            const id = args[args.length - 1];
-            const statusIndex = args.indexOf('-s');
-            const status = statusIndex !== -1 ? args[statusIndex + 1] : 'todo';
-            callback(null, {
-              stdout: JSON.stringify({
-                id,
-                title: 'Updated',
-                status,
-                type: 'task',
-                slug: 'u',
-                path: 'u.md',
-                body: '',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'eu',
-              }),
-              stderr: '',
-            });
-          } else if (args.includes('show')) {
-            const id = args[args.length - 1];
-            callback(null, {
-              stdout: JSON.stringify({
-                id,
-                title: 'Shown',
-                status: 'todo',
-                type: 'task',
-                slug: 's',
-                path: 's.md',
-                body: '',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'es',
-              }),
-              stderr: '',
-            });
           } else {
             callback(null, { stdout: '{}', stderr: '' });
           }
@@ -768,250 +791,315 @@ describe('BeansService', () => {
       it('recursively completes children when parent is completed', async () => {
         await service.updateBean(parentId, { status: 'completed' });
 
-        const updateCalls = mockExecFile.mock.calls.filter(call => call[1].includes('update'));
+        const updateCalls = mockExecFile.mock.calls.filter(
+          call =>
+            call[1].includes('graphql') &&
+            call[1].some((arg: any) => typeof arg === 'string' && arg.includes('UpdateBean'))
+        );
         expect(updateCalls).toHaveLength(3); // Parent, Child, Grandchild
 
-        const parentUpdate = updateCalls.find(call => call[1].includes(parentId));
-        const childUpdate = updateCalls.find(call => call[1].includes(childId));
-        const grandChildUpdate = updateCalls.find(call => call[1].includes(grandChildId));
+        const parentUpdate = updateCalls.find(call =>
+          call[1].some((arg: any) => typeof arg === 'string' && arg.includes(parentId))
+        );
+        const childUpdate = updateCalls.find(call =>
+          call[1].some((arg: any) => typeof arg === 'string' && arg.includes(childId))
+        );
+        const grandChildUpdate = updateCalls.find(call =>
+          call[1].some((arg: any) => typeof arg === 'string' && arg.includes(grandChildId))
+        );
 
-        expect(parentUpdate![1]).toContain('completed');
-        expect(childUpdate![1]).toContain('completed');
-        expect(grandChildUpdate![1]).toContain('completed');
+        expect(parentUpdate![1].some((arg: any) => typeof arg === 'string' && arg.includes('completed'))).toBe(true);
+        expect(childUpdate![1].some((arg: any) => typeof arg === 'string' && arg.includes('completed'))).toBe(true);
+        expect(grandChildUpdate![1].some((arg: any) => typeof arg === 'string' && arg.includes('completed'))).toBe(
+          true
+        );
       });
 
       it('propagates in-progress status to children', async () => {
         await service.updateBean(parentId, { status: 'in-progress' });
 
-        const updateCalls = mockExecFile.mock.calls.filter(call => call[1].includes('update'));
+        const updateCalls = mockExecFile.mock.calls.filter(
+          call =>
+            call[1].includes('graphql') &&
+            call[1].some((arg: any) => typeof arg === 'string' && arg.includes('UpdateBean'))
+        );
         expect(updateCalls).toHaveLength(3);
 
-        expect(updateCalls.every(call => call[1].includes('in-progress'))).toBe(true);
+        expect(
+          updateCalls.every(call => call[1].some((arg: any) => typeof arg === 'string' && arg.includes('in-progress')))
+        ).toBe(true);
       });
 
       it('propagates scrapped status to children', async () => {
         await service.updateBean(parentId, { status: 'scrapped' });
 
-        const updateCalls = mockExecFile.mock.calls.filter(call => call[1].includes('update'));
+        const updateCalls = mockExecFile.mock.calls.filter(
+          call =>
+            call[1].includes('graphql') &&
+            call[1].some((arg: any) => typeof arg === 'string' && arg.includes('UpdateBean'))
+        );
         expect(updateCalls).toHaveLength(3);
 
-        expect(updateCalls.every(call => call[1].includes('scrapped'))).toBe(true);
+        expect(
+          updateCalls.every(call => call[1].some((arg: any) => typeof arg === 'string' && arg.includes('scrapped')))
+        ).toBe(true);
       });
 
       it('reopens children when parent is reopened from completed', async () => {
-        // Mock parent as completed initially
-        mockExecFile.mockImplementationOnce((_cmd, args, _opts, callback) => {
-          if (args.includes('update')) {
-            callback(null, {
-              stdout: JSON.stringify({
-                id: parentId,
-                title: 'Updated Parent',
-                status: 'todo',
-                type: 'task',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'eu',
-              }),
-              stderr: '',
-            });
-          }
-        });
-
-        // Mock the "show" call for parent so it looks like it was completed
+        let updateCount = 0;
         mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-          if (args.includes('show') && args.includes(parentId)) {
-            callback(null, {
-              stdout: JSON.stringify({
-                id: parentId,
-                title: 'Parent',
-                status: 'completed',
-                type: 'task',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'es',
-              }),
-              stderr: '',
-            });
-          } else if (args.includes('list') && args.includes(parentId)) {
-            callback(null, {
-              stdout: JSON.stringify([
-                {
-                  id: childId,
-                  title: 'Child',
-                  status: 'completed',
-                  type: 'task',
-                  parent: parentId,
-                  slug: 'c',
-                  path: 'c.md',
-                  body: '',
-                  created_at: '2026-01-01T00:00:00Z',
-                  updated_at: '2026-01-02T00:00:00Z',
-                  etag: 'e2',
-                },
-              ]),
-              stderr: '',
-            });
-          } else if (args.includes('update')) {
-            callback(null, {
-              stdout: JSON.stringify({
-                id: args[args.length - 1],
-                title: 'Updated',
-                status: 'todo',
-                type: 'task',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'eu',
-              }),
-              stderr: '',
-            });
+          if (args.includes('graphql')) {
+            const query = args[args.indexOf('graphql') + 2];
+            const vars = args.includes('--variables') ? JSON.parse(args[args.indexOf('--variables') + 1]) : {};
+
+            if (query.includes('query ShowBean')) {
+              const id = vars.id;
+              callback(null, {
+                stdout: JSON.stringify({
+                  data: {
+                    bean: {
+                      id,
+                      title: id === parentId ? 'Parent' : 'Child',
+                      status: 'completed',
+                      type: 'task',
+                      createdAt: '2026-01-01T00:00:00Z',
+                      updatedAt: '2026-01-02T00:00:00Z',
+                      etag: 'es',
+                    },
+                  },
+                }),
+                stderr: '',
+              });
+            } else if (query.includes('query ListBeans')) {
+              if (vars.filter?.parent === parentId) {
+                callback(null, {
+                  stdout: JSON.stringify({
+                    data: {
+                      beans: [
+                        {
+                          id: childId,
+                          title: 'Child',
+                          status: 'completed',
+                          type: 'task',
+                          parent: parentId,
+                          slug: 'c',
+                          path: 'c.md',
+                          body: '',
+                          createdAt: '2026-01-01T00:00:00Z',
+                          updatedAt: '2026-01-02T00:00:00Z',
+                          etag: 'e2',
+                        },
+                      ],
+                    },
+                  }),
+                  stderr: '',
+                });
+              } else {
+                callback(null, { stdout: JSON.stringify({ data: { beans: [] } }), stderr: '' });
+              }
+            } else if (query.includes('mutation UpdateBean')) {
+              updateCount++;
+              callback(null, {
+                stdout: JSON.stringify({
+                  data: {
+                    updateBean: {
+                      id: vars.id,
+                      title: 'Updated',
+                      status: 'todo',
+                      type: 'task',
+                      createdAt: '2026-01-01T00:00:00Z',
+                      updatedAt: '2026-01-02T00:00:00Z',
+                      etag: 'eu',
+                    },
+                  },
+                }),
+                stderr: '',
+              });
+            }
           } else {
-            callback(null, { stdout: '[]', stderr: '' });
+            callback(null, { stdout: JSON.stringify({ data: { beans: [] } }), stderr: '' });
           }
         });
 
         await service.updateBean(parentId, { status: 'todo' });
 
-        const updateCalls = mockExecFile.mock.calls.filter(call => call[1].includes('update'));
-        expect(updateCalls).toHaveLength(2); // Parent and Child
-        expect(updateCalls[1][1]).toContain('todo');
+        expect(updateCount).toBe(2); // Parent and Child
       });
 
       it('propagates status when moving out of draft', async () => {
-        // Reset the mock to the default behavior defined in beforeEach
-        // (Wait, the beforeEach mock should already handle this if not overridden)
-        // But the previous test ('reopens children...') OVERRODE the mock.
-        // We need to restore it OR just re-specify it here.
-
         mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-          if (args.includes('list')) {
-            const parentFilterIndex = args.indexOf('--parent');
-            const parentFilter = parentFilterIndex !== -1 ? args[parentFilterIndex + 1] : undefined;
-            if (parentFilter === parentId) {
+          if (args.includes('graphql')) {
+            const query = args[args.indexOf('graphql') + 2];
+            const vars = args.includes('--variables') ? JSON.parse(args[args.indexOf('--variables') + 1]) : {};
+
+            if (query.includes('query ListBeans')) {
+              const filter = vars.filter || {};
+              const parentFilter = filter.parent;
+              if (parentFilter === parentId) {
+                callback(null, {
+                  stdout: JSON.stringify({
+                    data: {
+                      beans: [
+                        {
+                          id: childId,
+                          title: 'Child',
+                          status: 'draft',
+                          type: 'task',
+                          parent: parentId,
+                          slug: 'c',
+                          path: 'c.md',
+                          body: '',
+                          createdAt: '2026-01-01T00:00:00Z',
+                          updatedAt: '2026-01-02T00:00:00Z',
+                          etag: 'e2',
+                        },
+                      ],
+                    },
+                  }),
+                  stderr: '',
+                });
+              } else if (parentFilter === childId) {
+                callback(null, {
+                  stdout: JSON.stringify({
+                    data: {
+                      beans: [
+                        {
+                          id: grandChildId,
+                          title: 'Grandchild',
+                          status: 'draft',
+                          type: 'task',
+                          parent: childId,
+                          slug: 'gc',
+                          path: 'gc.md',
+                          body: '',
+                          createdAt: '2026-01-01T00:00:00Z',
+                          updatedAt: '2026-01-02T00:00:00Z',
+                          etag: 'e3',
+                        },
+                      ],
+                    },
+                  }),
+                  stderr: '',
+                });
+              } else {
+                callback(null, { stdout: JSON.stringify({ data: { beans: [] } }), stderr: '' });
+              }
+            } else if (query.includes('mutation UpdateBean')) {
+              const id = vars.id;
+              const input = vars.input || {};
+              const status = input.status || 'todo';
               callback(null, {
-                stdout: JSON.stringify([
-                  {
-                    id: childId,
-                    title: 'Child',
-                    status: 'draft',
-                    type: 'task',
-                    parent: parentId,
-                    slug: 'c',
-                    path: 'c.md',
-                    body: '',
-                    created_at: '2026-01-01T00:00:00Z',
-                    updated_at: '2026-01-02T00:00:00Z',
-                    etag: 'e2',
+                stdout: JSON.stringify({
+                  data: {
+                    updateBean: {
+                      id,
+                      title: 'Updated',
+                      status,
+                      type: 'task',
+                      slug: 'u',
+                      path: 'u.md',
+                      body: '',
+                      createdAt: '2026-01-01T00:00:00Z',
+                      updatedAt: '2026-01-02T00:00:00Z',
+                      etag: 'eu',
+                    },
                   },
-                ]),
-                stderr: '',
-              });
-            } else if (parentFilter === childId) {
-              callback(null, {
-                stdout: JSON.stringify([
-                  {
-                    id: grandChildId,
-                    title: 'Grandchild',
-                    status: 'draft',
-                    type: 'task',
-                    parent: childId,
-                    slug: 'gc',
-                    path: 'gc.md',
-                    body: '',
-                    created_at: '2026-01-01T00:00:00Z',
-                    updated_at: '2026-01-02T00:00:00Z',
-                    etag: 'e3',
-                  },
-                ]),
+                }),
                 stderr: '',
               });
             } else {
-              callback(null, { stdout: '[]', stderr: '' });
+              callback(null, { stdout: JSON.stringify({ data: { beans: [] } }), stderr: '' });
             }
-          } else if (args.includes('update')) {
-            const id = args[args.length - 1];
-            const statusIndex = args.indexOf('-s');
-            const status = statusIndex !== -1 ? args[statusIndex + 1] : 'todo';
-            callback(null, {
-              stdout: JSON.stringify({
-                id,
-                title: 'Updated',
-                status,
-                type: 'task',
-                slug: 'u',
-                path: 'u.md',
-                body: '',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'eu',
-              }),
-              stderr: '',
-            });
-          } else {
-            callback(null, { stdout: '[]', stderr: '' });
           }
         });
 
         await service.updateBean(parentId, { status: 'todo' });
 
-        const updateCalls = mockExecFile.mock.calls.filter(call => call[1].includes('update'));
+        const updateCalls = mockExecFile.mock.calls.filter(
+          call =>
+            call[1].includes('graphql') &&
+            call[1].some((arg: any) => typeof arg === 'string' && arg.includes('UpdateBean'))
+        );
         expect(updateCalls).toHaveLength(3);
-        expect(updateCalls.every(call => call[1].includes('todo'))).toBe(true);
+        expect(
+          updateCalls.every(call => call[1].some((arg: any) => typeof arg === 'string' && arg.includes('todo')))
+        ).toBe(true);
       });
 
       it('does not update children if their status already matches', async () => {
         mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-          if (args.includes('list') && args.includes(parentId)) {
-            // Child already in-progress
-            callback(null, {
-              stdout: JSON.stringify([
-                {
-                  id: childId,
-                  title: 'Child',
-                  status: 'in-progress',
-                  type: 'task',
-                  created_at: '2026-01-01T00:00:00Z',
-                  updated_at: '2026-01-02T00:00:00Z',
-                  etag: 'e2',
-                },
-              ]),
-              stderr: '',
-            });
-          } else if (args.includes('update')) {
-            callback(null, {
-              stdout: JSON.stringify({
-                id: args[args.length - 1],
-                title: 'Updated',
-                status: 'in-progress',
-                type: 'task',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'eu',
-              }),
-              stderr: '',
-            });
-          } else if (args.includes('show')) {
-            callback(null, {
-              stdout: JSON.stringify({
-                id: args[args.length - 1],
-                title: 'Shown',
-                status: 'todo',
-                type: 'task',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'es',
-              }),
-              stderr: '',
-            });
-          } else {
-            callback(null, { stdout: '[]', stderr: '' });
+          if (args.includes('graphql')) {
+            const query = args[args.indexOf('graphql') + 2];
+            const vars = args.includes('--variables') ? JSON.parse(args[args.indexOf('--variables') + 1]) : {};
+
+            if (query.includes('query ListBeans')) {
+              callback(null, {
+                stdout: JSON.stringify({
+                  data: {
+                    beans: [
+                      {
+                        id: childId,
+                        title: 'Child',
+                        status: 'in-progress',
+                        type: 'task',
+                        createdAt: '2026-01-01T00:00:00Z',
+                        updatedAt: '2026-01-02T00:00:00Z',
+                        etag: 'e2',
+                      },
+                    ],
+                  },
+                }),
+                stderr: '',
+              });
+            } else if (query.includes('mutation UpdateBean')) {
+              callback(null, {
+                stdout: JSON.stringify({
+                  data: {
+                    updateBean: {
+                      id: vars.id,
+                      title: 'Updated',
+                      status: 'in-progress',
+                      type: 'task',
+                      createdAt: '2026-01-01T00:00:00Z',
+                      updatedAt: '2026-01-02T00:00:00Z',
+                      etag: 'eu',
+                    },
+                  },
+                }),
+                stderr: '',
+              });
+            } else if (query.includes('query ShowBean')) {
+              callback(null, {
+                stdout: JSON.stringify({
+                  data: {
+                    bean: {
+                      id: vars.id,
+                      title: 'Shown',
+                      status: 'todo',
+                      type: 'task',
+                      createdAt: '2026-01-01T00:00:00Z',
+                      updatedAt: '2026-01-02T00:00:00Z',
+                      etag: 'es',
+                    },
+                  },
+                }),
+                stderr: '',
+              });
+            } else {
+              callback(null, { stdout: JSON.stringify({ data: { beans: [] } }), stderr: '' });
+            }
           }
         });
 
         await service.updateBean(parentId, { status: 'in-progress' });
 
-        const updateCalls = mockExecFile.mock.calls.filter(call => call[1].includes('update'));
+        const updateCalls = mockExecFile.mock.calls.filter(
+          call =>
+            call[1].includes('graphql') &&
+            call[1].some((arg: any) => typeof arg === 'string' && arg.includes('UpdateBean'))
+        );
         expect(updateCalls).toHaveLength(1); // Only Parent
-        expect(updateCalls[0][1]).toContain(parentId);
+        expect(updateCalls[0][1].some((arg: any) => typeof arg === 'string' && arg.includes(parentId))).toBe(true);
       });
     });
   });

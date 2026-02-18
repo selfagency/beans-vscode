@@ -56,7 +56,7 @@ describe('BeansMcpServer security review', () => {
 
     // Default mock implementations
     execFileMock.mockImplementation((_file, _args, _opts, cb) => {
-      cb(null, { stdout: '{}', stderr: '' });
+      cb(null, { stdout: JSON.stringify({ data: { beans: [], bean: {} } }), stderr: '' });
     });
 
     const mod = await import('../../../beans/mcp/BeansMcpServer.js');
@@ -97,7 +97,7 @@ describe('BeansMcpServer security review', () => {
 
     it('should treat flag-like beanIds as literal positional arguments', async () => {
       // In this case, we're testing that passing "--version" as a beanId does NOT inject an extra CLI flag,
-      // but is instead forwarded as the bean identifier positional argument.
+      // but is instead forwarded as the bean identifier inside the GraphQL variables JSON.
       const viewTool = toolHandlers.get('beans_vscode_view')!;
       await viewTool({ beanId: '--version' });
 
@@ -105,13 +105,16 @@ describe('BeansMcpServer security review', () => {
       expect(execFileMock).toHaveBeenCalledTimes(1);
       const call = execFileMock.mock.calls[0];
       const cliArgs = call[1];
-      // Expected layout: ["show", "--json", beanId]
+
+      // Expected layout: ["graphql", "--json", query, "--variables", jsonVars]
       expect(Array.isArray(cliArgs)).toBe(true);
-      expect(cliArgs[0]).toBe('show');
+      expect(cliArgs[0]).toBe('graphql');
       expect(cliArgs[1]).toBe('--json');
-      // Here, "--version" is the beanId positional, not a separate flag injected before or after.
-      expect(cliArgs[2]).toBe('--version');
-      expect(cliArgs.length).toBe(3);
+      expect(cliArgs[3]).toBe('--variables');
+
+      // The beanId should be inside the JSON variables
+      const vars = JSON.parse(cliArgs[4]);
+      expect(vars.id).toBe('--version');
     });
   });
 

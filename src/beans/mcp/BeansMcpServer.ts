@@ -47,6 +47,30 @@ class BeansCliBackend {
     private readonly cliPath: string
   ) {}
 
+  /**
+   * Returns a safe environment for executing the Beans CLI,
+   * whitelisting only necessary variables.
+   */
+  private getSafeEnv(): NodeJS.ProcessEnv {
+    const whitelist = ['PATH', 'HOME', 'USER', 'LANG', 'LC_ALL', 'LC_CTYPE', 'SHELL'];
+    const env: NodeJS.ProcessEnv = {};
+
+    for (const key of whitelist) {
+      if (process.env[key]) {
+        env[key] = process.env[key];
+      }
+    }
+
+    // Include BEANS_ variables
+    for (const key in process.env) {
+      if (key.startsWith('BEANS_')) {
+        env[key] = process.env[key];
+      }
+    }
+
+    return env;
+  }
+
   private getBeansRoot(): string {
     return resolve(this.workspaceRoot, '.beans');
   }
