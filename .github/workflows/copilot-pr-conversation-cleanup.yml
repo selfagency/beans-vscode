@@ -149,7 +149,7 @@ jobs:
                 .addRaw(
                   resolved > 0
                     ? `Resolved ${resolved} conversation(s) on PR #${prNumber}.` +
-                      (failed > 0 ? ` ${failed} could not be resolved due to permissions (see warnings).` : '')
+                      (failed > 0 ? ` ${failed} conversation(s) could not be resolved due to permissions (see warnings).` : '')
                     : `Could not resolve ${failed} conversation(s) on PR #${prNumber} — see warnings for details.`
                 )
                 .write();
