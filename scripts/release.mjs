@@ -143,21 +143,16 @@ async function main() {
 
   console.log(`📝 Generating release notes for ${tag}...`);
 
-  let releaseNotesOut;
-  if (previousTag) {
-    releaseNotesOut = await $`gh api
-      --method POST /repos/${repo}/releases/generate-notes
-      -f tag_name=${tag}
-      -f target_commitish=main
-      -f previous_tag_name=${previousTag}
-      --jq '.body // ""'`;
-  } else {
-    releaseNotesOut = await $`gh api
-      --method POST /repos/${repo}/releases/generate-notes
-      -f tag_name=${tag}
-      -f target_commitish=main
-      --jq '.body // ""'`;
-  }
+  const generateNotesArgs = [
+    'api',
+    '--method', 'POST',
+    `/repos/${repo}/releases/generate-notes`,
+    '-f', `tag_name=${tag}`,
+    '-f', 'target_commitish=main',
+    ...(previousTag ? ['-f', `previous_tag_name=${previousTag}`] : []),
+    '--jq', '.body // ""',
+  ];
+  const releaseNotesOut = await $`gh ${generateNotesArgs}`;
 
   const releaseNotes = releaseNotesOut.stdout.trim() || '- No notable changes.';
 
@@ -251,7 +246,7 @@ async function main() {
 async function waitForWorkflow(name, repo, headSha, { timeoutMs = 3_600_000, pollMs = 15_000 } = {}) {
   const log = (msg) => console.log(`[${name}] ${msg}`);
 
-  const workflowsOut = await $`gh api /repos/${repo}/actions/workflows --jq ${`.workflows[] | select(.name == "${name}") | .id`}`;
+  const workflowsOut = await $`gh api ${[`/repos/${repo}/actions/workflows`, '--jq', `.workflows[] | select(.name == "${name}") | .id`]}`;
   const workflowId = workflowsOut.stdout.trim().split('\n')[0];
 
   if (!workflowId) {
@@ -262,9 +257,13 @@ async function waitForWorkflow(name, repo, headSha, { timeoutMs = 3_600_000, pol
   let triggered = false;
 
   while (Date.now() < deadline) {
-    const runOut = await $`gh api ${`/repos/${repo}/actions/workflows/${workflowId}/runs?branch=main&head_sha=${headSha}&per_page=5`} --jq '.workflow_runs[0] | "\(.status // "") \(.conclusion // "") \(.html_url // "")"'`;
-    const parts = runOut.stdout.trim().split(' ');
-    const [status, conclusion, runUrl] = parts;
+    const runOut = await $`gh api ${[
+      `/repos/${repo}/actions/workflows/${workflowId}/runs?branch=main&head_sha=${headSha}&per_page=5`,
+      '--jq',
+      '.workflow_runs[0] | "\(.status // "") \(.conclusion // "") \(.html_url // "")"',
+    ]}`;
+    const [status, conclusion, ...urlParts] = runOut.stdout.trim().split(' ');
+    const runUrl = urlParts.join(' ');
 
     if (!status) {
       if (!triggered) {
