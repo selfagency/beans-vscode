@@ -183,13 +183,23 @@ export class BeansFilterManager {
         break;
 
       case 'priorities':
-        const priorities = await vscode.window.showQuickPick(['critical', 'high', 'normal', 'low', 'deferred'], {
-          canPickMany: true,
-          placeHolder: 'Select priorities to include',
-          title: 'Filter by Priority',
-        });
+        const priorities = await vscode.window.showQuickPick(
+          [
+            { label: '① Critical', description: 'critical' },
+            { label: '② High', description: 'high' },
+            { label: '③ Normal', description: 'normal' },
+            { label: '④ Low', description: 'low' },
+            { label: '⑤ Deferred', description: 'deferred' },
+          ],
+          {
+            canPickMany: true,
+            placeHolder: 'Select priorities to include',
+            title: 'Filter by Priority',
+          }
+        );
         if (priorities !== undefined) {
-          newFilter.priorities = priorities.length > 0 ? priorities : undefined;
+          newFilter.priorities =
+            priorities.length > 0 ? (priorities.map(p => p.description).filter(Boolean) as string[]) : undefined;
         }
         break;
     }
