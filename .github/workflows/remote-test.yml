@@ -66,6 +66,18 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-1.23-${{ hashFiles('**/go.sum') || 'nochecksum' }}
+          restore-keys: |
+            go-${{ runner.os }}-1.23-
+            go-${{ runner.os }}-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
