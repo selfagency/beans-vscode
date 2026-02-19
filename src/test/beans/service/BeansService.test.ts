@@ -1204,7 +1204,7 @@ describe('BeansService', () => {
           errors: [
             {
               message: 'Failed to create bean 2: invalid type',
-              path: ['c1', 'createBean'],
+              path: 'c1',
             },
           ],
         };
