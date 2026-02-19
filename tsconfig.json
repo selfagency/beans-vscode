@@ -21,7 +21,10 @@
 			"@beans/*": [
 				"./src/beans/*"
 			]
-		}
+		},
+		"types": [
+			"node"
+		]
 	},
 	"include": [
 		"src/**/*"
