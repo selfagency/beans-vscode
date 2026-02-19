@@ -92,11 +92,15 @@ echo ""
 echo "=== Creating clean test directory ==="
 mkdir -p /tmp/beans-test
 cd /tmp/beans-test
+git init
+git config user.email "test@example.com"
+git config user.name "Test User"
 echo "✅ Test directory created"
 echo ""
 
 echo "=== Test 1: Initialize Beans workspace ==="
 beans init
+git add -A && git commit -m "init" --allow-empty
 if [ ! -f ".beans.yml" ]; then
   echo "❌ Failed to create .beans.yml"
   exit 1
