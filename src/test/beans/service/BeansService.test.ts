@@ -1,4 +1,5 @@
 import { execFile } from 'child_process';
+import { readFile, rename, writeFile } from 'fs/promises';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { BeansCLINotFoundError, BeansJSONParseError, BeansTimeoutError } from '../../../beans/model';
@@ -7,6 +8,12 @@ import { BeansService } from '../../../beans/service';
 // Mock child_process
 vi.mock('child_process', () => ({
   execFile: vi.fn(),
+}));
+
+vi.mock('fs/promises', () => ({
+  readFile: vi.fn(),
+  writeFile: vi.fn(),
+  rename: vi.fn(),
 }));
 
 // Mock vscode
@@ -54,6 +61,9 @@ vi.mock('vscode', () => {
 describe('BeansService', () => {
   let service: BeansService;
   let mockExecFile: ReturnType<typeof vi.fn>;
+  let mockReadFile: ReturnType<typeof vi.fn>;
+  let mockWriteFile: ReturnType<typeof vi.fn>;
+  let mockRename: ReturnType<typeof vi.fn>;
 
   function createErrnoError(message: string, code: string): NodeJS.ErrnoException {
     const error = new Error(message) as NodeJS.ErrnoException;
@@ -71,6 +81,14 @@ describe('BeansService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockExecFile = execFile as unknown as ReturnType<typeof vi.fn>;
+    mockReadFile = readFile as unknown as ReturnType<typeof vi.fn>;
+    mockWriteFile = writeFile as unknown as ReturnType<typeof vi.fn>;
+    mockRename = rename as unknown as ReturnType<typeof vi.fn>;
+
+    mockReadFile.mockResolvedValue('---\nstatus: "todo"\ntype: "task"\n---\nbody');
+    mockWriteFile.mockResolvedValue(undefined);
+    mockRename.mockResolvedValue(undefined);
+
     service = new BeansService('/test/workspace');
   });
 
@@ -335,6 +353,77 @@ describe('BeansService', () => {
 
       await expect(service.listBeans()).rejects.toThrow(BeansCLINotFoundError);
       await expect(service.listBeans()).rejects.toThrow('Beans CLI is not available and no cached data exists');
+    });
+
+    it('continues listing when one bean is malformed and can be auto-repaired', async () => {
+      const malformedBean = {
+        id: 'test-bad1',
+        title: '',
+        slug: 'bad-bean',
+        path: '.beans/test-bad1--bad-bean.md',
+        body: 'broken',
+        status: 'todo',
+        type: 'task',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+        etag: 'etag-bad',
+      };
+
+      const goodBean = {
+        id: 'test-good1',
+        title: 'Good Bean',
+        slug: 'good-bean',
+        path: '.beans/test-good1--good-bean.md',
+        body: 'ok',
+        status: 'todo',
+        type: 'task',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+        etag: 'etag-good',
+      };
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(null, { stdout: JSON.stringify({ beans: [malformedBean, goodBean] }), stderr: '' });
+      });
+
+      const beans = await service.listBeans();
+
+      expect(beans).toHaveLength(2);
+      expect(beans.map(bean => bean.id)).toEqual(expect.arrayContaining(['test-bad1', 'test-good1']));
+      expect(mockWriteFile).toHaveBeenCalledTimes(1);
+      expect(mockRename).not.toHaveBeenCalled();
+    });
+
+    it('quarantines malformed bean with .fixme when auto-repair fails', async () => {
+      const malformedBean = {
+        id: 'test-bad2',
+        title: '',
+        slug: 'broken-bean',
+        path: '.beans/test-bad2--broken-bean.md',
+        body: 'broken',
+        status: 'todo',
+        type: 'task',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+        etag: 'etag-bad2',
+      };
+
+      mockReadFile.mockRejectedValue(new Error('cannot read file'));
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(null, { stdout: JSON.stringify({ beans: [malformedBean] }), stderr: '' });
+      });
+
+      const beans = await service.listBeans();
+
+      expect(beans).toHaveLength(0);
+      expect(mockRename).toHaveBeenCalledTimes(1);
+      const [renameSource, renameTarget] = mockRename.mock.calls[0] as [string, string];
+      expect(renameSource).toContain('test-bad2--broken-bean.md');
+      expect(renameTarget).toContain('test-bad2--broken-bean.fixme');
     });
   });
 
@@ -1436,12 +1525,14 @@ describe('BeansService', () => {
       await expect(service.showBean('test-abc1')).rejects.toThrow(BeansJSONParseError);
     });
 
-    it('throws BeansJSONParseError when bean missing required fields', async () => {
+    it('handles beans missing required fields without failing the whole list', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
         callback(null, { stdout: JSON.stringify({ beans: [{ id: 'test' }] }), stderr: '' });
       });
 
-      await expect(service.listBeans()).rejects.toThrow(BeansJSONParseError);
+      const beans = await service.listBeans();
+      expect(beans).toEqual([]);
+      expect(mockRename).not.toHaveBeenCalled();
     });
 
     it('falls back to current time for invalid date values', async () => {
