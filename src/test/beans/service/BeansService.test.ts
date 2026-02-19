@@ -1169,6 +1169,109 @@ describe('BeansService', () => {
       }
     });
 
+    it('maps per-alias errors to individual results', async () => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        expect(args).toContain('graphql');
+
+        const mockResponse = {
+          data: {
+            c0: {
+              id: 'test-1',
+              title: 'Bean 1',
+              slug: 'bean-1',
+              path: 'beans/test-1.md',
+              body: '',
+              status: 'todo',
+              type: 'task',
+              createdAt: '2026-01-01T00:00:00Z',
+              updatedAt: '2026-01-02T00:00:00Z',
+              etag: 'etag1',
+            },
+            c1: null,
+          },
+          errors: [
+            {
+              message: 'Failed to create bean 2',
+              path: ['c1', 'createBean'],
+            },
+          ],
+        };
+
+        callback(null, { stdout: JSON.stringify(mockResponse), stderr: '' });
+      });
+
+      const results = await service.batchCreateBeans([
+        { title: 'Bean 1', type: 'task' },
+        { title: 'Bean 2', type: 'bug' },
+      ]);
+
+      expect(results).toHaveLength(2);
+      expect(results[0].success).toBe(true);
+      if (results[0].success) {
+        expect(results[0].bean.id).toBe('test-1');
+      } else {
+        throw new Error('expected first batch result to be successful');
+      }
+
+      // c1 should be marked as failed with accompanying error
+      expect(results[1].success).toBe(false);
+      if (!results[1].success) {
+        expect(results[1].error).toBeDefined();
+        expect((results[1] as any).bean).toBeUndefined();
+      } else {
+        throw new Error('expected second batch result to be a failure');
+      }
+    });
+
+    it('maps per-alias errors when error path is alias-only', async () => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        expect(args).toContain('graphql');
+
+        const mockResponse = {
+          data: {
+            c0: {
+              id: 'test-1',
+              title: 'Bean 1',
+              slug: 'bean-1',
+              path: 'beans/test-1.md',
+              body: '',
+              status: 'todo',
+              type: 'task',
+              createdAt: '2026-01-01T00:00:00Z',
+              updatedAt: '2026-01-02T00:00:00Z',
+              etag: 'etag1',
+            },
+            c1: null,
+          },
+          errors: [
+            {
+              message: 'Failed to create bean 2',
+              path: ['c1'],
+            },
+          ],
+        };
+
+        callback(null, { stdout: JSON.stringify(mockResponse), stderr: '' });
+      });
+
+      const results = await service.batchCreateBeans([
+        { title: 'Bean 1', type: 'task' },
+        { title: 'Bean 2', type: 'bug' },
+      ]);
+
+      expect(results).toHaveLength(2);
+      expect(results[0].success).toBe(true);
+      if (results[0].success) {
+        expect(results[0].bean.id).toBe('test-1');
+      }
+
+      expect(results[1].success).toBe(false);
+      if (!results[1].success) {
+        expect(results[1].error).toBeDefined();
+        expect((results[1] as any).bean).toBeUndefined();
+      }
+    });
+
     it('batch updates multiple beans', async () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('graphql');

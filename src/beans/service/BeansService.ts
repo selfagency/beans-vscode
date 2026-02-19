@@ -13,6 +13,7 @@
  * - Do not change `CACHE_TTL_MS` behaviour without adding tests covering cache expiration
  */
 import { execFile } from 'child_process';
+import { createHash } from 'crypto';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
 import { BeansConfigManager } from '../config';
@@ -226,18 +227,23 @@ export class BeansService {
    * @returns Parsed JSON response
    */
   private async execute<T>(args: string[]): Promise<T> {
-    // Create a unique key for this request
-    const requestKey = JSON.stringify(args);
+    // Create a bounded unique key for this request based on a hash of the args.
+    // Avoid embedding raw args/large payloads into the key or logs to prevent
+    // accidental leakage of sensitive or large data.
+    const argsString = args.join('::');
+    const hash = createHash('sha256').update(argsString).digest('hex').slice(0, 16);
+    const requestKey = `exec:${hash}`;
 
     // Check for in-flight request with same key
     const existingRequest = this.inFlightRequests.get(requestKey);
     if (existingRequest) {
-      this.logger.debug(`Deduplicating request: ${this.cliPath} ${args.join(' ')}`);
+      // Log only the bounded request key (hash) to avoid leaking args
+      this.logger.debug(`Deduplicating request: ${requestKey}`);
       return existingRequest as Promise<T>;
     }
 
-    // Create new request with retry logic
-    this.logger.info(`Executing: ${this.cliPath} ${args.join(' ')}`);
+    // Create new request with retry logic. Log a redacted summary of args.
+    this.logger.info(`Executing: ${this.cliPath} ${args.slice(0, 5).join(' ')}${args.length > 5 ? ' ...' : ''}`);
 
     const requestPromise = (async () => {
       try {
@@ -348,13 +354,21 @@ export class BeansService {
       args.push('--variables', JSON.stringify(variables));
     }
 
-    // Create a unique key for this request based on query and variables
-    const requestKey = `graphql:${JSON.stringify({ query, variables })}`;
+    // Create a bounded unique key for this request based on a hash of query+variables.
+    // Avoid embedding raw variables/large payloads into the key or logs to prevent
+    // accidental leakage of sensitive or large data.
+    const variablesString = variables ? JSON.stringify(variables) : '';
+    const hash = createHash('sha256')
+      .update(query + '::' + variablesString)
+      .digest('hex')
+      .slice(0, 16);
+    const requestKey = `graphql:${hash}`;
 
     // Check for in-flight request with same key
     const existingRequest = this.inFlightRequests.get(requestKey);
     if (existingRequest) {
-      this.logger.debug(`Deduplicating GraphQL request: ${requestKey.substring(0, 100)}...`);
+      // Log only the bounded request key (hash) to avoid leaking variables
+      this.logger.debug(`Deduplicating GraphQL request: ${requestKey}`);
       return existingRequest as Promise<{ data: T; errors?: any[] }>;
     }
 
@@ -525,9 +539,9 @@ export class BeansService {
   }
 
   /**
-   * Normalize bean data from CLI to ensure required fields exist.
-   * CLI outputs snake_case (created_at, updated_at, blocked_by, parent_id, blocking_ids, blocked_by_ids).
-   * We map to camelCase model fields and derive the short 'code' from the ID.
+   * Normalize bean data from GraphQL/CLI to ensure required fields exist.
+   * GraphQL responses use camelCase for fields (createdAt, updatedAt, parentId, blockingIds, blockedByIds, etc.).
+   * We map these response fields to the application Bean model (also camelCase) and derive the short 'code' from the ID.
    * @throws BeansJSONParseError if bean is missing required fields
    */
   private normalizeBean(rawBean: RawBeanFromCLI, options?: { allowPartial?: boolean }): Bean {
@@ -875,7 +889,11 @@ export class BeansService {
    * Delete a bean (only works for scrapped and draft beans)
    */
   async deleteBean(id: string): Promise<void> {
-    await this.executeGraphQL<Record<string, unknown>>(graphql.DELETE_BEAN_MUTATION, { id });
+    const { errors } = await this.executeGraphQL<Record<string, unknown>>(graphql.DELETE_BEAN_MUTATION, { id });
+
+    if (errors && errors.length > 0) {
+      throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
+    }
   }
 
   /**
@@ -985,7 +1003,6 @@ export class BeansService {
       aliases.push(alias);
 
       const input: Record<string, unknown> = {
-        id,
         status: updates.status,
         type: updates.type,
         priority: updates.priority,
