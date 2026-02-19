@@ -509,6 +509,70 @@ describe('BeansService', () => {
       );
     });
 
+    it('moves well-formed children of a quarantined parent to draft and clears their parent', async () => {
+      // Parent is malformed (no title), child is well-formed but references the parent's ID.
+      const malformedParent = {
+        id: 'test-bad3',
+        title: '',
+        slug: 'broken-parent',
+        path: '.beans/test-bad3--broken-parent.md',
+        body: '',
+        status: 'todo',
+        type: 'epic',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+        etag: 'etag-bp',
+        parentId: '',
+        blockingIds: [],
+        blockedByIds: [],
+      };
+      const childBean = {
+        id: 'test-child1',
+        code: 'ch1',
+        title: 'Child Task',
+        slug: 'child-task',
+        path: '.beans/test-child1--child-task.md',
+        body: 'some body',
+        status: 'todo',
+        type: 'task',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+        etag: 'etag-ch1',
+        parentId: 'test-bad3',
+        parent: 'test-bad3',
+        blockingIds: [],
+        blockedByIds: [],
+      };
+      const updatedChild = { ...childBean, status: 'draft', parentId: '', parent: '' };
+
+      // git is unavailable (so repair falls through to quarantine)
+      mockReadFile.mockRejectedValue(new Error('no file'));
+
+      mockExecFile.mockImplementation((_cmd, args: string[], _opts, callback) => {
+        const query: string = args[2] ?? '';
+        if (query.includes('UpdateBean')) {
+          // Simulate updateBean returning the child promoted to draft
+          callback(null, { stdout: JSON.stringify({ updateBean: updatedChild }), stderr: '' });
+        } else {
+          // listBeans returns the malformed parent and well-formed child
+          callback(null, { stdout: JSON.stringify({ beans: [malformedParent, childBean] }), stderr: '' });
+        }
+      });
+
+      const beans = await service.listBeans();
+
+      // Malformed parent is excluded; child is present with draft status
+      const child = beans.find(b => b.id === 'test-child1');
+      expect(child).toBeDefined();
+      expect(child!.status).toBe('draft');
+      expect(child!.parent).toBeFalsy();
+
+      // Warning includes the child bean label
+      expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('moved to Draft'));
+    });
+
     it('uses git history to recover missing fields when a previous commit exists', async () => {
       const historicalContent =
         '---\nid: test-hist1\ntitle: "My Historical Title"\nstatus: completed\ntype: feature\n---\n## Body';

@@ -66,13 +66,3 @@ export class DraftBeansProvider extends BeansTreeDataProvider {
     return [...beans, ...childrenOfDrafts];
   }
 }
-
-/**
- * Tree provider for scrapped beans
- * Uses flat list since parent beans may not be scrapped
- */
-export class ScrappedBeansProvider extends BeansTreeDataProvider {
-  constructor(service: BeansService) {
-    super(service, ['scrapped'], true);
-  }
-}

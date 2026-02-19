@@ -506,6 +506,7 @@ export class BeansService {
       // If an individual bean is malformed, try to repair it and continue
       // instead of failing the entire fetch.
       const normalizedBeans: Bean[] = [];
+      const quarantinedIds = new Set<string>();
       for (const bean of beans) {
         try {
           normalizedBeans.push(this.normalizeBean(bean, { allowPartial: true }));
@@ -527,7 +528,15 @@ export class BeansService {
 
           const quarantinedPath = await this.quarantineMalformedBeanFile(bean);
           this.notifyMalformedBeanQuarantined(bean, quarantinedPath);
+          if (bean.id) {
+            quarantinedIds.add(bean.id);
+          }
         }
+      }
+
+      // Move well-formed children of quarantined parents to draft so they stay visible.
+      if (quarantinedIds.size > 0) {
+        await this.orphanChildrenOfQuarantinedBeans(normalizedBeans, quarantinedIds);
       }
 
       // Update cache on successful fetch
@@ -759,6 +768,51 @@ export class BeansService {
 
   private yamlQuote(value: string): string {
     return JSON.stringify(value ?? '');
+  }
+
+  /**
+   * Move well-formed children of quarantined parent beans to draft status and clear
+   * their parent reference so they remain independently visible and editable.
+   * Updates the in-place normalizedBeans array so the cache reflects the new state.
+   */
+  private async orphanChildrenOfQuarantinedBeans(beans: Bean[], quarantinedIds: Set<string>): Promise<void> {
+    const children = beans.filter(b => b.parent && quarantinedIds.has(b.parent));
+    if (children.length === 0) {
+      return;
+    }
+
+    for (const child of children) {
+      try {
+        // Bypass the full updateBean pipeline (which calls listBeans for recursive child
+        // propagation) to avoid re-entering listBeans while we are already inside it.
+        // A direct GraphQL mutation is safe here: we only move to draft, and draft is a
+        // neutral status that does not need to cascade to grandchildren.
+        const { data: resp, errors } = await this.executeGraphQL<{ updateBean: RawBeanFromCLI }>(
+          graphql.UPDATE_BEAN_MUTATION,
+          { id: child.id, input: { status: 'draft', parent: '' } }
+        );
+
+        if (errors && errors.length > 0) {
+          throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
+        }
+
+        const updated = this.normalizeBean(resp.updateBean, { allowPartial: true });
+        // Update in-place so the caller and cache see the promoted bean immediately.
+        const idx = beans.indexOf(child);
+        if (idx !== -1) {
+          beans[idx] = updated;
+        }
+        this.logger.info(`Moved child bean ${child.id} to draft after parent was quarantined`);
+      } catch (error) {
+        this.logger.warn(`Failed to move child bean ${child.id} to draft: ${(error as Error).message}`);
+      }
+    }
+
+    const count = children.length;
+    const labels = children.map(c => c.code || c.id).join(', ');
+    void vscode.window.showWarningMessage(
+      `${count} child bean${count === 1 ? '' : 's'} (${labels}) moved to Draft because their parent was malformed and quarantined.`
+    );
   }
 
   /**
