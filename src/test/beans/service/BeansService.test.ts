@@ -503,6 +503,10 @@ describe('BeansService', () => {
       const [renameSource, renameTarget] = mockRename.mock.calls[0] as [string, string];
       expect(renameSource).toContain('test-bad2--broken-bean.md');
       expect(renameTarget).toContain('test-bad2--broken-bean.fixme');
+      expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+        expect.stringContaining('could not be auto-fixed and was quarantined'),
+        'Open File'
+      );
     });
   });
 

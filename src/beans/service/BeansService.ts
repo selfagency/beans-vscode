@@ -66,6 +66,7 @@ interface RawBeanFromCLI {
  */
 export class BeansService {
   private readonly logger = BeansOutput.getInstance();
+  private readonly malformedWarningPaths = new Set<string>();
   private cliPath: string;
   private workspaceRoot: string;
   // Request deduplication: tracks in-flight CLI requests to prevent duplicate calls
@@ -524,7 +525,8 @@ export class BeansService {
             }
           }
 
-          await this.quarantineMalformedBeanFile(bean);
+          const quarantinedPath = await this.quarantineMalformedBeanFile(bean);
+          this.notifyMalformedBeanQuarantined(bean, quarantinedPath);
         }
       }
 
@@ -695,9 +697,9 @@ export class BeansService {
   /**
    * Rename malformed bean file to .fixme extension so it is visibly quarantined.
    */
-  private async quarantineMalformedBeanFile(rawBean: RawBeanFromCLI): Promise<void> {
+  private async quarantineMalformedBeanFile(rawBean: RawBeanFromCLI): Promise<string | undefined> {
     if (!rawBean.path) {
-      return;
+      return undefined;
     }
 
     const sourcePath = this.resolveBeanFilePath(rawBean.path);
@@ -706,9 +708,44 @@ export class BeansService {
 
     try {
       await rename(sourcePath, targetPath);
+      return targetPath;
     } catch (error) {
       void error;
+      return undefined;
     }
+  }
+
+  /**
+   * Notify the user once per malformed quarantined file.
+   */
+  private notifyMalformedBeanQuarantined(rawBean: RawBeanFromCLI, quarantinedPath?: string): void {
+    const warningKey = quarantinedPath || rawBean.path || rawBean.id;
+    if (this.malformedWarningPaths.has(warningKey)) {
+      return;
+    }
+    this.malformedWarningPaths.add(warningKey);
+
+    const fileLabel = quarantinedPath ? path.basename(quarantinedPath) : rawBean.path || rawBean.id;
+    const message = `Malformed bean could not be auto-fixed and was quarantined as ${fileLabel}.`;
+
+    if (!quarantinedPath) {
+      void vscode.window.showWarningMessage(message);
+      return;
+    }
+
+    const warningSelection = vscode.window.showWarningMessage(message, 'Open File');
+    void Promise.resolve(warningSelection).then(async selection => {
+      if (selection !== 'Open File') {
+        return;
+      }
+
+      try {
+        const document = await vscode.workspace.openTextDocument(quarantinedPath);
+        await vscode.window.showTextDocument(document, { preview: false });
+      } catch (error) {
+        this.logger.warn(`Failed to open malformed bean file: ${quarantinedPath}`, error as Error);
+      }
+    });
   }
 
   /**
