@@ -281,7 +281,7 @@ class BeansCliBackend {
 
   async readOutputLog(options?: { lines?: number }): Promise<{ path: string; content: string; linesReturned: number }> {
     const outputPath = resolve(
-      process.env.BEANS_VSCODE_OUTPUT_LOG || join(this.workspaceRoot, '.beans', '.vscode', 'beans-output.log')
+      process.env.BEANS_VSCODE_OUTPUT_LOG || join(this.workspaceRoot, '.vscode', 'logs', 'beans-output.log')
     );
 
     const relativePath = relative(this.workspaceRoot, outputPath);

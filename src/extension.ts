@@ -13,7 +13,7 @@
  *
  * Notes for contributors:
  * - Keep activation fast; avoid long-running work on startup
- * - Use `BeansOutput` for logging (mirrored to .beans/.vscode/beans-output.log)
+ * - Use `BeansOutput` for logging (mirrored to .vscode/logs/beans-output.log)
  */
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -53,6 +53,7 @@ let chatIntegration: BeansChatIntegration | undefined;
 let initPromptDismissed = false; // Track if user dismissed init prompt in this session
 let aiArtifactSyncInProgress = false;
 const ARTIFACT_GENERATION_PREF_KEY = 'beans.ai.artifactsGenerationPreference';
+const AI_ENABLEMENT_PREF_KEY = 'beans.ai.enablementPreference';
 
 /**
  * Extension activation entry point
@@ -86,7 +87,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   try {
     // Mirror output channel logs to a file that MCP tools can read.
-    const outputMirrorPath = path.join(workspaceFolder.uri.fsPath, '.beans', '.vscode', 'beans-output.log');
+    const outputMirrorPath = path.join(workspaceFolder.uri.fsPath, '.vscode', 'logs', 'beans-output.log');
     logger.setMirrorFilePath(outputMirrorPath);
 
     beansService = new BeansService(workspaceFolder.uri.fsPath);
@@ -135,7 +136,12 @@ export async function activate(context: vscode.ExtensionContext) {
     filterManager = new BeansFilterManager();
     context.subscriptions.push(filterManager);
 
-    const isInitialized = await beansService.checkInitialized();
+    const hasBeansMarkers = await hasBeansWorkspaceMarkers(workspaceFolder.uri.fsPath);
+    if (!hasBeansMarkers) {
+      logger.info('No .beans marker directory or .beans.yml file found; prompting before initialization');
+    }
+
+    const isInitialized = hasBeansMarkers ? await beansService.checkInitialized() : false;
     await vscode.commands.executeCommand('setContext', 'beans.initialized', isInitialized);
 
     if (!isInitialized) {
@@ -363,15 +369,7 @@ async function shouldGenerateCopilotInstructionsOnInit(
   aiEnabled: boolean,
   workspaceRoot: string
 ): Promise<boolean> {
-  if (!aiEnabled) {
-    return false;
-  }
-
   const preference = context.workspaceState.get<'always' | 'never'>(ARTIFACT_GENERATION_PREF_KEY);
-  if (preference === 'always') {
-    logger.info('Using saved AI artifact generation preference: always');
-    return true;
-  }
   if (preference === 'never') {
     logger.info('Skipping AI artifact generation due to saved workspace preference');
     return false;
@@ -380,6 +378,17 @@ async function shouldGenerateCopilotInstructionsOnInit(
   if (await hasCopilotArtifacts(workspaceRoot)) {
     logger.info('Copilot instruction and skill artifacts already exist; skipping generation prompt');
     return false;
+  }
+
+  const aiEnabledForArtifacts = await ensureAiFeaturesEnabledForArtifacts(context, aiEnabled);
+  if (!aiEnabledForArtifacts) {
+    logger.info('Skipping AI artifact generation because AI features are not enabled for this workspace');
+    return false;
+  }
+
+  if (preference === 'always') {
+    logger.info('Using saved AI artifact generation preference: always');
+    return true;
   }
 
   const selection = await vscode.window.showInformationMessage(
@@ -402,6 +411,91 @@ async function shouldGenerateCopilotInstructionsOnInit(
 
   logger.info('User skipped AI artifact generation for now');
   return false;
+}
+
+async function ensureAiFeaturesEnabledForArtifacts(
+  context: vscode.ExtensionContext,
+  aiEnabled: boolean
+): Promise<boolean> {
+  const preference = context.workspaceState.get<'enabled' | 'disabled'>(AI_ENABLEMENT_PREF_KEY);
+
+  if (preference === 'enabled') {
+    if (aiEnabled) {
+      return true;
+    }
+    return updateAiEnabledSetting(true);
+  }
+
+  if (preference === 'disabled') {
+    if (aiEnabled) {
+      await updateAiEnabledSetting(false);
+    }
+    return false;
+  }
+
+  const selection = await vscode.window.showInformationMessage(
+    'Enable Beans AI features for this workspace? (Copilot guidance files are available now; MCP tools and chat participant require a window reload.)',
+    'Enable AI Features',
+    'Disable AI Features',
+    'Not Now'
+  );
+
+  if (selection === 'Enable AI Features') {
+    await context.workspaceState.update(AI_ENABLEMENT_PREF_KEY, 'enabled');
+    if (!aiEnabled) {
+      const updated = await updateAiEnabledSetting(true);
+      if (updated) {
+        void vscode.window.showInformationMessage(
+          'Beans AI features were enabled. Reload the window to activate MCP tools and chat participant.'
+        );
+      }
+      return updated;
+    }
+    return true;
+  }
+
+  if (selection === 'Disable AI Features') {
+    await context.workspaceState.update(AI_ENABLEMENT_PREF_KEY, 'disabled');
+    if (aiEnabled) {
+      const updated = await updateAiEnabledSetting(false);
+      if (updated) {
+        void vscode.window.showInformationMessage(
+          'Beans AI features were disabled. Reload the window to fully remove MCP tools and chat participant for this session.'
+        );
+      }
+    }
+    return false;
+  }
+
+  logger.info('User deferred AI feature enablement prompt for this workspace');
+  return false;
+}
+
+async function updateAiEnabledSetting(enabled: boolean): Promise<boolean> {
+  try {
+    const config = vscode.workspace.getConfiguration('beans');
+    await config.update('ai.enabled', enabled, vscode.ConfigurationTarget.Workspace);
+    await vscode.commands.executeCommand('setContext', 'beans.aiEnabled', enabled);
+    logger.info(`Updated beans.ai.enabled=${enabled} for this workspace`);
+    return true;
+  } catch (error) {
+    logger.warn(`Failed to update beans.ai.enabled=${enabled} for this workspace`, error as Error);
+    return false;
+  }
+}
+
+async function hasBeansWorkspaceMarkers(workspaceRoot: string): Promise<boolean> {
+  if (await workspaceFileExists(workspaceRoot, '.beans.yml')) {
+    return true;
+  }
+
+  try {
+    const beansDirectoryPath = path.resolve(workspaceRoot, '.beans');
+    const beansDirectoryStat = await fs.stat(beansDirectoryPath);
+    return beansDirectoryStat.isDirectory();
+  } catch {
+    return false;
+  }
 }
 
 async function hasCopilotArtifacts(primaryWorkspaceRoot: string): Promise<boolean> {

@@ -538,6 +538,7 @@
           "icon": "$(issue-draft)",
           "id": "beans.draft",
           "name": "Drafts",
+          "order": 10,
           "when": "beans.initialized",
           "visibility": "visible"
         },
@@ -545,6 +546,7 @@
           "icon": "$(issue-opened)",
           "id": "beans.active",
           "name": "Open Beans",
+          "order": 20,
           "when": "beans.initialized",
           "visibility": "visible"
         },
@@ -552,6 +554,7 @@
           "icon": "$(issue-closed)",
           "id": "beans.completed",
           "name": "Completed",
+          "order": 30,
           "when": "beans.initialized",
           "visibility": "visible"
         },
@@ -559,6 +562,7 @@
           "icon": "$(search)",
           "id": "beans.search",
           "name": "Search",
+          "order": 40,
           "when": "beans.initialized",
           "visibility": "visible"
         },
@@ -567,6 +571,7 @@
           "type": "webview",
           "id": "beans.details",
           "name": "Details",
+          "order": 50,
           "when": "beans.initialized",
           "visibility": "visible"
         },
@@ -575,6 +580,7 @@
           "type": "webview",
           "id": "beans.help",
           "name": "Help",
+          "order": 60,
           "when": "beans.initialized",
           "visibility": "visible"
         }
