@@ -1,4 +1,4 @@
-name: Remote Compatibility Tests
+name: Remote Tests
 
 on:
   push:
