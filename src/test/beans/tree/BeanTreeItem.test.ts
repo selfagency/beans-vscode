@@ -96,11 +96,11 @@ describe('BeanTreeItem', () => {
       expect(tooltip.value.includes('$(bug) Bug')).toBe(true);
     });
 
-    it('contains codicon priority label when set', () => {
+    it('contains priority label when set', () => {
       const bean = makeBean({ priority: 'critical' });
       const item = new BeanTreeItem(bean, vscode.TreeItemCollapsibleState.None);
       const tooltip = item.tooltip as vscode.MarkdownString;
-      expect(tooltip.value.includes('$(circle-large-filled) Critical')).toBe(true);
+      expect(tooltip.value.includes('① Critical')).toBe(true);
     });
 
     it('omits priority row when not set', () => {
