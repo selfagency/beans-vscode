@@ -13,6 +13,7 @@ pr: https://github.com/selfagency/beans-vscode/pull/50
 Update README badges so version labels use capital V, rename display label CI to Tests, and rename Remote Compatibility display label to Remote Tests (display name change only).
 
 ## Todo
+
 - [x] Add failing tests that assert the README badge strings (TDD)
 - [x] Update `README.md`: `label=version` → `label=Version`, alt text `CI` → `Tests`, `Remote Compatibility` → `Remote Tests`
 - [x] Update workflow display names: `CI` → `Tests`, `Remote Compatibility Tests` → `Remote Tests`
@@ -21,4 +22,5 @@ Update README badges so version labels use capital V, rename display label CI to
 - [ ] Update PR description and bean summary; mark bean `completed` on merge
 
 ## Summary of changes (in progress)
+
 - WIP: test + README changes (branch: `feature/an5a-update-readme-badges`)

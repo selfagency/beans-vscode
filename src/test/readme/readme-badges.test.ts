@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import { describe, expect, test } from 'vitest';
 
 describe('README badges (beans-vscode-an5a)', () => {
   const README = readFileSync(resolve(__dirname, '../../..', 'README.md'), 'utf8');
