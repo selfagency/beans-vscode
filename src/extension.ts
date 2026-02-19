@@ -88,7 +88,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   try {
     // Mirror output channel logs to a file that MCP tools can read.
-    const outputMirrorPath = path.join(workspaceFolder.uri.fsPath, '.vscode', 'logs', 'beans-output.log');
+    const outputMirrorPath = path.join(context.logUri.fsPath, 'beans-output.log');
     logger.setMirrorFilePath(outputMirrorPath);
 
     beansService = new BeansService(workspaceFolder.uri.fsPath);

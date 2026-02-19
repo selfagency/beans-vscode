@@ -509,6 +509,54 @@ describe('BeansService', () => {
       );
     });
 
+    it('recovers when list command fails with malformed bean path in CLI error', async () => {
+      const healthyBean = {
+        id: 'test-good-recovered',
+        title: 'Recovered Good Bean',
+        slug: 'recovered-good-bean',
+        path: '.beans/test-good-recovered--recovered-good-bean.md',
+        body: 'ok',
+        status: 'todo',
+        type: 'task',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+        etag: 'etag-good-recovered',
+        parentId: '',
+        blockingIds: [],
+        blockedByIds: [],
+      };
+
+      let callCount = 0;
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callCount += 1;
+
+        if (callCount === 1) {
+          const malformedError = Object.assign(new Error('yaml parse error in bean frontmatter'), {
+            stderr: 'failed to parse /test/workspace/.beans/test-bad4--broken.md: yaml: did not find expected key',
+            stdout: '',
+          });
+          callback(malformedError, null);
+          return;
+        }
+
+        callback(null, { stdout: JSON.stringify({ beans: [healthyBean] }), stderr: '' });
+      });
+
+      const beans = await service.listBeans();
+
+      expect(beans).toHaveLength(1);
+      expect(beans[0].id).toBe('test-good-recovered');
+      expect(mockRename).toHaveBeenCalledTimes(1);
+      const [renameSource, renameTarget] = mockRename.mock.calls[0] as [string, string];
+      expect(renameSource).toContain('/test/workspace/.beans/test-bad4--broken.md');
+      expect(renameTarget).toContain('/test/workspace/.beans/test-bad4--broken.fixme');
+      expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+        expect.stringContaining('could not be auto-fixed and was quarantined'),
+        'Open File'
+      );
+    });
+
     it('moves well-formed children of a quarantined parent to draft and clears their parent', async () => {
       // Parent is malformed (no title), child is well-formed but references the parent's ID.
       const malformedParent = {

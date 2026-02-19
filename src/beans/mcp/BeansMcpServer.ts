@@ -284,9 +284,13 @@ class BeansCliBackend {
       process.env.BEANS_VSCODE_OUTPUT_LOG || join(this.workspaceRoot, '.vscode', 'logs', 'beans-output.log')
     );
 
-    const relativePath = relative(this.workspaceRoot, outputPath);
-    if (relativePath.startsWith('..')) {
-      throw new Error('Output log path must stay within the workspace');
+    const relativeToWorkspace = relative(this.workspaceRoot, outputPath);
+    const isWithinWorkspace = !relativeToWorkspace.startsWith('..');
+    const vscodeLogDir = process.env.BEANS_VSCODE_LOG_DIR ? resolve(process.env.BEANS_VSCODE_LOG_DIR) : undefined;
+    const isWithinVscodeLogDir = vscodeLogDir ? !relative(vscodeLogDir, outputPath).startsWith('..') : false;
+
+    if (!isWithinWorkspace && !isWithinVscodeLogDir) {
+      throw new Error('Output log path must stay within the workspace or VS Code log directory');
     }
 
     const maxLines = options?.lines && options.lines > 0 ? options.lines : 500;

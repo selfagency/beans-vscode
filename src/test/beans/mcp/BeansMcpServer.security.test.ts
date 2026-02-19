@@ -71,7 +71,7 @@ describe('BeansMcpServer security review', () => {
       await expect(readTool({ path: '../../etc/passwd' })).rejects.toThrow('Path must stay within .beans directory');
     });
 
-    it('should reject read_output_log if BEANS_VSCODE_OUTPUT_LOG points outside workspace', async () => {
+    it('should reject read_output_log if BEANS_VSCODE_OUTPUT_LOG points outside allowed roots', async () => {
       const originalEnv = process.env.BEANS_VSCODE_OUTPUT_LOG;
       process.env.BEANS_VSCODE_OUTPUT_LOG = '/etc/passwd';
 
@@ -79,7 +79,9 @@ describe('BeansMcpServer security review', () => {
 
       try {
         // MCP10-B: Path Traversal via environment variables
-        await expect(readOutputTool({})).rejects.toThrow('Output log path must stay within the workspace');
+        await expect(readOutputTool({})).rejects.toThrow(
+          'Output log path must stay within the workspace or VS Code log directory'
+        );
       } finally {
         process.env.BEANS_VSCODE_OUTPUT_LOG = originalEnv;
       }

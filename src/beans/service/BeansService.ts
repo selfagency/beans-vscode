@@ -472,7 +472,10 @@ export class BeansService {
    * List beans with optional filters
    * Supports offline mode with cached data fallback
    */
-  async listBeans(options?: { status?: string[]; type?: string[]; search?: string; parent?: string }): Promise<Bean[]> {
+  async listBeans(
+    options?: { status?: string[]; type?: string[]; search?: string; parent?: string },
+    recoveryAttempted = false
+  ): Promise<Bean[]> {
     try {
       const filter: Record<string, unknown> = {};
 
@@ -572,8 +575,90 @@ export class BeansService {
         );
       }
 
+      if (!recoveryAttempted && (await this.tryRecoverFromMalformedListError(error))) {
+        this.logger.info('Recovered from malformed bean list error by quarantining the reported file; retrying list');
+        return this.listBeans(options, true);
+      }
+
       // For other errors, just throw
       throw error;
+    }
+  }
+
+  /**
+   * Recover from list-level CLI failure caused by malformed frontmatter, where the
+   * CLI aborts before returning bean JSON and per-bean repair/quarantine cannot run.
+   */
+  private async tryRecoverFromMalformedListError(error: unknown): Promise<boolean> {
+    const candidatePath = this.extractMalformedBeanPathFromCliError(error);
+    if (!candidatePath) {
+      return false;
+    }
+
+    const quarantinedPath = await this.quarantineMalformedBeanAbsolutePath(candidatePath);
+    if (!quarantinedPath) {
+      return false;
+    }
+
+    const rawBeanHint: RawBeanFromCLI = {
+      id: this.deriveIdFromPath(candidatePath) || candidatePath,
+      title: this.deriveTitleFromPath(candidatePath) || path.basename(candidatePath),
+      slug: '',
+      path: path.relative(this.workspaceRoot, candidatePath),
+      body: '',
+      status: 'draft',
+      type: 'task',
+      tags: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      etag: '',
+      parentId: '',
+      blockingIds: [],
+      blockedByIds: [],
+    };
+    this.notifyMalformedBeanQuarantined(rawBeanHint, quarantinedPath);
+    return true;
+  }
+
+  private extractMalformedBeanPathFromCliError(error: unknown): string | undefined {
+    const execError = error as NodeJS.ErrnoException & { stderr?: string; stdout?: string };
+    const combined = [execError?.message, execError?.stderr, execError?.stdout].filter(Boolean).join('\n');
+
+    // Typical CLI diagnostics include either absolute paths or workspace-relative
+    // paths under .beans. Extract and resolve whichever variant appears.
+    const pathMatch =
+      /((?:[A-Za-z]:\\[^\s:'"\n]+\.md)|(?:\/?[^\s:'"\n]*\.beans\/[^\s:'"\n]+\.md)|(?:\.beans\/[^\s:'"\n]+\.md))/.exec(
+        combined
+      );
+
+    if (!pathMatch?.[1]) {
+      return undefined;
+    }
+
+    const rawPath = pathMatch[1];
+    const resolved = path.isAbsolute(rawPath) ? rawPath : path.resolve(this.workspaceRoot, rawPath);
+    const relativeToWorkspace = path.relative(this.workspaceRoot, resolved);
+    if (relativeToWorkspace.startsWith('..')) {
+      return undefined;
+    }
+
+    if (!relativeToWorkspace.includes(`${path.sep}.beans${path.sep}`) && !relativeToWorkspace.startsWith('.beans/')) {
+      return undefined;
+    }
+
+    return resolved;
+  }
+
+  private async quarantineMalformedBeanAbsolutePath(sourcePath: string): Promise<string | undefined> {
+    const ext = path.extname(sourcePath);
+    const targetPath = ext ? sourcePath.slice(0, -ext.length) + '.fixme' : `${sourcePath}.fixme`;
+
+    try {
+      await rename(sourcePath, targetPath);
+      return targetPath;
+    } catch (error) {
+      this.logger.warn(`Failed to quarantine malformed bean file at ${sourcePath}: ${(error as Error).message}`);
+      return undefined;
     }
   }
 
@@ -824,16 +909,7 @@ export class BeansService {
     }
 
     const sourcePath = this.resolveBeanFilePath(rawBean.path);
-    const ext = path.extname(sourcePath);
-    const targetPath = ext ? sourcePath.slice(0, -ext.length) + '.fixme' : `${sourcePath}.fixme`;
-
-    try {
-      await rename(sourcePath, targetPath);
-      return targetPath;
-    } catch (error) {
-      this.logger.warn(`Failed to quarantine malformed bean file at ${sourcePath}: ${(error as Error).message}`);
-      return undefined;
-    }
+    return this.quarantineMalformedBeanAbsolutePath(sourcePath);
   }
 
   /**
