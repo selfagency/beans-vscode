@@ -56,6 +56,9 @@ const configFns = vi.hoisted(() => ({
   removeBeansCopilotSkill: vi.fn(async () => undefined),
 }));
 
+const fsReaddirMock = vi.hoisted(() => vi.fn(async () => [] as any[]));
+vi.mock('node:fs/promises', () => ({ readdir: fsReaddirMock }));
+
 vi.mock('../../beans/logging', () => ({
   BeansOutput: {
     getInstance: vi.fn(() => logger),
@@ -297,6 +300,11 @@ describe('Extension lifecycle coverage', () => {
 
     vi.spyOn(vscode.workspace, 'registerTextDocumentContentProvider').mockReturnValue({ dispose: vi.fn() } as any);
     vi.spyOn(vscode.env, 'openExternal').mockResolvedValue(true);
+
+    (vscode.workspace as any).openTextDocument = vi.fn(async (uri: string) => ({ uri }));
+    (vscode.window as any).showTextDocument = vi.fn(async () => undefined);
+    fsReaddirMock.mockReset();
+    fsReaddirMock.mockResolvedValue([]);
   });
 
   afterEach(async () => {
@@ -426,5 +434,86 @@ describe('Extension lifecycle coverage', () => {
     await activate(makeContext());
     expect(logger.info).toHaveBeenCalledWith('User dismissed initialization prompt');
     deactivate();
+  });
+
+  describe('beans.openFirstMalformedBean command', () => {
+    beforeEach(async () => {
+      await activate(makeContext());
+    });
+
+    it('opens the first malformed bean file when one exists', async () => {
+      fsReaddirMock.mockResolvedValue([
+        { name: 'bean-abc.fixme', isFile: () => true },
+        { name: 'bean-xyz.fixme', isFile: () => true },
+        { name: 'normal-bean.md', isFile: () => true },
+      ]);
+      const openDoc = (vscode.workspace as any).openTextDocument as ReturnType<typeof vi.fn>;
+      const showDoc = (vscode.window as any).showTextDocument as ReturnType<typeof vi.fn>;
+
+      await state.registeredCommands.get('beans.openFirstMalformedBean')?.();
+
+      expect(openDoc).toHaveBeenCalledWith(expect.stringContaining('bean-abc.fixme'));
+      expect(showDoc).toHaveBeenCalledWith(expect.anything(), { preview: false });
+    });
+
+    it('shows info message when no malformed bean files exist', async () => {
+      fsReaddirMock.mockResolvedValue([{ name: 'normal-bean.md', isFile: () => true }]);
+
+      await state.registeredCommands.get('beans.openFirstMalformedBean')?.();
+
+      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('No malformed bean files found.');
+      expect((vscode.workspace as any).openTextDocument).not.toHaveBeenCalled();
+    });
+
+    it('shows warning and logs when the malformed file cannot be opened', async () => {
+      fsReaddirMock.mockResolvedValue([{ name: 'broken.fixme', isFile: () => true }]);
+      (vscode.workspace as any).openTextDocument = vi.fn(async () => {
+        throw new Error('File not found');
+      });
+
+      await state.registeredCommands.get('beans.openFirstMalformedBean')?.();
+
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('File not found'));
+      expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+        'Unable to open the malformed bean file. It may have been deleted or fixed.'
+      );
+    });
+  });
+
+  describe('refreshMalformedDraftWarningContext', () => {
+    beforeEach(async () => {
+      await activate(makeContext());
+    });
+
+    it('sets context to true and records the first path when .fixme files exist', async () => {
+      fsReaddirMock.mockResolvedValue([
+        { name: 'bean-001.fixme', isFile: () => true },
+        { name: 'bean-002.fixme', isFile: () => true },
+        { name: 'normal.md', isFile: () => true },
+      ]);
+
+      await state.registeredCommands.get('beans.refreshAll')?.();
+
+      expect(vscode.commands.executeCommand).toHaveBeenCalledWith('setContext', 'beans.draftHasMalformedFiles', true);
+    });
+
+    it('sets context to false when no .fixme files exist', async () => {
+      fsReaddirMock.mockResolvedValue([
+        { name: 'bean-001.md', isFile: () => true },
+        { name: 'bean-002.md', isFile: () => true },
+      ]);
+
+      await state.registeredCommands.get('beans.refreshAll')?.();
+
+      expect(vscode.commands.executeCommand).toHaveBeenCalledWith('setContext', 'beans.draftHasMalformedFiles', false);
+    });
+
+    it('clears context gracefully when the .beans directory cannot be read', async () => {
+      fsReaddirMock.mockRejectedValue(new Error('ENOENT: no such file or directory'));
+
+      await expect(state.registeredCommands.get('beans.refreshAll')?.()).resolves.not.toThrow();
+
+      expect(vscode.commands.executeCommand).toHaveBeenCalledWith('setContext', 'beans.draftHasMalformedFiles', false);
+    });
   });
 });

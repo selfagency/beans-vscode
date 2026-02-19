@@ -236,8 +236,15 @@ export async function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        const doc = await vscode.workspace.openTextDocument(firstMalformedBeanFilePath);
-        await vscode.window.showTextDocument(doc, { preview: false });
+        try {
+          const doc = await vscode.workspace.openTextDocument(firstMalformedBeanFilePath);
+          await vscode.window.showTextDocument(doc, { preview: false });
+        } catch (error) {
+          logger.warn(`Unable to open malformed bean file: ${(error as Error).message}`);
+          vscode.window.showWarningMessage(
+            'Unable to open the malformed bean file. It may have been deleted or fixed.'
+          );
+        }
       })
     );
 
