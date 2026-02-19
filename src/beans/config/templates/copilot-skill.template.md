@@ -202,21 +202,16 @@ Use CLI only when extension, `@beans`, and MCP tools are all unavailable.
 **Hard constraints:**
 
 - Always use `--json`; never parse plain-text output.
-- Never pass large body text as a shell argument — write to a temp file and use `--body-file <path>`.
+- Never pass large body text as a shell argument; use GraphQL variables or pipe the query into `beans graphql`.
 - One operation at a time; no chained destructive commands.
 
-**Allowed commands:**
+**Allowed CLI command:**
 
-- `beans list --json --ready`
-- `beans show --json <id>`
-- `beans create --json --title "<title>" [--body-file <path>] ...`
-- `beans update --json <id> [--body-file <path>] ...`
+- `beans graphql --json "<query>" [--variables <json>]` (strictly use the GraphQL API for all data operations)
 - `beans archive <id>` — only with explicit user request
 
-## Beans CLI baseline (from `beans prime`)
+## Beans baseline
 
-For detailed CLI usage instructions, run:
+The following baseline is derived from `beans graphql --schema` and provides comprehensive guidance for working with beans in this project.
 
-```bash
-beans prime
-```
+{{GRAPHQL_SCHEMA}}

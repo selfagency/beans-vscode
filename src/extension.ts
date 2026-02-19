@@ -445,16 +445,16 @@ async function ensureCopilotAiArtifacts(
       return;
     }
 
-    const primeOutput = await service.prime();
-    const instructionsContent = buildBeansCopilotInstructions(primeOutput);
+    const graphqlSchema = await service.graphqlSchema();
+    const instructionsContent = buildBeansCopilotInstructions(graphqlSchema);
     const instructionsPath = await writeBeansCopilotInstructions(workspaceRoot, instructionsContent);
-    logger.info(`Generated Copilot instructions from beans prime at ${instructionsPath}`);
+    logger.info(`Generated Copilot instructions from beans graphql --schema at ${instructionsPath}`);
 
-    const skillContent = buildBeansCopilotSkill(primeOutput);
+    const skillContent = buildBeansCopilotSkill(graphqlSchema);
     const skillPath = await writeBeansCopilotSkill(workspaceRoot, skillContent);
     logger.info(`Generated Copilot skill at ${skillPath}`);
   } catch (error) {
-    logger.warn('Failed to synchronize Copilot AI artifacts from beans prime', error as Error);
+    logger.warn('Failed to synchronize Copilot AI artifacts from beans graphql --schema', error as Error);
   }
 }
 

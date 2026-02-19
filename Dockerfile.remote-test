@@ -1,0 +1,27 @@
+FROM mcr.microsoft.com/devcontainers/typescript-node:22
+
+# Install Go from official source (distro packages are often too old)
+RUN apt-get update && apt-get install -y curl jq git wget && \
+    wget -q https://go.dev/dl/go1.23.5.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.23.5.linux-amd64.tar.gz && \
+    rm go1.23.5.linux-amd64.tar.gz && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}"
+
+# Install beans CLI
+RUN go install github.com/hmans/beans@latest
+
+# Verify beans installed
+RUN beans version
+
+# Set up workspace
+WORKDIR /workspace
+RUN git config --global user.email "test@example.com" && \
+    git config --global user.name "Test User" && \
+    git config --global init.defaultBranch main
+
+# Copy extension and test files
+COPY . /workspace/
+
+CMD ["/bin/bash"]

@@ -55,67 +55,97 @@ vi.mock('../../../beans/config/CopilotInstructions', () => ({
 function setupExecFileMock(): void {
   execFileMock.mockImplementation((file: string, args: string[], _opts: unknown, cb: (...params: any[]) => void) => {
     const done = (stdout: string) => cb(null, { stdout, stderr: '' });
-    const cmd = args[0];
 
     if (file !== '/custom/beans') {
       return cb(new Error(`unexpected cli path ${file}`));
     }
 
-    if (cmd === 'init') {
+    if (args[0] === 'init') {
       return done('');
     }
-    if (cmd === 'prime') {
+    if (args[0] === 'prime') {
       return done('prime output\n');
     }
-    if (cmd === 'list') {
-      return done(
-        JSON.stringify([
+
+    if (args[0] === 'graphql') {
+      if (args.includes('--schema')) {
+        return done('prime output\n');
+      }
+
+      const query = args[args.indexOf('graphql') + 2];
+      const variables = args.includes('--variables') ? JSON.parse(args[args.indexOf('--variables') + 1]) : {};
+
+      if (query && query.includes('ListBeans')) {
+        let beans = [
           { id: 'bean-active', title: 'Active', status: 'todo', type: 'task', tags: ['frontend'] },
           { id: 'bean-done', title: 'Done', status: 'completed', type: 'bug', tags: ['backend'] },
           { id: 'bean-scrap', title: 'Scrap', status: 'scrapped', type: 'feature', tags: ['frontend'] },
-        ])
-      );
-    }
-    if (cmd === 'show') {
-      const beanId = args[args.length - 1];
-      if (beanId === 'completed-1') {
-        return done(JSON.stringify({ id: beanId, title: 'Completed', status: 'completed', type: 'task' }));
+        ];
+
+        if (variables.filter?.excludeStatus) {
+          beans = beans.filter(b => !variables.filter.excludeStatus.includes(b.status));
+        }
+
+        return done(JSON.stringify({ beans }));
       }
-      if (beanId === 'scrapped-1') {
-        return done(JSON.stringify({ id: beanId, title: 'Scrapped', status: 'scrapped', type: 'task' }));
+
+      if (query.includes('ShowBean')) {
+        const beanId = variables.id;
+        let bean: any = {
+          id: beanId,
+          title: 'Bean',
+          status: 'todo',
+          type: 'task',
+          tags: [],
+          blockingIds: [],
+          blockedByIds: [],
+        };
+        if (beanId === 'completed-1') {
+          bean.status = 'completed';
+        }
+        if (beanId === 'scrapped-1') {
+          bean.status = 'scrapped';
+        }
+        if (beanId === 'active-1') {
+          bean.status = 'todo';
+        }
+        if (beanId === 'block-1') {
+          bean.title = 'Blocking bean';
+          bean.blockingIds = ['x'];
+          bean.blockedByIds = ['y'];
+        }
+        return done(JSON.stringify({ bean }));
       }
-      if (beanId === 'active-1') {
-        return done(JSON.stringify({ id: beanId, title: 'Active', status: 'todo', type: 'task' }));
-      }
-      if (beanId === 'block-1') {
+
+      if (query.includes('UpdateBean')) {
         return done(
           JSON.stringify({
-            id: beanId,
-            title: 'Blocking bean',
-            status: 'todo',
-            type: 'task',
-            blocking: ['x'],
-            blocked_by: ['y'],
+            updateBean: {
+              id: variables.id,
+              title: 'Updated',
+              status: variables.input.status || 'todo',
+              type: 'task',
+            },
           })
         );
       }
-      return done(JSON.stringify({ id: beanId, title: 'Bean', status: 'todo', type: 'task' }));
-    }
-    if (cmd === 'update') {
-      return done(
-        JSON.stringify({
-          id: args[2],
-          title: 'Updated',
-          status: args.includes('-s') ? args[args.indexOf('-s') + 1] : 'todo',
-          type: 'task',
-        })
-      );
-    }
-    if (cmd === 'delete') {
-      return done(JSON.stringify({ ok: true }));
-    }
-    if (cmd === 'create') {
-      return done(JSON.stringify({ id: 'new-1', title: 'New bean', status: 'todo', type: 'task' }));
+
+      if (query.includes('DeleteBean')) {
+        return done(JSON.stringify({ deleteBean: true }));
+      }
+
+      if (query.includes('CreateBean')) {
+        return done(
+          JSON.stringify({
+            createBean: {
+              id: 'new-1',
+              title: variables.input.title,
+              status: variables.input.status || 'todo',
+              type: 'task',
+            },
+          })
+        );
+      }
     }
 
     return done(JSON.stringify({}));

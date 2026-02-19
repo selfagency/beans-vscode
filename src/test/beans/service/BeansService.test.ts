@@ -118,7 +118,7 @@ describe('BeansService', () => {
   describe('checkInitialized', () => {
     it('returns true when workspace is initialized', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: '{"initialized":true}', stderr: '' });
+        callback(null, { stdout: JSON.stringify({ initialized: true }), stderr: '' });
       });
 
       const initialized = await service.checkInitialized();
@@ -146,15 +146,15 @@ describe('BeansService', () => {
         status: 'todo',
         type: 'task',
         tags: ['tag1'],
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-02T00:00:00Z',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
         etag: 'etag1',
       },
     ];
 
     it('lists all beans without filters', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify(mockBeanData), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
       });
 
       const beans = await service.listBeans();
@@ -165,9 +165,10 @@ describe('BeansService', () => {
 
     it('applies status filters', async () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('--status');
-        expect(args).toContain('todo');
-        callback(null, { stdout: JSON.stringify(mockBeanData), stderr: '' });
+        expect(args).toContain('graphql');
+        const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
+        expect(variables.filter.status).toEqual(['todo']);
+        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
       });
 
       await service.listBeans({ status: ['todo'] });
@@ -175,9 +176,10 @@ describe('BeansService', () => {
 
     it('applies type filters', async () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('--type');
-        expect(args).toContain('task');
-        callback(null, { stdout: JSON.stringify(mockBeanData), stderr: '' });
+        expect(args).toContain('graphql');
+        const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
+        expect(variables.filter.type).toEqual(['task']);
+        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
       });
 
       await service.listBeans({ type: ['task'] });
@@ -185,9 +187,10 @@ describe('BeansService', () => {
 
     it('applies search filter', async () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('--search');
-        expect(args).toContain('test');
-        callback(null, { stdout: JSON.stringify(mockBeanData), stderr: '' });
+        expect(args).toContain('graphql');
+        const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
+        expect(variables.filter.search).toBe('test');
+        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
       });
 
       await service.listBeans({ search: 'test' });
@@ -202,16 +205,16 @@ describe('BeansService', () => {
         body: '',
         status: 'todo',
         type: 'task',
-        parent_id: 'parent-123',
-        blocking_ids: ['block-1'],
-        blocked_by_ids: ['blocked-1'],
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-02T00:00:00Z',
+        parentId: 'parent-123',
+        blockingIds: ['block-1'],
+        blockedByIds: ['blocked-1'],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
         etag: 'etag1',
       };
 
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify([rawBean]), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: [rawBean] }), stderr: '' });
       });
 
       const beans = await service.listBeans();
@@ -220,7 +223,7 @@ describe('BeansService', () => {
       expect(beans[0].blockedBy).toEqual(['blocked-1']);
     });
 
-    it('prioritizes blocked_by_ids over blocked_by when both exist', async () => {
+    it('prioritizes blockedByIds over blocked_by when both exist', async () => {
       const rawBean = {
         id: 'test-xyz9',
         title: 'Test',
@@ -230,14 +233,14 @@ describe('BeansService', () => {
         status: 'todo',
         type: 'task',
         blocked_by: ['legacy'],
-        blocked_by_ids: ['preferred'],
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-02T00:00:00Z',
+        blockedByIds: ['preferred'],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
         etag: 'etag1',
       };
 
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify([rawBean]), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: [rawBean] }), stderr: '' });
       });
 
       const beans = await service.listBeans();
@@ -246,7 +249,7 @@ describe('BeansService', () => {
 
     it('caches successful results', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify(mockBeanData), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
       });
 
       await service.listBeans();
@@ -259,7 +262,7 @@ describe('BeansService', () => {
     it('falls back to cache in offline mode', async () => {
       // First successful call to populate cache
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify(mockBeanData), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
       });
 
       await service.listBeans();
@@ -286,8 +289,8 @@ describe('BeansService', () => {
           status: 'todo',
           type: 'task',
           tags: ['frontend'],
-          created_at: '2026-01-01T00:00:00Z',
-          updated_at: '2026-01-02T00:00:00Z',
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-02T00:00:00Z',
           etag: 'etag1',
         },
         {
@@ -299,14 +302,15 @@ describe('BeansService', () => {
           status: 'completed',
           type: 'bug',
           tags: ['backend'],
-          created_at: '2026-01-01T00:00:00Z',
-          updated_at: '2026-01-02T00:00:00Z',
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-02T00:00:00Z',
           etag: 'etag2',
         },
       ];
 
+      // Cache the beans
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify(cachedBeans), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: cachedBeans }), stderr: '' });
       });
       await service.listBeans();
 
@@ -344,15 +348,16 @@ describe('BeansService', () => {
         body: 'Body',
         status: 'todo',
         type: 'task',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-02T00:00:00Z',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
         etag: 'etag1',
       };
 
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('show');
-        expect(args).toContain('test-abc1');
-        callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
+        expect(args).toContain('graphql');
+        const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
+        expect(variables.id).toBe('test-abc1');
+        callback(null, { stdout: JSON.stringify({ bean: mockBean }), stderr: '' });
       });
 
       const bean = await service.showBean('test-abc1');
@@ -362,16 +367,17 @@ describe('BeansService', () => {
 
     it('accepts partial show payloads from CLI and applies safe defaults', async () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('show');
-        expect(args).toContain('test-abc1');
+        expect(args).toContain('graphql');
         callback(null, {
           stdout: JSON.stringify({
-            id: 'test-abc1',
-            title: 'Test Bean',
-            status: 'todo',
-            type: 'task',
-            // show payload can be partial on some CLI versions;
-            // intentionally omit slug/path/body/etag
+            bean: {
+              id: 'test-abc1',
+              title: 'Test Bean',
+              status: 'todo',
+              type: 'task',
+              // show payload can be partial on some CLI versions;
+              // intentionally omit slug/path/body/etag
+            },
           }),
           stderr: '',
         });
@@ -397,17 +403,17 @@ describe('BeansService', () => {
         body: '',
         status: 'todo',
         type: 'task',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-02T00:00:00Z',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
         etag: 'etag1',
       };
 
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('create');
-        expect(args).toContain('New Bean');
-        expect(args).toContain('-t');
-        expect(args).toContain('task');
-        callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
+        expect(args).toContain('graphql');
+        const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
+        expect(variables.input.title).toBe('New Bean');
+        expect(variables.input.type).toBe('task');
+        callback(null, { stdout: JSON.stringify({ createBean: mockBean }), stderr: '' });
       });
 
       const bean = await service.createBean({
@@ -428,22 +434,20 @@ describe('BeansService', () => {
         status: 'in-progress',
         type: 'feature',
         priority: 'high',
-        parent_id: 'parent-123',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-02T00:00:00Z',
+        parentId: 'parent-123',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
         etag: 'etag1',
       };
 
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('-s');
-        expect(args).toContain('in-progress');
-        expect(args).toContain('-p');
-        expect(args).toContain('high');
-        expect(args).toContain('-d');
-        expect(args).toContain('Description here');
-        expect(args).toContain('--parent');
-        expect(args).toContain('parent-123');
-        callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
+        expect(args).toContain('graphql');
+        const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
+        expect(variables.input.status).toBe('in-progress');
+        expect(variables.input.priority).toBe('high');
+        expect(variables.input.body).toBe('Description here');
+        expect(variables.input.parent).toBe('parent-123');
+        callback(null, { stdout: JSON.stringify({ createBean: mockBean }), stderr: '' });
       });
 
       await service.createBean({
@@ -496,17 +500,17 @@ describe('BeansService', () => {
         body: '',
         status: 'completed',
         type: 'task',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-02T00:00:00Z',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
         etag: 'etag1',
       };
 
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('update');
-        expect(args).toContain('test-abc1');
-        expect(args).toContain('-s');
-        expect(args).toContain('completed');
-        callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
+        expect(args).toContain('graphql');
+        const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
+        expect(variables.id).toBe('test-abc1');
+        expect(variables.input.status).toBe('completed');
+        callback(null, { stdout: JSON.stringify({ updateBean: mockBean }), stderr: '' });
       });
 
       await service.updateBean('test-abc1', { status: 'completed' });
@@ -522,19 +526,18 @@ describe('BeansService', () => {
         status: 'in-progress',
         type: 'bug',
         priority: 'critical',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-02T00:00:00Z',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
         etag: 'etag1',
       };
 
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('-s');
-        expect(args).toContain('in-progress');
-        expect(args).toContain('-t');
-        expect(args).toContain('bug');
-        expect(args).toContain('-p');
-        expect(args).toContain('critical');
-        callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
+        expect(args).toContain('graphql');
+        const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
+        expect(variables.input.status).toBe('in-progress');
+        expect(variables.input.type).toBe('bug');
+        expect(variables.input.priority).toBe('critical');
+        callback(null, { stdout: JSON.stringify({ updateBean: mockBean }), stderr: '' });
       });
 
       await service.updateBean('test-abc1', {
@@ -553,16 +556,17 @@ describe('BeansService', () => {
         body: '',
         status: 'todo',
         type: 'task',
-        parent_id: 'parent-123',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-02T00:00:00Z',
+        parentId: 'parent-123',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
         etag: 'etag1',
       };
 
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('--parent');
-        expect(args).toContain('parent-123');
-        callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
+        expect(args).toContain('graphql');
+        const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
+        expect(variables.input.parent).toBe('parent-123');
+        callback(null, { stdout: JSON.stringify({ updateBean: mockBean }), stderr: '' });
       });
 
       await service.updateBean('test-abc1', { parent: 'parent-123' });
@@ -577,21 +581,23 @@ describe('BeansService', () => {
         body: 'Recovered body',
         status: 'todo',
         type: 'task',
-        parent_id: 'parent-123',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-02T00:00:00Z',
+        parentId: 'parent-123',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
         etag: 'etag1',
       };
 
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        if (Array.isArray(args) && args.includes('update')) {
-          callback(null, { stdout: JSON.stringify({ id: 'test-abc1' }), stderr: '' });
-          return;
-        }
-
-        if (Array.isArray(args) && args.includes('show')) {
-          callback(null, { stdout: JSON.stringify(fullBean), stderr: '' });
-          return;
+        if (Array.isArray(args) && args.includes('graphql')) {
+          const query = args[args.indexOf('graphql') + 2];
+          if (query.includes('updateBean')) {
+            callback(null, { stdout: JSON.stringify({ updateBean: { id: 'test-abc1' } }), stderr: '' });
+            return;
+          }
+          if (query.includes('ShowBean')) {
+            callback(null, { stdout: JSON.stringify({ bean: fullBean }), stderr: '' });
+            return;
+          }
         }
 
         callback(new Error('Unexpected command') as any, null);
@@ -612,16 +618,16 @@ describe('BeansService', () => {
         body: '',
         status: 'todo',
         type: 'task',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-02T00:00:00Z',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
         etag: 'etag1',
       };
 
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('--parent');
-        const parentFlagIndex = args.indexOf('--parent');
-        expect(args[parentFlagIndex + 1]).toBe('');
-        callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
+        expect(args).toContain('graphql');
+        const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
+        expect(variables.input.parent).toBe('');
+        callback(null, { stdout: JSON.stringify({ updateBean: mockBean }), stderr: '' });
       });
 
       await service.updateBean('test-abc1', { clearParent: true });
@@ -642,16 +648,18 @@ describe('BeansService', () => {
         body: '',
         status: 'todo',
         type: 'task',
-        blocking_ids: ['block-1', 'block-2'],
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-02T00:00:00Z',
+        blockingIds: ['block-1', 'block-2'],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
         etag: 'etag1',
       };
 
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('--blocking');
-        expect(args).toContain('block-1,block-2');
-        callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
+        expect(args).toContain('graphql');
+        const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
+        expect(variables.id).toBe('test-abc1');
+        expect(variables.input.addBlocking).toEqual(['block-1', 'block-2']);
+        callback(null, { stdout: JSON.stringify({ updateBean: mockBean }), stderr: '' });
       });
 
       await service.updateBean('test-abc1', { blocking: ['block-1', 'block-2'] });
@@ -668,87 +676,102 @@ describe('BeansService', () => {
 
       beforeEach(() => {
         mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-          if (args.includes('list')) {
-            const parentFilterIndex = args.indexOf('--parent');
-            const parentFilter = parentFilterIndex !== -1 ? args[parentFilterIndex + 1] : undefined;
+          if (args.includes('graphql')) {
+            const query = args[args.indexOf('graphql') + 2];
+            const vars = args.includes('--variables') ? JSON.parse(args[args.indexOf('--variables') + 1]) : {};
 
-            if (parentFilter === parentId) {
+            if (query.includes('query ListBeans')) {
+              const filter = vars.filter || {};
+              const parentFilter = filter.parent;
+
+              if (parentFilter === parentId) {
+                callback(null, {
+                  stdout: JSON.stringify({
+                    beans: [
+                      {
+                        id: childId,
+                        title: 'Child',
+                        status: 'todo',
+                        type: 'task',
+                        parent: parentId,
+                        slug: 'c',
+                        path: 'c.md',
+                        body: '',
+                        createdAt: '2026-01-01T00:00:00Z',
+                        updatedAt: '2026-01-02T00:00:00Z',
+                        etag: 'e2',
+                      },
+                    ],
+                  }),
+                  stderr: '',
+                });
+              } else if (parentFilter === childId) {
+                callback(null, {
+                  stdout: JSON.stringify({
+                    beans: [
+                      {
+                        id: grandChildId,
+                        title: 'Grandchild',
+                        status: 'todo',
+                        type: 'task',
+                        parent: childId,
+                        slug: 'gc',
+                        path: 'gc.md',
+                        body: '',
+                        createdAt: '2026-01-01T00:00:00Z',
+                        updatedAt: '2026-01-02T00:00:00Z',
+                        etag: 'e3',
+                      },
+                    ],
+                  }),
+                  stderr: '',
+                });
+              } else {
+                callback(null, { stdout: JSON.stringify({ beans: [] }), stderr: '' });
+              }
+            } else if (query.includes('mutation UpdateBean')) {
+              const id = vars.id;
+              const input = vars.input || {};
+              const status = input.status || 'todo';
               callback(null, {
-                stdout: JSON.stringify([
-                  {
-                    id: childId,
-                    title: 'Child',
-                    status: 'todo',
+                stdout: JSON.stringify({
+                  updateBean: {
+                    id,
+                    title: 'Updated',
+                    status,
                     type: 'task',
-                    parent: parentId,
-                    slug: 'c',
-                    path: 'c.md',
+                    slug: 'u',
+                    path: 'u.md',
                     body: '',
-                    created_at: '2026-01-01T00:00:00Z',
-                    updated_at: '2026-01-02T00:00:00Z',
-                    etag: 'e2',
+                    createdAt: '2026-01-01T00:00:00Z',
+                    updatedAt: '2026-01-02T00:00:00Z',
+                    etag: 'eu',
                   },
-                ]),
+                }),
                 stderr: '',
               });
-            } else if (parentFilter === childId) {
+            } else if (query.includes('query ShowBean')) {
+              const id = vars.id;
               callback(null, {
-                stdout: JSON.stringify([
-                  {
-                    id: grandChildId,
-                    title: 'Grandchild',
+                stdout: JSON.stringify({
+                  bean: {
+                    id,
+                    title: 'Shown',
                     status: 'todo',
                     type: 'task',
-                    parent: childId,
-                    slug: 'gc',
-                    path: 'gc.md',
+                    slug: 's',
+                    path: 's.md',
                     body: '',
-                    created_at: '2026-01-01T00:00:00Z',
-                    updated_at: '2026-01-02T00:00:00Z',
-                    etag: 'e3',
+                    createdAt: '2026-01-01T00:00:00Z',
+                    updatedAt: '2026-01-02T00:00:00Z',
+                    etag: 'es',
                   },
-                ]),
+                }),
                 stderr: '',
               });
             } else {
-              callback(null, { stdout: '[]', stderr: '' });
+              callback(null, { stdout: JSON.stringify({}), stderr: '' });
             }
-          } else if (args.includes('update')) {
-            const id = args[args.length - 1];
-            const statusIndex = args.indexOf('-s');
-            const status = statusIndex !== -1 ? args[statusIndex + 1] : 'todo';
-            callback(null, {
-              stdout: JSON.stringify({
-                id,
-                title: 'Updated',
-                status,
-                type: 'task',
-                slug: 'u',
-                path: 'u.md',
-                body: '',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'eu',
-              }),
-              stderr: '',
-            });
-          } else if (args.includes('show')) {
-            const id = args[args.length - 1];
-            callback(null, {
-              stdout: JSON.stringify({
-                id,
-                title: 'Shown',
-                status: 'todo',
-                type: 'task',
-                slug: 's',
-                path: 's.md',
-                body: '',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'es',
-              }),
-              stderr: '',
-            });
           } else {
             callback(null, { stdout: '{}', stderr: '' });
           }
@@ -758,250 +781,297 @@ describe('BeansService', () => {
       it('recursively completes children when parent is completed', async () => {
         await service.updateBean(parentId, { status: 'completed' });
 
-        const updateCalls = mockExecFile.mock.calls.filter(call => call[1].includes('update'));
+        const updateCalls = mockExecFile.mock.calls.filter(
+          call =>
+            call[1].includes('graphql') &&
+            call[1].some((arg: any) => typeof arg === 'string' && arg.includes('UpdateBean'))
+        );
         expect(updateCalls).toHaveLength(3); // Parent, Child, Grandchild
 
-        const parentUpdate = updateCalls.find(call => call[1].includes(parentId));
-        const childUpdate = updateCalls.find(call => call[1].includes(childId));
-        const grandChildUpdate = updateCalls.find(call => call[1].includes(grandChildId));
+        const parentUpdate = updateCalls.find(call =>
+          call[1].some((arg: any) => typeof arg === 'string' && arg.includes(parentId))
+        );
+        const childUpdate = updateCalls.find(call =>
+          call[1].some((arg: any) => typeof arg === 'string' && arg.includes(childId))
+        );
+        const grandChildUpdate = updateCalls.find(call =>
+          call[1].some((arg: any) => typeof arg === 'string' && arg.includes(grandChildId))
+        );
 
-        expect(parentUpdate![1]).toContain('completed');
-        expect(childUpdate![1]).toContain('completed');
-        expect(grandChildUpdate![1]).toContain('completed');
+        expect(parentUpdate![1].some((arg: any) => typeof arg === 'string' && arg.includes('completed'))).toBe(true);
+        expect(childUpdate![1].some((arg: any) => typeof arg === 'string' && arg.includes('completed'))).toBe(true);
+        expect(grandChildUpdate![1].some((arg: any) => typeof arg === 'string' && arg.includes('completed'))).toBe(
+          true
+        );
       });
 
       it('propagates in-progress status to children', async () => {
         await service.updateBean(parentId, { status: 'in-progress' });
 
-        const updateCalls = mockExecFile.mock.calls.filter(call => call[1].includes('update'));
+        const updateCalls = mockExecFile.mock.calls.filter(
+          call =>
+            call[1].includes('graphql') &&
+            call[1].some((arg: any) => typeof arg === 'string' && arg.includes('UpdateBean'))
+        );
         expect(updateCalls).toHaveLength(3);
 
-        expect(updateCalls.every(call => call[1].includes('in-progress'))).toBe(true);
+        expect(
+          updateCalls.every(call => call[1].some((arg: any) => typeof arg === 'string' && arg.includes('in-progress')))
+        ).toBe(true);
       });
 
       it('propagates scrapped status to children', async () => {
         await service.updateBean(parentId, { status: 'scrapped' });
 
-        const updateCalls = mockExecFile.mock.calls.filter(call => call[1].includes('update'));
+        const updateCalls = mockExecFile.mock.calls.filter(
+          call =>
+            call[1].includes('graphql') &&
+            call[1].some((arg: any) => typeof arg === 'string' && arg.includes('UpdateBean'))
+        );
         expect(updateCalls).toHaveLength(3);
 
-        expect(updateCalls.every(call => call[1].includes('scrapped'))).toBe(true);
+        expect(
+          updateCalls.every(call => call[1].some((arg: any) => typeof arg === 'string' && arg.includes('scrapped')))
+        ).toBe(true);
       });
 
       it('reopens children when parent is reopened from completed', async () => {
-        // Mock parent as completed initially
-        mockExecFile.mockImplementationOnce((_cmd, args, _opts, callback) => {
-          if (args.includes('update')) {
-            callback(null, {
-              stdout: JSON.stringify({
-                id: parentId,
-                title: 'Updated Parent',
-                status: 'todo',
-                type: 'task',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'eu',
-              }),
-              stderr: '',
-            });
-          }
-        });
-
-        // Mock the "show" call for parent so it looks like it was completed
+        let updateCount = 0;
         mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-          if (args.includes('show') && args.includes(parentId)) {
-            callback(null, {
-              stdout: JSON.stringify({
-                id: parentId,
-                title: 'Parent',
-                status: 'completed',
-                type: 'task',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'es',
-              }),
-              stderr: '',
-            });
-          } else if (args.includes('list') && args.includes(parentId)) {
-            callback(null, {
-              stdout: JSON.stringify([
-                {
-                  id: childId,
-                  title: 'Child',
-                  status: 'completed',
-                  type: 'task',
-                  parent: parentId,
-                  slug: 'c',
-                  path: 'c.md',
-                  body: '',
-                  created_at: '2026-01-01T00:00:00Z',
-                  updated_at: '2026-01-02T00:00:00Z',
-                  etag: 'e2',
-                },
-              ]),
-              stderr: '',
-            });
-          } else if (args.includes('update')) {
-            callback(null, {
-              stdout: JSON.stringify({
-                id: args[args.length - 1],
-                title: 'Updated',
-                status: 'todo',
-                type: 'task',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'eu',
-              }),
-              stderr: '',
-            });
+          if (args.includes('graphql')) {
+            const query = args[args.indexOf('graphql') + 2];
+            const vars = args.includes('--variables') ? JSON.parse(args[args.indexOf('--variables') + 1]) : {};
+
+            if (query.includes('query ShowBean')) {
+              const id = vars.id;
+              callback(null, {
+                stdout: JSON.stringify({
+                  bean: {
+                    id,
+                    title: id === parentId ? 'Parent' : 'Child',
+                    status: 'completed',
+                    type: 'task',
+                    createdAt: '2026-01-01T00:00:00Z',
+                    updatedAt: '2026-01-02T00:00:00Z',
+                    etag: 'es',
+                  },
+                }),
+                stderr: '',
+              });
+            } else if (query.includes('query ListBeans')) {
+              if (vars.filter?.parent === parentId) {
+                callback(null, {
+                  stdout: JSON.stringify({
+                    beans: [
+                      {
+                        id: childId,
+                        title: 'Child',
+                        status: 'completed',
+                        type: 'task',
+                        parent: parentId,
+                        slug: 'c',
+                        path: 'c.md',
+                        body: '',
+                        createdAt: '2026-01-01T00:00:00Z',
+                        updatedAt: '2026-01-02T00:00:00Z',
+                        etag: 'e2',
+                      },
+                    ],
+                  }),
+                  stderr: '',
+                });
+              } else {
+                callback(null, { stdout: JSON.stringify({ beans: [] }), stderr: '' });
+              }
+            } else if (query.includes('mutation UpdateBean')) {
+              updateCount++;
+              callback(null, {
+                stdout: JSON.stringify({
+                  updateBean: {
+                    id: vars.id,
+                    title: 'Updated',
+                    status: 'todo',
+                    type: 'task',
+                    createdAt: '2026-01-01T00:00:00Z',
+                    updatedAt: '2026-01-02T00:00:00Z',
+                    etag: 'eu',
+                  },
+                }),
+                stderr: '',
+              });
+            }
           } else {
-            callback(null, { stdout: '[]', stderr: '' });
+            callback(null, { stdout: JSON.stringify({ beans: [] }), stderr: '' });
           }
         });
 
         await service.updateBean(parentId, { status: 'todo' });
 
-        const updateCalls = mockExecFile.mock.calls.filter(call => call[1].includes('update'));
-        expect(updateCalls).toHaveLength(2); // Parent and Child
-        expect(updateCalls[1][1]).toContain('todo');
+        expect(updateCount).toBe(2); // Parent and Child
       });
 
       it('propagates status when moving out of draft', async () => {
-        // Reset the mock to the default behavior defined in beforeEach
-        // (Wait, the beforeEach mock should already handle this if not overridden)
-        // But the previous test ('reopens children...') OVERRODE the mock.
-        // We need to restore it OR just re-specify it here.
-
         mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-          if (args.includes('list')) {
-            const parentFilterIndex = args.indexOf('--parent');
-            const parentFilter = parentFilterIndex !== -1 ? args[parentFilterIndex + 1] : undefined;
-            if (parentFilter === parentId) {
+          if (args.includes('graphql')) {
+            const query = args[args.indexOf('graphql') + 2];
+            const vars = args.includes('--variables') ? JSON.parse(args[args.indexOf('--variables') + 1]) : {};
+
+            if (query.includes('query ListBeans')) {
+              const filter = vars.filter || {};
+              const parentFilter = filter.parent;
+              if (parentFilter === parentId) {
+                callback(null, {
+                  stdout: JSON.stringify({
+                    beans: [
+                      {
+                        id: childId,
+                        title: 'Child',
+                        status: 'draft',
+                        type: 'task',
+                        parent: parentId,
+                        slug: 'c',
+                        path: 'c.md',
+                        body: '',
+                        createdAt: '2026-01-01T00:00:00Z',
+                        updatedAt: '2026-01-02T00:00:00Z',
+                        etag: 'e2',
+                      },
+                    ],
+                  }),
+                  stderr: '',
+                });
+              } else if (parentFilter === childId) {
+                callback(null, {
+                  stdout: JSON.stringify({
+                    beans: [
+                      {
+                        id: grandChildId,
+                        title: 'Grandchild',
+                        status: 'draft',
+                        type: 'task',
+                        parent: childId,
+                        slug: 'gc',
+                        path: 'gc.md',
+                        body: '',
+                        createdAt: '2026-01-01T00:00:00Z',
+                        updatedAt: '2026-01-02T00:00:00Z',
+                        etag: 'e3',
+                      },
+                    ],
+                  }),
+                  stderr: '',
+                });
+              } else {
+                callback(null, { stdout: JSON.stringify({ beans: [] }), stderr: '' });
+              }
+            } else if (query.includes('mutation UpdateBean')) {
+              const id = vars.id;
+              const input = vars.input || {};
+              const status = input.status || 'todo';
               callback(null, {
-                stdout: JSON.stringify([
-                  {
-                    id: childId,
-                    title: 'Child',
-                    status: 'draft',
+                stdout: JSON.stringify({
+                  updateBean: {
+                    id,
+                    title: 'Updated',
+                    status,
                     type: 'task',
-                    parent: parentId,
-                    slug: 'c',
-                    path: 'c.md',
+                    slug: 'u',
+                    path: 'u.md',
                     body: '',
-                    created_at: '2026-01-01T00:00:00Z',
-                    updated_at: '2026-01-02T00:00:00Z',
-                    etag: 'e2',
+                    createdAt: '2026-01-01T00:00:00Z',
+                    updatedAt: '2026-01-02T00:00:00Z',
+                    etag: 'eu',
                   },
-                ]),
-                stderr: '',
-              });
-            } else if (parentFilter === childId) {
-              callback(null, {
-                stdout: JSON.stringify([
-                  {
-                    id: grandChildId,
-                    title: 'Grandchild',
-                    status: 'draft',
-                    type: 'task',
-                    parent: childId,
-                    slug: 'gc',
-                    path: 'gc.md',
-                    body: '',
-                    created_at: '2026-01-01T00:00:00Z',
-                    updated_at: '2026-01-02T00:00:00Z',
-                    etag: 'e3',
-                  },
-                ]),
+                }),
                 stderr: '',
               });
             } else {
-              callback(null, { stdout: '[]', stderr: '' });
+              callback(null, { stdout: JSON.stringify({ beans: [] }), stderr: '' });
             }
-          } else if (args.includes('update')) {
-            const id = args[args.length - 1];
-            const statusIndex = args.indexOf('-s');
-            const status = statusIndex !== -1 ? args[statusIndex + 1] : 'todo';
-            callback(null, {
-              stdout: JSON.stringify({
-                id,
-                title: 'Updated',
-                status,
-                type: 'task',
-                slug: 'u',
-                path: 'u.md',
-                body: '',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'eu',
-              }),
-              stderr: '',
-            });
-          } else {
-            callback(null, { stdout: '[]', stderr: '' });
           }
         });
 
         await service.updateBean(parentId, { status: 'todo' });
 
-        const updateCalls = mockExecFile.mock.calls.filter(call => call[1].includes('update'));
+        const updateCalls = mockExecFile.mock.calls.filter(
+          call =>
+            call[1].includes('graphql') &&
+            call[1].some((arg: any) => typeof arg === 'string' && arg.includes('UpdateBean'))
+        );
         expect(updateCalls).toHaveLength(3);
-        expect(updateCalls.every(call => call[1].includes('todo'))).toBe(true);
+        expect(
+          updateCalls.every(call => call[1].some((arg: any) => typeof arg === 'string' && arg.includes('todo')))
+        ).toBe(true);
       });
 
       it('does not update children if their status already matches', async () => {
         mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-          if (args.includes('list') && args.includes(parentId)) {
-            // Child already in-progress
-            callback(null, {
-              stdout: JSON.stringify([
-                {
-                  id: childId,
-                  title: 'Child',
-                  status: 'in-progress',
-                  type: 'task',
-                  created_at: '2026-01-01T00:00:00Z',
-                  updated_at: '2026-01-02T00:00:00Z',
-                  etag: 'e2',
-                },
-              ]),
-              stderr: '',
-            });
-          } else if (args.includes('update')) {
-            callback(null, {
-              stdout: JSON.stringify({
-                id: args[args.length - 1],
-                title: 'Updated',
-                status: 'in-progress',
-                type: 'task',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'eu',
-              }),
-              stderr: '',
-            });
-          } else if (args.includes('show')) {
-            callback(null, {
-              stdout: JSON.stringify({
-                id: args[args.length - 1],
-                title: 'Shown',
-                status: 'todo',
-                type: 'task',
-                created_at: '2026-01-01T00:00:00Z',
-                updated_at: '2026-01-02T00:00:00Z',
-                etag: 'es',
-              }),
-              stderr: '',
-            });
-          } else {
-            callback(null, { stdout: '[]', stderr: '' });
+          if (args.includes('graphql')) {
+            const query = args[args.indexOf('graphql') + 2];
+            const vars = args.includes('--variables') ? JSON.parse(args[args.indexOf('--variables') + 1]) : {};
+
+            if (query.includes('query ListBeans')) {
+              callback(null, {
+                stdout: JSON.stringify({
+                  beans: [
+                    {
+                      id: childId,
+                      title: 'Child',
+                      status: 'in-progress',
+                      type: 'task',
+                      createdAt: '2026-01-01T00:00:00Z',
+                      updatedAt: '2026-01-02T00:00:00Z',
+                      etag: 'e2',
+                    },
+                  ],
+                }),
+                stderr: '',
+              });
+            } else if (query.includes('mutation UpdateBean')) {
+              callback(null, {
+                stdout: JSON.stringify({
+                  updateBean: {
+                    id: vars.id,
+                    title: 'Updated',
+                    status: 'in-progress',
+                    type: 'task',
+                    createdAt: '2026-01-01T00:00:00Z',
+                    updatedAt: '2026-01-02T00:00:00Z',
+                    etag: 'eu',
+                  },
+                }),
+                stderr: '',
+              });
+            } else if (query.includes('query ShowBean')) {
+              callback(null, {
+                stdout: JSON.stringify({
+                  bean: {
+                    id: vars.id,
+                    title: 'Shown',
+                    status: 'todo',
+                    type: 'task',
+                    createdAt: '2026-01-01T00:00:00Z',
+                    updatedAt: '2026-01-02T00:00:00Z',
+                    etag: 'es',
+                  },
+                }),
+                stderr: '',
+              });
+            } else {
+              callback(null, { stdout: JSON.stringify({ beans: [] }), stderr: '' });
+            }
           }
         });
 
         await service.updateBean(parentId, { status: 'in-progress' });
 
-        const updateCalls = mockExecFile.mock.calls.filter(call => call[1].includes('update'));
+        const updateCalls = mockExecFile.mock.calls.filter(
+          call =>
+            call[1].includes('graphql') &&
+            call[1].some((arg: any) => typeof arg === 'string' && arg.includes('UpdateBean'))
+        );
         expect(updateCalls).toHaveLength(1); // Only Parent
-        expect(updateCalls[0][1]).toContain(parentId);
+        expect(updateCalls[0][1].some((arg: any) => typeof arg === 'string' && arg.includes(parentId))).toBe(true);
       });
     });
   });
@@ -1009,9 +1079,10 @@ describe('BeansService', () => {
   describe('deleteBean', () => {
     it('deletes a bean by ID', async () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('delete');
-        expect(args).toContain('test-abc1');
-        callback(null, { stdout: '{}', stderr: '' });
+        expect(args).toContain('graphql');
+        const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
+        expect(variables.id).toBe('test-abc1');
+        callback(null, { stdout: JSON.stringify({ deleteBean: true }), stderr: '' });
       });
 
       await service.deleteBean('test-abc1');
@@ -1020,22 +1091,39 @@ describe('BeansService', () => {
 
   describe('batch operations', () => {
     it('batch creates multiple beans', async () => {
-      let callCount = 0;
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callCount++;
-        const mockBean = {
-          id: `test-${callCount}`,
-          title: `Bean ${callCount}`,
-          slug: `bean-${callCount}`,
-          path: `beans/test-${callCount}.md`,
-          body: '',
-          status: 'todo',
-          type: 'task',
-          created_at: '2026-01-01T00:00:00Z',
-          updated_at: '2026-01-02T00:00:00Z',
-          etag: 'etag1',
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        expect(args).toContain('graphql');
+        const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
+        expect(variables.c0.title).toBe('Bean 1');
+        expect(variables.c1.title).toBe('Bean 2');
+
+        const mockResponse = {
+          c0: {
+            id: 'test-1',
+            title: 'Bean 1',
+            slug: 'bean-1',
+            path: 'beans/test-1.md',
+            body: '',
+            status: 'todo',
+            type: 'task',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'etag1',
+          },
+          c1: {
+            id: 'test-2',
+            title: 'Bean 2',
+            slug: 'bean-2',
+            path: 'beans/test-2.md',
+            body: '',
+            status: 'todo',
+            type: 'bug',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'etag12',
+          },
         };
-        callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
+        callback(null, { stdout: JSON.stringify(mockResponse), stderr: '' });
       });
 
       const results = await service.batchCreateBeans([
@@ -1046,56 +1134,211 @@ describe('BeansService', () => {
       expect(results).toHaveLength(2);
       expect(results[0].success).toBe(true);
       expect(results[1].success).toBe(true);
+      if (results[0].success) {
+        expect(results[0].bean.id).toBe('test-1');
+      }
     });
 
-    it('handles partial failures in batch create', async () => {
-      let callCount = 0;
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callCount++;
-        if (callCount === 2) {
-          callback(new Error('Failed to create'), null);
-        } else {
-          const mockBean = {
-            id: `test-${callCount}`,
-            title: `Bean ${callCount}`,
-            slug: `bean-${callCount}`,
-            path: `beans/test-${callCount}.md`,
+    it('batch creates multiple beans with partial failures', async () => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        expect(args).toContain('graphql');
+
+        const mockResponse = {
+          c0: {
+            id: 'test-1',
+            title: 'Bean 1',
+            slug: 'bean-1',
+            path: 'beans/test-1.md',
             body: '',
             status: 'todo',
             type: 'task',
-            created_at: '2026-01-01T00:00:00Z',
-            updated_at: '2026-01-02T00:00:00Z',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
             etag: 'etag1',
-          };
-          callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
-        }
+          },
+          c1: null,
+          c2: {
+            id: 'test-3',
+            title: 'Bean 3',
+            slug: 'bean-3',
+            path: 'beans/test-3.md',
+            body: '',
+            status: 'todo',
+            type: 'feature',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'etag3',
+          },
+        };
+
+        callback(null, { stdout: JSON.stringify(mockResponse), stderr: '' });
       });
 
       const results = await service.batchCreateBeans([
         { title: 'Bean 1', type: 'task' },
-        { title: 'Bean 2', type: 'task' },
+        { title: 'Bean 2', type: 'invalid' },
+        { title: 'Bean 3', type: 'feature' },
       ]);
 
+      expect(results).toHaveLength(3);
+
+      // First bean should succeed
       expect(results[0].success).toBe(true);
+      if (results[0].success) {
+        expect(results[0].bean.id).toBe('test-1');
+        expect(results[0].bean.title).toBe('Bean 1');
+      }
+
+      // Second bean should fail (null response = missing alias)
       expect(results[1].success).toBe(false);
+      if (!results[1].success) {
+        expect(results[1].error).toBeDefined();
+        expect(results[1].error).toBeInstanceOf(Error);
+        expect(results[1].error.message).toContain('Mutation results missing for alias');
+        expect((results[1] as any).bean).toBeUndefined();
+      }
+
+      // Third bean should succeed
+      expect(results[2].success).toBe(true);
+      if (results[2].success) {
+        expect(results[2].bean.id).toBe('test-3');
+        expect(results[2].bean.title).toBe('Bean 3');
+      }
+    });
+
+    it('maps per-alias errors to individual results', async () => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        expect(args).toContain('graphql');
+
+        const mockResponse = {
+          c0: {
+            id: 'test-1',
+            title: 'Bean 1',
+            slug: 'bean-1',
+            path: 'beans/test-1.md',
+            body: '',
+            status: 'todo',
+            type: 'task',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'etag1',
+          },
+          c1: null,
+          errors: [
+            {
+              message: 'Failed to create bean 2',
+              path: ['c1', 'createBean'],
+            },
+          ],
+        };
+
+        callback(null, { stdout: JSON.stringify(mockResponse), stderr: '' });
+      });
+
+      const results = await service.batchCreateBeans([
+        { title: 'Bean 1', type: 'task' },
+        { title: 'Bean 2', type: 'bug' },
+      ]);
+
+      expect(results).toHaveLength(2);
+      expect(results[0].success).toBe(true);
+      if (results[0].success) {
+        expect(results[0].bean.id).toBe('test-1');
+      } else {
+        throw new Error('expected first batch result to be successful');
+      }
+
+      // c1 should be marked as failed with accompanying error
+      expect(results[1].success).toBe(false);
+      if (!results[1].success) {
+        expect(results[1].error).toBeDefined();
+        expect((results[1] as any).bean).toBeUndefined();
+      } else {
+        throw new Error('expected second batch result to be a failure');
+      }
+    });
+
+    it('maps per-alias errors when error path is alias-only', async () => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        expect(args).toContain('graphql');
+
+        const mockResponse = {
+          c0: {
+            id: 'test-1',
+            title: 'Bean 1',
+            slug: 'bean-1',
+            path: 'beans/test-1.md',
+            body: '',
+            status: 'todo',
+            type: 'task',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'etag1',
+          },
+          c1: null,
+          errors: [
+            {
+              message: 'Failed to create bean 2',
+              path: ['c1'],
+            },
+          ],
+        };
+
+        callback(null, { stdout: JSON.stringify(mockResponse), stderr: '' });
+      });
+
+      const results = await service.batchCreateBeans([
+        { title: 'Bean 1', type: 'task' },
+        { title: 'Bean 2', type: 'bug' },
+      ]);
+
+      expect(results).toHaveLength(2);
+      expect(results[0].success).toBe(true);
+      if (results[0].success) {
+        expect(results[0].bean.id).toBe('test-1');
+      }
+
+      expect(results[1].success).toBe(false);
+      if (!results[1].success) {
+        expect(results[1].error).toBeDefined();
+        expect((results[1] as any).bean).toBeUndefined();
+      }
     });
 
     it('batch updates multiple beans', async () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        const id = args[args.indexOf('update') + 2];
-        const mockBean = {
-          id,
-          title: 'Test',
-          slug: 'test',
-          path: `beans/${id}.md`,
-          body: '',
-          status: 'completed',
-          type: 'task',
-          created_at: '2026-01-01T00:00:00Z',
-          updated_at: '2026-01-02T00:00:00Z',
-          etag: 'etag1',
+        expect(args).toContain('graphql');
+        const query = args[args.indexOf('graphql') + 2];
+        expect(query).toContain('u0: updateBean');
+        expect(query).toContain('u1: updateBean');
+
+        const mockResponse = {
+          u0: {
+            id: 'bean-1',
+            status: 'completed',
+            title: 'T1',
+            type: 'task',
+            slug: 't1',
+            path: 'beans/t1.md',
+            body: '',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'e1',
+          },
+          u1: {
+            id: 'bean-2',
+            status: 'completed',
+            title: 'T2',
+            type: 'task',
+            slug: 't2',
+            path: 'beans/t2.md',
+            body: '',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'e2',
+          },
         };
-        callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
+        callback(null, { stdout: JSON.stringify(mockResponse), stderr: '' });
       });
 
       const results = await service.batchUpdateBeans([
@@ -1109,8 +1352,17 @@ describe('BeansService', () => {
     });
 
     it('batch deletes multiple beans', async () => {
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: '{}', stderr: '' });
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        expect(args).toContain('graphql');
+        const query = args[args.indexOf('graphql') + 2];
+        expect(query).toContain('d0: deleteBean');
+        expect(query).toContain('d1: deleteBean');
+
+        const mockResponse = {
+          d0: true,
+          d1: true,
+        };
+        callback(null, { stdout: JSON.stringify(mockResponse), stderr: '' });
       });
 
       const results = await service.batchDeleteBeans(['bean-1', 'bean-2']);
@@ -1147,11 +1399,12 @@ describe('BeansService', () => {
   describe('prime', () => {
     it('returns guidance text', async () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('prime');
+        expect(args).toContain('graphql');
+        expect(args).toContain('--schema');
         callback(null, { stdout: 'Guidance text here\n', stderr: '' });
       });
 
-      const guidance = await service.prime();
+      const guidance = await service.graphqlSchema();
       expect(guidance).toBe('Guidance text here');
     });
   });
@@ -1185,7 +1438,7 @@ describe('BeansService', () => {
 
     it('throws BeansJSONParseError when bean missing required fields', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify([{ id: 'test' }]), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: [{ id: 'test' }] }), stderr: '' });
       });
 
       await expect(service.listBeans()).rejects.toThrow(BeansJSONParseError);
@@ -1199,20 +1452,22 @@ describe('BeansService', () => {
 
         mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
           callback(null, {
-            stdout: JSON.stringify([
-              {
-                id: 'test-abc1',
-                title: 'Test',
-                slug: 'test',
-                path: 'beans/test.md',
-                body: '',
-                status: 'todo',
-                type: 'task',
-                created_at: 'not-a-date',
-                updated_at: 'still-not-a-date',
-                etag: 'etag1',
-              },
-            ]),
+            stdout: JSON.stringify({
+              beans: [
+                {
+                  id: 'test-abc1',
+                  title: 'Test',
+                  slug: 'test',
+                  path: 'beans/test.md',
+                  body: '',
+                  status: 'todo',
+                  type: 'task',
+                  createdAt: 'not-a-date',
+                  updatedAt: 'still-not-a-date',
+                  etag: 'etag1',
+                },
+              ],
+            }),
             stderr: '',
           });
         });
@@ -1227,17 +1482,19 @@ describe('BeansService', () => {
 
     it('accepts partial list payloads from CLI and applies safe defaults', async () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        if (Array.isArray(args) && args.includes('list')) {
+        if (Array.isArray(args) && args.includes('graphql')) {
           callback(null, {
-            stdout: JSON.stringify([
-              {
-                id: 'test-abc1',
-                title: 'Test Bean',
-                status: 'todo',
-                type: 'task',
-                // list payload can be partial; intentionally omit slug/path/body/etag
-              },
-            ]),
+            stdout: JSON.stringify({
+              beans: [
+                {
+                  id: 'test-abc1',
+                  title: 'Test Bean',
+                  status: 'todo',
+                  type: 'task',
+                  // GraphQL fields are camelCase
+                },
+              ],
+            }),
             stderr: '',
           });
           return;
@@ -1271,11 +1528,11 @@ describe('BeansService', () => {
             body: '',
             status: 'todo',
             type: 'task',
-            created_at: '2026-01-01T00:00:00Z',
-            updated_at: '2026-01-02T00:00:00Z',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
             etag: 'etag1',
           };
-          callback(null, { stdout: JSON.stringify(mockBean), stderr: '' });
+          callback(null, { stdout: JSON.stringify({ bean: mockBean }), stderr: '' });
         }, 10);
       });
 
@@ -1292,20 +1549,22 @@ describe('BeansService', () => {
     it('clearCache clears cached data', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
         callback(null, {
-          stdout: JSON.stringify([
-            {
-              id: 'test-abc1',
-              title: 'Test',
-              slug: 'test',
-              path: 'beans/test.md',
-              body: '',
-              status: 'todo',
-              type: 'task',
-              created_at: '2026-01-01T00:00:00Z',
-              updated_at: '2026-01-02T00:00:00Z',
-              etag: 'etag1',
-            },
-          ]),
+          stdout: JSON.stringify({
+            beans: [
+              {
+                id: 'test-abc1',
+                title: 'Test',
+                slug: 'test',
+                path: 'beans/test.md',
+                body: '',
+                status: 'todo',
+                type: 'task',
+                createdAt: '2026-01-01T00:00:00Z',
+                updatedAt: '2026-01-02T00:00:00Z',
+                etag: 'etag1',
+              },
+            ],
+          }),
           stderr: '',
         });
       });

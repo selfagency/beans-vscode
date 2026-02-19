@@ -115,16 +115,13 @@ Use compact planning checklist format:
 
 **Allowed CLI commands:**
 
-- `beans list --json --ready`
-- `beans show --json <id> [id...]`
-- `beans create --json --title "<title>" [--body-file <path>] ...`
-- `beans update --json <id> [--body-file <path>] ...`
+- `beans graphql --json --query <query> [--variables <json>]` (strictly use the GraphQL API for all data operations)
 - `beans archive <id>` (only when explicitly requested by the user)
 
-## Beans CLI baseline (from `beans prime`)
+## Beans GraphQL baseline (from `beans graphql --schema`)
 
-For detailed CLI usage instructions, run:
+For detailed data schema, run:
 
 ```bash
-beans prime
+beans graphql --schema
 ```
