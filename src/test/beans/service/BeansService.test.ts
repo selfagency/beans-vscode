@@ -1231,7 +1231,8 @@ describe('BeansService', () => {
       expect(results[1].success).toBe(false);
       if (!results[1].success) {
         expect(results[1].error).toBeDefined();
-        expect(results[1].error).toContain('Failed to create bean 2');
+        expect(results[1].error).toBeInstanceOf(Error);
+        expect(results[1].error.message).toContain('Failed to create bean 2');
         expect((results[1] as any).bean).toBeUndefined();
       }
 
