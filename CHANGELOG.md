@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-02-19
+
+## What's Changed
+* docs: add CONTRIBUTING and module headers; README developer onboarding by @selfagency in https://github.com/selfagency/beans-vscode/pull/41
+* docs: developer docs & onboarding — TDD, branch naming, Beans workflow by @selfagency in https://github.com/selfagency/beans-vscode/pull/42
+* feat: harden MCP server security following OWASP MCP Top 10 guidelines by @selfagency in https://github.com/selfagency/beans-vscode/pull/43
+* feat: recursive status propagation to children (beans-vscode-lpcb) by @selfagency in https://github.com/selfagency/beans-vscode/pull/44
+* feat: migrate to beans graphql api by @selfagency in https://github.com/selfagency/beans-vscode/pull/45
+* Fix init/AI prompts and default view ordering by @selfagency in https://github.com/selfagency/beans-vscode/pull/46
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.1.1...v1.2.0
+
+_Source: changes from v1.1.1 to v1.2.0._
+
+
 ## [1.1.1] - 2026-02-18
 
 ## What's Changed
