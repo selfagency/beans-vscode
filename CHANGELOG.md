@@ -12,60 +12,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [1.2.1] - 2026-02-19
 
 ## What's Changed
-* Fix malformed bean handling and silence noisy execution logs by @selfagency in https://github.com/selfagency/beans-vscode/pull/48
 
+- Fix malformed bean handling and silence noisy execution logs by @selfagency in <https://github.com/selfagency/beans-vscode/pull/48>
 
-**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.2.0...v1.2.1
+**Full Changelog**: <https://github.com/selfagency/beans-vscode/compare/v1.2.0...v1.2.1>
 
 _Source: changes from v1.2.0 to v1.2.1._
-
 
 ## [1.2.0] - 2026-02-19
 
 ## What's Changed
-* docs: add CONTRIBUTING and module headers; README developer onboarding by @selfagency in https://github.com/selfagency/beans-vscode/pull/41
-* docs: developer docs & onboarding — TDD, branch naming, Beans workflow by @selfagency in https://github.com/selfagency/beans-vscode/pull/42
-* feat: harden MCP server security following OWASP MCP Top 10 guidelines by @selfagency in https://github.com/selfagency/beans-vscode/pull/43
-* feat: recursive status propagation to children (beans-vscode-lpcb) by @selfagency in https://github.com/selfagency/beans-vscode/pull/44
-* feat: migrate to beans graphql api by @selfagency in https://github.com/selfagency/beans-vscode/pull/45
-* Fix init/AI prompts and default view ordering by @selfagency in https://github.com/selfagency/beans-vscode/pull/46
-* Fix remote-test Go version and release changelog race warning by @selfagency in https://github.com/selfagency/beans-vscode/pull/47
 
+- docs: add CONTRIBUTING and module headers; README developer onboarding by @selfagency in <https://github.com/selfagency/beans-vscode/pull/41>
+- docs: developer docs & onboarding — TDD, branch naming, Beans workflow by @selfagency in <https://github.com/selfagency/beans-vscode/pull/42>
+- feat: harden MCP server security following OWASP MCP Top 10 guidelines by @selfagency in <https://github.com/selfagency/beans-vscode/pull/43>
+- feat: recursive status propagation to children (beans-vscode-lpcb) by @selfagency in <https://github.com/selfagency/beans-vscode/pull/44>
+- feat: migrate to beans graphql api by @selfagency in <https://github.com/selfagency/beans-vscode/pull/45>
+- Fix init/AI prompts and default view ordering by @selfagency in <https://github.com/selfagency/beans-vscode/pull/46>
+- Fix remote-test Go version and release changelog race warning by @selfagency in <https://github.com/selfagency/beans-vscode/pull/47>
 
-**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.1.1...v1.2.0
+**Full Changelog**: <https://github.com/selfagency/beans-vscode/compare/v1.1.1...v1.2.0>
 
 _Source: changes from v1.1.1 to v1.2.0._
-
 
 ## [1.1.1] - 2026-02-18
 
 ## What's Changed
-* fix: resolve codicon icons and font not loading in details/search webviews by @selfagency in https://github.com/selfagency/beans-vscode/pull/30
-* fix: explicitly pass github-token to github-script + docs: MCP/command priority by @selfagency in https://github.com/selfagency/beans-vscode/pull/33
-* feat: improve Copilot instructions and skills generation by @selfagency in https://github.com/selfagency/beans-vscode/pull/32
-* fix(release): trigger missing CI workflows instead of blocking by @selfagency in https://github.com/selfagency/beans-vscode/pull/36
-* fix: remove unneeded defensive code flagged by CodeQL by @selfagency in https://github.com/selfagency/beans-vscode/pull/37
-* fix(release): guard against dispatch race condition and improve error handling by @selfagency in https://github.com/selfagency/beans-vscode/pull/38
-* feat(release): poll CI and Remote Compatibility Tests in parallel by @selfagency in https://github.com/selfagency/beans-vscode/pull/39
-* feat(ci): cache dependencies; fix release gating for workflow-only merges by @selfagency in https://github.com/selfagency/beans-vscode/pull/40
 
+- fix: resolve codicon icons and font not loading in details/search webviews by @selfagency in <https://github.com/selfagency/beans-vscode/pull/30>
+- fix: explicitly pass github-token to github-script + docs: MCP/command priority by @selfagency in <https://github.com/selfagency/beans-vscode/pull/33>
+- feat: improve Copilot instructions and skills generation by @selfagency in <https://github.com/selfagency/beans-vscode/pull/32>
+- fix(release): trigger missing CI workflows instead of blocking by @selfagency in <https://github.com/selfagency/beans-vscode/pull/36>
+- fix: remove unneeded defensive code flagged by CodeQL by @selfagency in <https://github.com/selfagency/beans-vscode/pull/37>
+- fix(release): guard against dispatch race condition and improve error handling by @selfagency in <https://github.com/selfagency/beans-vscode/pull/38>
+- feat(release): poll CI and Remote Compatibility Tests in parallel by @selfagency in <https://github.com/selfagency/beans-vscode/pull/39>
+- feat(ci): cache dependencies; fix release gating for workflow-only merges by @selfagency in <https://github.com/selfagency/beans-vscode/pull/40>
 
-**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.1.0...v1.1.1
+**Full Changelog**: <https://github.com/selfagency/beans-vscode/compare/v1.1.0...v1.1.1>
 
 _Source: changes from v1.1.0 to v1.1.1._
-
 
 ## [1.1.0] - 2026-02-18
 
 ## What's Changed
-* feat: native search tree, details back nav, and pane layout updates by @selfagency in https://github.com/selfagency/beans-vscode/pull/28
-* fix: handle resolveReviewThread permission errors gracefully by @selfagency in https://github.com/selfagency/beans-vscode/pull/29
 
+- feat: native search tree, details back nav, and pane layout updates by @selfagency in <https://github.com/selfagency/beans-vscode/pull/28>
+- fix: handle resolveReviewThread permission errors gracefully by @selfagency in <https://github.com/selfagency/beans-vscode/pull/29>
 
-**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.0.5...v1.1.0
+**Full Changelog**: <https://github.com/selfagency/beans-vscode/compare/v1.0.5...v1.1.0>
 
 _Source: changes from v1.0.5 to v1.1.0._
-
 
 ### Changed
 
@@ -73,7 +69,7 @@ _Source: changes from v1.0.5 to v1.1.0._
 
 ## [1.0.6] - 2026-02-17
 
-**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.0.5...v1.0.6
+**Full Changelog**: <https://github.com/selfagency/beans-vscode/compare/v1.0.5...v1.0.6>
 
 _Source: changes from v1.0.5 to v1.0.6._
 
