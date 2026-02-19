@@ -38,6 +38,24 @@ let tagPushed = false;
 let releaseDone = false;
 let gitCmd = 'git';
 
+function runGit(args, options = {}) {
+  const result = spawnSync(gitCmd, args, {
+    cwd: ROOT,
+    encoding: 'utf8',
+    shell: false,
+    ...options,
+  });
+
+  if (result.status !== 0) {
+    const stderr = (result.stderr || '').trim();
+    const stdout = (result.stdout || '').trim();
+    const details = stderr || stdout || `git ${args.join(' ')} failed with exit code ${result.status}`;
+    throw new Error(details);
+  }
+
+  return result;
+}
+
 function resolveGitExecutable() {
   const direct = spawnSync('git', ['--version'], { stdio: 'ignore', shell: false });
   if (direct.status === 0) {return 'git';}
@@ -64,8 +82,8 @@ async function rollback() {
     if (tagPushed) {
       console.log(`\n⚠️  Release workflow failed or was interrupted. Deleting remote tag ${tag}...`);
       try {
-        await $`${gitCmd} push origin --delete ${tag}`;
-        await $`${gitCmd} tag -d ${tag}`;
+        runGit(['push', 'origin', '--delete', tag]);
+        runGit(['tag', '-d', tag]);
         console.log(`↩️  Tag ${tag} deleted from remote and local.`);
       } catch {
         console.error(`❌ Could not delete tag. Manually run:`);
@@ -75,8 +93,8 @@ async function rollback() {
     if (commitPushed) {
       console.log('\n⚠️  Reverting release commit on origin/main...');
       try {
-        await $`${gitCmd} revert --no-edit HEAD`;
-        await $`${gitCmd} push origin main`;
+        runGit(['revert', '--no-edit', 'HEAD']);
+        runGit(['push', 'origin', 'main']);
         console.log('↩️  Release commit reverted and pushed. Working tree is clean.');
       } catch {
         console.error('❌ Automatic revert failed. Manually run:');
@@ -85,7 +103,7 @@ async function rollback() {
     } else if (commitLocal) {
       console.log('\n⚠️  Release aborted before push. Resetting local release commit...');
       try {
-        await $`${gitCmd} reset --hard HEAD~1`;
+        runGit(['reset', '--hard', 'HEAD~1']);
         console.log('↩️  Local release commit removed. Working tree restored.');
       } catch {
         console.error('❌ Reset failed. Manually run: git reset --hard HEAD~1');
@@ -126,24 +144,24 @@ async function main() {
 
   // --- Precondition checks --------------------------------------------------
 
-  const dirty = (await $`${gitCmd} status --porcelain`).stdout.trim();
+  const dirty = runGit(['status', '--porcelain']).stdout.trim();
   if (dirty) {
     console.error('❌ Working tree is not clean. Commit or stash changes first.');
     process.exit(1);
   }
 
-  const branch = (await $`${gitCmd} rev-parse --abbrev-ref HEAD`).stdout.trim();
+  const branch = runGit(['rev-parse', '--abbrev-ref', 'HEAD']).stdout.trim();
   if (branch !== 'main') {
     console.error(`❌ Must run from 'main'. Current branch: ${branch}`);
     process.exit(1);
   }
 
   console.log('🔄 Fetching latest refs...');
-  await $`${gitCmd} fetch origin main`;
-  await $`${gitCmd} pull --ff-only origin main`;
+  runGit(['fetch', 'origin', 'main']);
+  runGit(['pull', '--ff-only', 'origin', 'main']);
 
   // Derive owner/repo from the git remote URL.
-  const remoteUrl = (await $`${gitCmd} remote get-url origin`).stdout.trim();
+  const remoteUrl = runGit(['remote', 'get-url', 'origin']).stdout.trim();
   const repoMatch = remoteUrl.match(/[:/]([^/]+)\/([^/.]+?)(\.git)?$/);
   if (!repoMatch) {
     console.error(`❌ Cannot parse owner/repo from remote URL: ${remoteUrl}`);
@@ -152,7 +170,7 @@ async function main() {
   const [, owner, repo] = repoMatch;
 
   // Check for existing local tag.
-  const localTag = (await $`${gitCmd} tag -l ${tag}`).stdout.trim();
+  const localTag = runGit(['tag', '-l', tag]).stdout.trim();
   if (localTag) {
     console.error(`❌ Local tag ${tag} already exists.`);
     process.exit(1);
@@ -238,22 +256,22 @@ async function main() {
 
   // --- Commit + push --------------------------------------------------------
 
-  const hasChanges = (await $`${gitCmd} diff --name-only -- package.json CHANGELOG.md`).stdout.trim();
+  const hasChanges = runGit(['diff', '--name-only', '--', 'package.json', 'CHANGELOG.md']).stdout.trim();
   if (hasChanges) {
     console.log('📦 Committing release metadata changes...');
-    await $`${gitCmd} add package.json CHANGELOG.md`;
-    await $`${gitCmd} commit -m ${'chore(release): update version and changelog for ' + tag}`;
+    runGit(['add', 'package.json', 'CHANGELOG.md']);
+    runGit(['commit', '-m', `chore(release): update version and changelog for ${tag}`]);
     commitLocal = true;
   } else {
     console.log('ℹ️  No version/changelog changes detected; nothing to commit.');
   }
 
   console.log('🚀 Pushing main...');
-  await $`${gitCmd} push origin main`;
+  runGit(['push', 'origin', 'main']);
   commitPushed = true;
   commitLocal = false;
 
-  const headSha = (await $`${gitCmd} rev-parse HEAD`).stdout.trim();
+  const headSha = runGit(['rev-parse', 'HEAD']).stdout.trim();
 
   // --- Wait for required workflows (sequential to avoid concurrent-spinner visual corruption) ------
 
@@ -282,10 +300,10 @@ async function main() {
     .filter(Boolean)
     .join('\n\n');
 
-  await $`${gitCmd} tag -a ${tag} ${headSha} -m ${tagMessage}`;
+  runGit(['tag', '-a', tag, headSha, '-m', tagMessage]);
 
   console.log(`🚀 Pushing tag ${tag}...`);
-  await $`${gitCmd} push origin ${tag}`;
+  runGit(['push', 'origin', tag]);
   tagPushed = true;
 
   // --- Watch the release workflow ------------------------------------------
