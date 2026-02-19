@@ -84,7 +84,7 @@ async function main() {
   // --- Prerequisites -------------------------------------------------------
 
   try {
-    await $`which git`;
+    await $`git --version`;
   } catch {
     console.error("❌ 'git' is required but not found in PATH.");
     process.exit(1);
