@@ -24,5 +24,7 @@
         "pnpm": true,
         "git tag": true
     },
-    "codeQL.createQuery.qlPackLocation": "${workspaceFolder}/codeql"
+    "codeQL.createQuery.qlPackLocation": "${workspaceFolder}/codeql",
+    "vitest.rootConfig": ".",
+    "vitest.cliArguments": ""
 }

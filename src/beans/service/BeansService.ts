@@ -14,6 +14,8 @@
  */
 import { execFile } from 'child_process';
 import { createHash } from 'crypto';
+import { readFile, rename, writeFile } from 'fs/promises';
+import * as path from 'path';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
 import { BeansConfigManager } from '../config';
@@ -243,7 +245,7 @@ export class BeansService {
     }
 
     // Create new request with retry logic. Log a redacted summary of args.
-    this.logger.info(`Executing: ${this.cliPath} ${args.slice(0, 5).join(' ')}${args.length > 5 ? ' ...' : ''}`);
+    this.logger.debug(`Executing: ${this.cliPath} ${args.slice(0, 5).join(' ')}${args.length > 5 ? ' ...' : ''}`);
 
     const requestPromise = (async () => {
       try {
@@ -306,7 +308,7 @@ export class BeansService {
    * Security: Uses execFile with argument array to prevent shell injection
    */
   private async executeText(args: string[]): Promise<string> {
-    this.logger.info(`Executing text command: ${this.cliPath} ${args.join(' ')}`);
+    this.logger.debug(`Executing text command: ${this.cliPath} ${args.join(' ')}`);
 
     try {
       const { stdout, stderr } = await execFileAsync(this.cliPath, args, {
@@ -373,7 +375,7 @@ export class BeansService {
     }
 
     // Create new request with retry logic
-    this.logger.info(`Executing GraphQL: ${query.substring(0, 100)}...`);
+    this.logger.debug(`Executing GraphQL: ${query.substring(0, 100)}...`);
 
     const requestPromise = (async () => {
       try {
@@ -499,8 +501,32 @@ export class BeansService {
 
       const beans = data.beans || [];
 
-      // Normalize bean data to ensure arrays are always arrays
-      const normalizedBeans = beans.map(bean => this.normalizeBean(bean, { allowPartial: true }));
+      // Normalize bean data to ensure arrays are always arrays.
+      // If an individual bean is malformed, try to repair it and continue
+      // instead of failing the entire fetch.
+      const normalizedBeans: Bean[] = [];
+      for (const bean of beans) {
+        try {
+          normalizedBeans.push(this.normalizeBean(bean, { allowPartial: true }));
+          continue;
+        } catch (error) {
+          if (!(error instanceof BeansJSONParseError)) {
+            throw error;
+          }
+
+          const repaired = await this.tryRepairMalformedBean(bean);
+          if (repaired) {
+            try {
+              normalizedBeans.push(this.normalizeBean(repaired, { allowPartial: true }));
+              continue;
+            } catch (repairNormalizeError) {
+              void repairNormalizeError;
+            }
+          }
+
+          await this.quarantineMalformedBeanFile(bean);
+        }
+      }
 
       // Update cache on successful fetch
       this.updateCache(normalizedBeans);
@@ -537,6 +563,151 @@ export class BeansService {
 
       // For other errors, just throw
       throw error;
+    }
+  }
+
+  /**
+   * Resolve a bean path (relative workspace path preferred) to absolute path.
+   */
+  private resolveBeanFilePath(beanPath: string): string {
+    if (path.isAbsolute(beanPath)) {
+      return beanPath;
+    }
+
+    return path.resolve(this.workspaceRoot, beanPath);
+  }
+
+  /**
+   * Attempt to repair malformed bean metadata and persist a corrected markdown frontmatter.
+   * Returns a repaired bean payload if enough fields can be recovered.
+   */
+  private async tryRepairMalformedBean(rawBean: RawBeanFromCLI): Promise<RawBeanFromCLI | null> {
+    const filePath = rawBean.path ? this.resolveBeanFilePath(rawBean.path) : undefined;
+    let defaultStatus = 'draft';
+    let defaultType = 'task';
+
+    try {
+      const config = await this.getConfig();
+      defaultStatus = config.default_status || defaultStatus;
+      defaultType = config.default_type || defaultType;
+    } catch {
+      // Ignore config read failures and keep hard defaults for repair fallback.
+    }
+
+    const inferred = this.inferRequiredBeanFields(rawBean, filePath, {
+      status: defaultStatus,
+      type: defaultType,
+    });
+
+    if (!inferred.id || !inferred.title || !inferred.status || !inferred.type) {
+      return null;
+    }
+
+    const repaired: RawBeanFromCLI = {
+      ...rawBean,
+      id: inferred.id,
+      title: inferred.title,
+      status: inferred.status,
+      type: inferred.type,
+    };
+
+    if (filePath) {
+      try {
+        await this.repairBeanMarkdownFrontmatter(filePath, repaired);
+      } catch (error) {
+        void error;
+        return null;
+      }
+    }
+
+    return repaired;
+  }
+
+  /**
+   * Infer missing required bean fields from available payload and file path.
+   */
+  private inferRequiredBeanFields(
+    rawBean: RawBeanFromCLI,
+    absolutePath?: string,
+    defaults?: { status: string; type: string }
+  ): { id?: string; title?: string; status?: string; type?: string } {
+    const id = rawBean.id || this.deriveIdFromPath(absolutePath);
+    const title = rawBean.title || this.deriveTitleFromPath(absolutePath);
+    const status = rawBean.status || defaults?.status || 'draft';
+    const type = rawBean.type || defaults?.type || 'task';
+
+    return { id, title, status, type };
+  }
+
+  private deriveIdFromPath(absolutePath?: string): string | undefined {
+    if (!absolutePath) {
+      return undefined;
+    }
+
+    const base = path.basename(absolutePath, path.extname(absolutePath));
+    const match = /^(.+?)--/.exec(base);
+    return match?.[1] || undefined;
+  }
+
+  private deriveTitleFromPath(absolutePath?: string): string | undefined {
+    if (!absolutePath) {
+      return undefined;
+    }
+
+    const base = path.basename(absolutePath, path.extname(absolutePath));
+    const afterDoubleDash = base.includes('--') ? base.substring(base.indexOf('--') + 2) : base;
+    const normalized = afterDoubleDash.replace(/[-_]+/g, ' ').trim();
+    return normalized || undefined;
+  }
+
+  /**
+   * Ensure bean markdown has a valid frontmatter with required fields.
+   */
+  private async repairBeanMarkdownFrontmatter(filePath: string, bean: RawBeanFromCLI): Promise<void> {
+    const originalContent = await readFile(filePath, 'utf8');
+    const frontmatterMatch = /^(?:\uFEFF)?[ \t]*---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(originalContent);
+
+    const requiredEntries: Array<[string, string]> = [
+      ['id', this.yamlQuote(bean.id)],
+      ['title', this.yamlQuote(bean.title)],
+      ['status', this.yamlQuote(bean.status)],
+      ['type', this.yamlQuote(bean.type)],
+    ];
+
+    let frontmatter = frontmatterMatch ? frontmatterMatch[1] : '';
+    const body = frontmatterMatch ? originalContent.slice(frontmatterMatch[0].length) : originalContent;
+
+    for (const [key, value] of requiredEntries) {
+      const keyRegex = new RegExp(`^\\s*${key}\\s*:`, 'm');
+      if (!keyRegex.test(frontmatter)) {
+        frontmatter = `${frontmatter}${frontmatter.trimEnd() ? '\n' : ''}${key}: ${value}`;
+      }
+    }
+
+    const repairedContent = `---\n${frontmatter.trimEnd()}\n---\n${body.startsWith('\n') ? body.slice(1) : body}`;
+    await writeFile(filePath, repairedContent, 'utf8');
+  }
+
+  private yamlQuote(value: string): string {
+    return JSON.stringify(value ?? '');
+  }
+
+  /**
+   * Rename malformed bean file to .fixme extension so it is visibly quarantined.
+   */
+  private async quarantineMalformedBeanFile(rawBean: RawBeanFromCLI): Promise<void> {
+    if (!rawBean.path) {
+      return;
+    }
+
+    const sourcePath = this.resolveBeanFilePath(rawBean.path);
+    const ext = path.extname(sourcePath);
+    const targetPath = ext ? sourcePath.slice(0, -ext.length) + '.fixme' : `${sourcePath}.fixme`;
+
+    try {
+      await rename(sourcePath, targetPath);
+    } catch (error) {
+      void error;
     }
   }
 
