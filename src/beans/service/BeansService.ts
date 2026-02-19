@@ -583,7 +583,21 @@ export class BeansService {
    */
   private async tryRepairMalformedBean(rawBean: RawBeanFromCLI): Promise<RawBeanFromCLI | null> {
     const filePath = rawBean.path ? this.resolveBeanFilePath(rawBean.path) : undefined;
-    const inferred = this.inferRequiredBeanFields(rawBean, filePath);
+    let defaultStatus = 'draft';
+    let defaultType = 'task';
+
+    try {
+      const config = await this.getConfig();
+      defaultStatus = config.default_status || defaultStatus;
+      defaultType = config.default_type || defaultType;
+    } catch {
+      // Ignore config read failures and keep hard defaults for repair fallback.
+    }
+
+    const inferred = this.inferRequiredBeanFields(rawBean, filePath, {
+      status: defaultStatus,
+      type: defaultType,
+    });
 
     if (!inferred.id || !inferred.title || !inferred.status || !inferred.type) {
       return null;
@@ -614,12 +628,13 @@ export class BeansService {
    */
   private inferRequiredBeanFields(
     rawBean: RawBeanFromCLI,
-    absolutePath?: string
+    absolutePath?: string,
+    defaults?: { status: string; type: string }
   ): { id?: string; title?: string; status?: string; type?: string } {
     const id = rawBean.id || this.deriveIdFromPath(absolutePath);
     const title = rawBean.title || this.deriveTitleFromPath(absolutePath);
-    const status = rawBean.status || 'draft';
-    const type = rawBean.type || 'task';
+    const status = rawBean.status || defaults?.status || 'draft';
+    const type = rawBean.type || defaults?.type || 'task';
 
     return { id, title, status, type };
   }
@@ -650,7 +665,7 @@ export class BeansService {
    */
   private async repairBeanMarkdownFrontmatter(filePath: string, bean: RawBeanFromCLI): Promise<void> {
     const originalContent = await readFile(filePath, 'utf8');
-    const frontmatterMatch = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/m.exec(originalContent);
+    const frontmatterMatch = /^(?:\uFEFF)?[ \t]*---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(originalContent);
 
     const requiredEntries: Array<[string, string]> = [
       ['id', this.yamlQuote(bean.id)],

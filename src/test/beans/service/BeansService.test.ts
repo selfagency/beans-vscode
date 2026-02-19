@@ -396,6 +396,85 @@ describe('BeansService', () => {
       expect(mockRename).not.toHaveBeenCalled();
     });
 
+    it('uses configured default status/type when repairing malformed beans', async () => {
+      mockReadFile.mockResolvedValue('body');
+
+      vi.spyOn(service, 'getConfig').mockResolvedValue({
+        path: '.beans',
+        prefix: 'bean',
+        id_length: 4,
+        default_status: 'todo',
+        default_type: 'bug',
+        statuses: ['todo', 'in-progress', 'completed', 'scrapped', 'draft'],
+        types: ['milestone', 'epic', 'feature', 'task', 'bug'],
+        priorities: ['critical', 'high', 'normal', 'low', 'deferred'],
+      });
+
+      const malformedBean = {
+        id: '',
+        title: '',
+        slug: 'repair-me',
+        path: '.beans/test-bad3--repair-me.md',
+        body: 'broken',
+        status: '',
+        type: '',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+        etag: 'etag-bad3',
+      };
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(null, { stdout: JSON.stringify({ beans: [malformedBean] }), stderr: '' });
+      });
+
+      const beans = await service.listBeans();
+
+      expect(beans).toHaveLength(1);
+      expect(beans[0].id).toBe('test-bad3');
+      expect(beans[0].title).toBe('repair me');
+      expect(beans[0].status).toBe('todo');
+      expect(beans[0].type).toBe('bug');
+      expect(service.getConfig).toHaveBeenCalledTimes(1);
+      expect(mockWriteFile).toHaveBeenCalledTimes(1);
+      const writtenContent = mockWriteFile.mock.calls[0][1] as string;
+      expect(writtenContent).toContain('status: "todo"');
+      expect(writtenContent).toContain('type: "bug"');
+    });
+
+    it('does not treat in-body horizontal rules as frontmatter during repair', async () => {
+      mockReadFile.mockResolvedValue('Body intro\n---\nnot frontmatter\n---\nrest of body');
+
+      const malformedBean = {
+        id: 'test-bad4',
+        title: '',
+        slug: 'hr-bean',
+        path: '.beans/test-bad4--hr-bean.md',
+        body: 'broken',
+        status: 'todo',
+        type: 'task',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+        etag: 'etag-bad4',
+      };
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(null, { stdout: JSON.stringify({ beans: [malformedBean] }), stderr: '' });
+      });
+
+      const beans = await service.listBeans();
+
+      expect(beans).toHaveLength(1);
+      expect(mockWriteFile).toHaveBeenCalledTimes(1);
+      const writtenContent = mockWriteFile.mock.calls[0][1] as string;
+      expect(writtenContent).toContain('id: "test-bad4"');
+      expect(writtenContent).toContain('title: "hr bean"');
+      expect(writtenContent).toContain('status: "todo"');
+      expect(writtenContent).toContain('type: "task"');
+      expect(writtenContent).toContain('\nBody intro\n---\nnot frontmatter\n---\nrest of body');
+    });
+
     it('quarantines malformed bean with .fixme when auto-repair fails', async () => {
       const malformedBean = {
         id: 'test-bad2',
