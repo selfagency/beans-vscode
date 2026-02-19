@@ -1,11 +1,11 @@
 ---
 # beans-vscode-fgsh
 title: Fix normalizeBean crash on malformed bean markdown and add .fixme fallback
-status: in-progress
+status: completed
 type: bug
 priority: high
 created_at: 2026-02-19T16:44:24Z
-updated_at: 2026-02-19T16:49:28Z
+updated_at: 2026-02-19T16:55:26Z
 ---
 
 ## Context
@@ -29,3 +29,4 @@ Users see `Failed to fetch beans` when a bean parsed from markdown is missing re
 - Added malformed-bean repair flow that infers missing required fields and writes corrected frontmatter when possible.
 - Added quarantine flow that renames unrecoverable malformed bean files to `.fixme`.
 - Added unit tests for both auto-repair and quarantine behavior and validated with Vitest.
+- Silenced noisy `Executing ...` and `Executing GraphQL ...` info logs by changing those statements to debug level.
