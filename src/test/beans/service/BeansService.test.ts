@@ -118,7 +118,7 @@ describe('BeansService', () => {
   describe('checkInitialized', () => {
     it('returns true when workspace is initialized', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify({ data: { initialized: true } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ initialized: true }), stderr: '' });
       });
 
       const initialized = await service.checkInitialized();
@@ -154,7 +154,7 @@ describe('BeansService', () => {
 
     it('lists all beans without filters', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify({ data: { beans: mockBeanData } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
       });
 
       const beans = await service.listBeans();
@@ -168,7 +168,7 @@ describe('BeansService', () => {
         expect(args).toContain('graphql');
         const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
         expect(variables.filter.status).toEqual(['todo']);
-        callback(null, { stdout: JSON.stringify({ data: { beans: mockBeanData } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
       });
 
       await service.listBeans({ status: ['todo'] });
@@ -179,7 +179,7 @@ describe('BeansService', () => {
         expect(args).toContain('graphql');
         const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
         expect(variables.filter.type).toEqual(['task']);
-        callback(null, { stdout: JSON.stringify({ data: { beans: mockBeanData } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
       });
 
       await service.listBeans({ type: ['task'] });
@@ -190,7 +190,7 @@ describe('BeansService', () => {
         expect(args).toContain('graphql');
         const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
         expect(variables.filter.search).toBe('test');
-        callback(null, { stdout: JSON.stringify({ data: { beans: mockBeanData } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
       });
 
       await service.listBeans({ search: 'test' });
@@ -214,7 +214,7 @@ describe('BeansService', () => {
       };
 
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify({ data: { beans: [rawBean] } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: [rawBean] }), stderr: '' });
       });
 
       const beans = await service.listBeans();
@@ -240,7 +240,7 @@ describe('BeansService', () => {
       };
 
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify({ data: { beans: [rawBean] } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: [rawBean] }), stderr: '' });
       });
 
       const beans = await service.listBeans();
@@ -249,7 +249,7 @@ describe('BeansService', () => {
 
     it('caches successful results', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify({ data: { beans: mockBeanData } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
       });
 
       await service.listBeans();
@@ -262,7 +262,7 @@ describe('BeansService', () => {
     it('falls back to cache in offline mode', async () => {
       // First successful call to populate cache
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify({ data: { beans: mockBeanData } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
       });
 
       await service.listBeans();
@@ -310,7 +310,7 @@ describe('BeansService', () => {
 
       // Cache the beans
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify({ data: { beans: cachedBeans } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: cachedBeans }), stderr: '' });
       });
       await service.listBeans();
 
@@ -357,7 +357,7 @@ describe('BeansService', () => {
         expect(args).toContain('graphql');
         const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
         expect(variables.id).toBe('test-abc1');
-        callback(null, { stdout: JSON.stringify({ data: { bean: mockBean } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ bean: mockBean }), stderr: '' });
       });
 
       const bean = await service.showBean('test-abc1');
@@ -370,15 +370,13 @@ describe('BeansService', () => {
         expect(args).toContain('graphql');
         callback(null, {
           stdout: JSON.stringify({
-            data: {
-              bean: {
-                id: 'test-abc1',
-                title: 'Test Bean',
-                status: 'todo',
-                type: 'task',
-                // show payload can be partial on some CLI versions;
-                // intentionally omit slug/path/body/etag
-              },
+            bean: {
+              id: 'test-abc1',
+              title: 'Test Bean',
+              status: 'todo',
+              type: 'task',
+              // show payload can be partial on some CLI versions;
+              // intentionally omit slug/path/body/etag
             },
           }),
           stderr: '',
@@ -415,7 +413,7 @@ describe('BeansService', () => {
         const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
         expect(variables.input.title).toBe('New Bean');
         expect(variables.input.type).toBe('task');
-        callback(null, { stdout: JSON.stringify({ data: { createBean: mockBean } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ createBean: mockBean }), stderr: '' });
       });
 
       const bean = await service.createBean({
@@ -449,7 +447,7 @@ describe('BeansService', () => {
         expect(variables.input.priority).toBe('high');
         expect(variables.input.body).toBe('Description here');
         expect(variables.input.parent).toBe('parent-123');
-        callback(null, { stdout: JSON.stringify({ data: { createBean: mockBean } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ createBean: mockBean }), stderr: '' });
       });
 
       await service.createBean({
@@ -512,7 +510,7 @@ describe('BeansService', () => {
         const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
         expect(variables.id).toBe('test-abc1');
         expect(variables.input.status).toBe('completed');
-        callback(null, { stdout: JSON.stringify({ data: { updateBean: mockBean } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ updateBean: mockBean }), stderr: '' });
       });
 
       await service.updateBean('test-abc1', { status: 'completed' });
@@ -539,7 +537,7 @@ describe('BeansService', () => {
         expect(variables.input.status).toBe('in-progress');
         expect(variables.input.type).toBe('bug');
         expect(variables.input.priority).toBe('critical');
-        callback(null, { stdout: JSON.stringify({ data: { updateBean: mockBean } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ updateBean: mockBean }), stderr: '' });
       });
 
       await service.updateBean('test-abc1', {
@@ -568,7 +566,7 @@ describe('BeansService', () => {
         expect(args).toContain('graphql');
         const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
         expect(variables.input.parent).toBe('parent-123');
-        callback(null, { stdout: JSON.stringify({ data: { updateBean: mockBean } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ updateBean: mockBean }), stderr: '' });
       });
 
       await service.updateBean('test-abc1', { parent: 'parent-123' });
@@ -593,11 +591,11 @@ describe('BeansService', () => {
         if (Array.isArray(args) && args.includes('graphql')) {
           const query = args[args.indexOf('graphql') + 2];
           if (query.includes('updateBean')) {
-            callback(null, { stdout: JSON.stringify({ data: { updateBean: { id: 'test-abc1' } } }), stderr: '' });
+            callback(null, { stdout: JSON.stringify({ updateBean: { id: 'test-abc1' } }), stderr: '' });
             return;
           }
           if (query.includes('ShowBean')) {
-            callback(null, { stdout: JSON.stringify({ data: { bean: fullBean } }), stderr: '' });
+            callback(null, { stdout: JSON.stringify({ bean: fullBean }), stderr: '' });
             return;
           }
         }
@@ -629,7 +627,7 @@ describe('BeansService', () => {
         expect(args).toContain('graphql');
         const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
         expect(variables.input.parent).toBe('');
-        callback(null, { stdout: JSON.stringify({ data: { updateBean: mockBean } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ updateBean: mockBean }), stderr: '' });
       });
 
       await service.updateBean('test-abc1', { clearParent: true });
@@ -661,7 +659,7 @@ describe('BeansService', () => {
         const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
         expect(variables.id).toBe('test-abc1');
         expect(variables.input.addBlocking).toEqual(['block-1', 'block-2']);
-        callback(null, { stdout: JSON.stringify({ data: { updateBean: mockBean } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ updateBean: mockBean }), stderr: '' });
       });
 
       await service.updateBean('test-abc1', { blocking: ['block-1', 'block-2'] });
@@ -689,51 +687,47 @@ describe('BeansService', () => {
               if (parentFilter === parentId) {
                 callback(null, {
                   stdout: JSON.stringify({
-                    data: {
-                      beans: [
-                        {
-                          id: childId,
-                          title: 'Child',
-                          status: 'todo',
-                          type: 'task',
-                          parent: parentId,
-                          slug: 'c',
-                          path: 'c.md',
-                          body: '',
-                          createdAt: '2026-01-01T00:00:00Z',
-                          updatedAt: '2026-01-02T00:00:00Z',
-                          etag: 'e2',
-                        },
-                      ],
-                    },
+                    beans: [
+                      {
+                        id: childId,
+                        title: 'Child',
+                        status: 'todo',
+                        type: 'task',
+                        parent: parentId,
+                        slug: 'c',
+                        path: 'c.md',
+                        body: '',
+                        createdAt: '2026-01-01T00:00:00Z',
+                        updatedAt: '2026-01-02T00:00:00Z',
+                        etag: 'e2',
+                      },
+                    ],
                   }),
                   stderr: '',
                 });
               } else if (parentFilter === childId) {
                 callback(null, {
                   stdout: JSON.stringify({
-                    data: {
-                      beans: [
-                        {
-                          id: grandChildId,
-                          title: 'Grandchild',
-                          status: 'todo',
-                          type: 'task',
-                          parent: childId,
-                          slug: 'gc',
-                          path: 'gc.md',
-                          body: '',
-                          createdAt: '2026-01-01T00:00:00Z',
-                          updatedAt: '2026-01-02T00:00:00Z',
-                          etag: 'e3',
-                        },
-                      ],
-                    },
+                    beans: [
+                      {
+                        id: grandChildId,
+                        title: 'Grandchild',
+                        status: 'todo',
+                        type: 'task',
+                        parent: childId,
+                        slug: 'gc',
+                        path: 'gc.md',
+                        body: '',
+                        createdAt: '2026-01-01T00:00:00Z',
+                        updatedAt: '2026-01-02T00:00:00Z',
+                        etag: 'e3',
+                      },
+                    ],
                   }),
                   stderr: '',
                 });
               } else {
-                callback(null, { stdout: JSON.stringify({ data: { beans: [] } }), stderr: '' });
+                callback(null, { stdout: JSON.stringify({ beans: [] }), stderr: '' });
               }
             } else if (query.includes('mutation UpdateBean')) {
               const id = vars.id;
@@ -741,19 +735,17 @@ describe('BeansService', () => {
               const status = input.status || 'todo';
               callback(null, {
                 stdout: JSON.stringify({
-                  data: {
-                    updateBean: {
-                      id,
-                      title: 'Updated',
-                      status,
-                      type: 'task',
-                      slug: 'u',
-                      path: 'u.md',
-                      body: '',
-                      createdAt: '2026-01-01T00:00:00Z',
-                      updatedAt: '2026-01-02T00:00:00Z',
-                      etag: 'eu',
-                    },
+                  updateBean: {
+                    id,
+                    title: 'Updated',
+                    status,
+                    type: 'task',
+                    slug: 'u',
+                    path: 'u.md',
+                    body: '',
+                    createdAt: '2026-01-01T00:00:00Z',
+                    updatedAt: '2026-01-02T00:00:00Z',
+                    etag: 'eu',
                   },
                 }),
                 stderr: '',
@@ -762,25 +754,23 @@ describe('BeansService', () => {
               const id = vars.id;
               callback(null, {
                 stdout: JSON.stringify({
-                  data: {
-                    bean: {
-                      id,
-                      title: 'Shown',
-                      status: 'todo',
-                      type: 'task',
-                      slug: 's',
-                      path: 's.md',
-                      body: '',
-                      createdAt: '2026-01-01T00:00:00Z',
-                      updatedAt: '2026-01-02T00:00:00Z',
-                      etag: 'es',
-                    },
+                  bean: {
+                    id,
+                    title: 'Shown',
+                    status: 'todo',
+                    type: 'task',
+                    slug: 's',
+                    path: 's.md',
+                    body: '',
+                    createdAt: '2026-01-01T00:00:00Z',
+                    updatedAt: '2026-01-02T00:00:00Z',
+                    etag: 'es',
                   },
                 }),
                 stderr: '',
               });
             } else {
-              callback(null, { stdout: JSON.stringify({ data: {} }), stderr: '' });
+              callback(null, { stdout: JSON.stringify({}), stderr: '' });
             }
           } else {
             callback(null, { stdout: '{}', stderr: '' });
@@ -856,16 +846,14 @@ describe('BeansService', () => {
               const id = vars.id;
               callback(null, {
                 stdout: JSON.stringify({
-                  data: {
-                    bean: {
-                      id,
-                      title: id === parentId ? 'Parent' : 'Child',
-                      status: 'completed',
-                      type: 'task',
-                      createdAt: '2026-01-01T00:00:00Z',
-                      updatedAt: '2026-01-02T00:00:00Z',
-                      etag: 'es',
-                    },
+                  bean: {
+                    id,
+                    title: id === parentId ? 'Parent' : 'Child',
+                    status: 'completed',
+                    type: 'task',
+                    createdAt: '2026-01-01T00:00:00Z',
+                    updatedAt: '2026-01-02T00:00:00Z',
+                    etag: 'es',
                   },
                 }),
                 stderr: '',
@@ -874,50 +862,46 @@ describe('BeansService', () => {
               if (vars.filter?.parent === parentId) {
                 callback(null, {
                   stdout: JSON.stringify({
-                    data: {
-                      beans: [
-                        {
-                          id: childId,
-                          title: 'Child',
-                          status: 'completed',
-                          type: 'task',
-                          parent: parentId,
-                          slug: 'c',
-                          path: 'c.md',
-                          body: '',
-                          createdAt: '2026-01-01T00:00:00Z',
-                          updatedAt: '2026-01-02T00:00:00Z',
-                          etag: 'e2',
-                        },
-                      ],
-                    },
+                    beans: [
+                      {
+                        id: childId,
+                        title: 'Child',
+                        status: 'completed',
+                        type: 'task',
+                        parent: parentId,
+                        slug: 'c',
+                        path: 'c.md',
+                        body: '',
+                        createdAt: '2026-01-01T00:00:00Z',
+                        updatedAt: '2026-01-02T00:00:00Z',
+                        etag: 'e2',
+                      },
+                    ],
                   }),
                   stderr: '',
                 });
               } else {
-                callback(null, { stdout: JSON.stringify({ data: { beans: [] } }), stderr: '' });
+                callback(null, { stdout: JSON.stringify({ beans: [] }), stderr: '' });
               }
             } else if (query.includes('mutation UpdateBean')) {
               updateCount++;
               callback(null, {
                 stdout: JSON.stringify({
-                  data: {
-                    updateBean: {
-                      id: vars.id,
-                      title: 'Updated',
-                      status: 'todo',
-                      type: 'task',
-                      createdAt: '2026-01-01T00:00:00Z',
-                      updatedAt: '2026-01-02T00:00:00Z',
-                      etag: 'eu',
-                    },
+                  updateBean: {
+                    id: vars.id,
+                    title: 'Updated',
+                    status: 'todo',
+                    type: 'task',
+                    createdAt: '2026-01-01T00:00:00Z',
+                    updatedAt: '2026-01-02T00:00:00Z',
+                    etag: 'eu',
                   },
                 }),
                 stderr: '',
               });
             }
           } else {
-            callback(null, { stdout: JSON.stringify({ data: { beans: [] } }), stderr: '' });
+            callback(null, { stdout: JSON.stringify({ beans: [] }), stderr: '' });
           }
         });
 
@@ -938,51 +922,47 @@ describe('BeansService', () => {
               if (parentFilter === parentId) {
                 callback(null, {
                   stdout: JSON.stringify({
-                    data: {
-                      beans: [
-                        {
-                          id: childId,
-                          title: 'Child',
-                          status: 'draft',
-                          type: 'task',
-                          parent: parentId,
-                          slug: 'c',
-                          path: 'c.md',
-                          body: '',
-                          createdAt: '2026-01-01T00:00:00Z',
-                          updatedAt: '2026-01-02T00:00:00Z',
-                          etag: 'e2',
-                        },
-                      ],
-                    },
+                    beans: [
+                      {
+                        id: childId,
+                        title: 'Child',
+                        status: 'draft',
+                        type: 'task',
+                        parent: parentId,
+                        slug: 'c',
+                        path: 'c.md',
+                        body: '',
+                        createdAt: '2026-01-01T00:00:00Z',
+                        updatedAt: '2026-01-02T00:00:00Z',
+                        etag: 'e2',
+                      },
+                    ],
                   }),
                   stderr: '',
                 });
               } else if (parentFilter === childId) {
                 callback(null, {
                   stdout: JSON.stringify({
-                    data: {
-                      beans: [
-                        {
-                          id: grandChildId,
-                          title: 'Grandchild',
-                          status: 'draft',
-                          type: 'task',
-                          parent: childId,
-                          slug: 'gc',
-                          path: 'gc.md',
-                          body: '',
-                          createdAt: '2026-01-01T00:00:00Z',
-                          updatedAt: '2026-01-02T00:00:00Z',
-                          etag: 'e3',
-                        },
-                      ],
-                    },
+                    beans: [
+                      {
+                        id: grandChildId,
+                        title: 'Grandchild',
+                        status: 'draft',
+                        type: 'task',
+                        parent: childId,
+                        slug: 'gc',
+                        path: 'gc.md',
+                        body: '',
+                        createdAt: '2026-01-01T00:00:00Z',
+                        updatedAt: '2026-01-02T00:00:00Z',
+                        etag: 'e3',
+                      },
+                    ],
                   }),
                   stderr: '',
                 });
               } else {
-                callback(null, { stdout: JSON.stringify({ data: { beans: [] } }), stderr: '' });
+                callback(null, { stdout: JSON.stringify({ beans: [] }), stderr: '' });
               }
             } else if (query.includes('mutation UpdateBean')) {
               const id = vars.id;
@@ -990,25 +970,23 @@ describe('BeansService', () => {
               const status = input.status || 'todo';
               callback(null, {
                 stdout: JSON.stringify({
-                  data: {
-                    updateBean: {
-                      id,
-                      title: 'Updated',
-                      status,
-                      type: 'task',
-                      slug: 'u',
-                      path: 'u.md',
-                      body: '',
-                      createdAt: '2026-01-01T00:00:00Z',
-                      updatedAt: '2026-01-02T00:00:00Z',
-                      etag: 'eu',
-                    },
+                  updateBean: {
+                    id,
+                    title: 'Updated',
+                    status,
+                    type: 'task',
+                    slug: 'u',
+                    path: 'u.md',
+                    body: '',
+                    createdAt: '2026-01-01T00:00:00Z',
+                    updatedAt: '2026-01-02T00:00:00Z',
+                    etag: 'eu',
                   },
                 }),
                 stderr: '',
               });
             } else {
-              callback(null, { stdout: JSON.stringify({ data: { beans: [] } }), stderr: '' });
+              callback(null, { stdout: JSON.stringify({ beans: [] }), stderr: '' });
             }
           }
         });
@@ -1035,35 +1013,31 @@ describe('BeansService', () => {
             if (query.includes('query ListBeans')) {
               callback(null, {
                 stdout: JSON.stringify({
-                  data: {
-                    beans: [
-                      {
-                        id: childId,
-                        title: 'Child',
-                        status: 'in-progress',
-                        type: 'task',
-                        createdAt: '2026-01-01T00:00:00Z',
-                        updatedAt: '2026-01-02T00:00:00Z',
-                        etag: 'e2',
-                      },
-                    ],
-                  },
+                  beans: [
+                    {
+                      id: childId,
+                      title: 'Child',
+                      status: 'in-progress',
+                      type: 'task',
+                      createdAt: '2026-01-01T00:00:00Z',
+                      updatedAt: '2026-01-02T00:00:00Z',
+                      etag: 'e2',
+                    },
+                  ],
                 }),
                 stderr: '',
               });
             } else if (query.includes('mutation UpdateBean')) {
               callback(null, {
                 stdout: JSON.stringify({
-                  data: {
-                    updateBean: {
-                      id: vars.id,
-                      title: 'Updated',
-                      status: 'in-progress',
-                      type: 'task',
-                      createdAt: '2026-01-01T00:00:00Z',
-                      updatedAt: '2026-01-02T00:00:00Z',
-                      etag: 'eu',
-                    },
+                  updateBean: {
+                    id: vars.id,
+                    title: 'Updated',
+                    status: 'in-progress',
+                    type: 'task',
+                    createdAt: '2026-01-01T00:00:00Z',
+                    updatedAt: '2026-01-02T00:00:00Z',
+                    etag: 'eu',
                   },
                 }),
                 stderr: '',
@@ -1071,22 +1045,20 @@ describe('BeansService', () => {
             } else if (query.includes('query ShowBean')) {
               callback(null, {
                 stdout: JSON.stringify({
-                  data: {
-                    bean: {
-                      id: vars.id,
-                      title: 'Shown',
-                      status: 'todo',
-                      type: 'task',
-                      createdAt: '2026-01-01T00:00:00Z',
-                      updatedAt: '2026-01-02T00:00:00Z',
-                      etag: 'es',
-                    },
+                  bean: {
+                    id: vars.id,
+                    title: 'Shown',
+                    status: 'todo',
+                    type: 'task',
+                    createdAt: '2026-01-01T00:00:00Z',
+                    updatedAt: '2026-01-02T00:00:00Z',
+                    etag: 'es',
                   },
                 }),
                 stderr: '',
               });
             } else {
-              callback(null, { stdout: JSON.stringify({ data: { beans: [] } }), stderr: '' });
+              callback(null, { stdout: JSON.stringify({ beans: [] }), stderr: '' });
             }
           }
         });
@@ -1110,7 +1082,7 @@ describe('BeansService', () => {
         expect(args).toContain('graphql');
         const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
         expect(variables.id).toBe('test-abc1');
-        callback(null, { stdout: JSON.stringify({ data: { deleteBean: true } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ deleteBean: true }), stderr: '' });
       });
 
       await service.deleteBean('test-abc1');
@@ -1126,31 +1098,29 @@ describe('BeansService', () => {
         expect(variables.c1.title).toBe('Bean 2');
 
         const mockResponse = {
-          data: {
-            c0: {
-              id: 'test-1',
-              title: 'Bean 1',
-              slug: 'bean-1',
-              path: 'beans/test-1.md',
-              body: '',
-              status: 'todo',
-              type: 'task',
-              createdAt: '2026-01-01T00:00:00Z',
-              updatedAt: '2026-01-02T00:00:00Z',
-              etag: 'etag1',
-            },
-            c1: {
-              id: 'test-2',
-              title: 'Bean 2',
-              slug: 'bean-2',
-              path: 'beans/test-2.md',
-              body: '',
-              status: 'todo',
-              type: 'bug',
-              createdAt: '2026-01-01T00:00:00Z',
-              updatedAt: '2026-01-02T00:00:00Z',
-              etag: 'etag12',
-            },
+          c0: {
+            id: 'test-1',
+            title: 'Bean 1',
+            slug: 'bean-1',
+            path: 'beans/test-1.md',
+            body: '',
+            status: 'todo',
+            type: 'task',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'etag1',
+          },
+          c1: {
+            id: 'test-2',
+            title: 'Bean 2',
+            slug: 'bean-2',
+            path: 'beans/test-2.md',
+            body: '',
+            status: 'todo',
+            type: 'bug',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'etag12',
           },
         };
         callback(null, { stdout: JSON.stringify(mockResponse), stderr: '' });
@@ -1174,39 +1144,31 @@ describe('BeansService', () => {
         expect(args).toContain('graphql');
 
         const mockResponse = {
-          data: {
-            c0: {
-              id: 'test-1',
-              title: 'Bean 1',
-              slug: 'bean-1',
-              path: 'beans/test-1.md',
-              body: '',
-              status: 'todo',
-              type: 'task',
-              createdAt: '2026-01-01T00:00:00Z',
-              updatedAt: '2026-01-02T00:00:00Z',
-              etag: 'etag1',
-            },
-            c1: null,
-            c2: {
-              id: 'test-3',
-              title: 'Bean 3',
-              slug: 'bean-3',
-              path: 'beans/test-3.md',
-              body: '',
-              status: 'todo',
-              type: 'feature',
-              createdAt: '2026-01-01T00:00:00Z',
-              updatedAt: '2026-01-02T00:00:00Z',
-              etag: 'etag3',
-            },
+          c0: {
+            id: 'test-1',
+            title: 'Bean 1',
+            slug: 'bean-1',
+            path: 'beans/test-1.md',
+            body: '',
+            status: 'todo',
+            type: 'task',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'etag1',
           },
-          errors: [
-            {
-              message: 'Failed to create bean 2: invalid type',
-              path: 'c1',
-            },
-          ],
+          c1: null,
+          c2: {
+            id: 'test-3',
+            title: 'Bean 3',
+            slug: 'bean-3',
+            path: 'beans/test-3.md',
+            body: '',
+            status: 'todo',
+            type: 'feature',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'etag3',
+          },
         };
 
         callback(null, { stdout: JSON.stringify(mockResponse), stderr: '' });
@@ -1227,12 +1189,12 @@ describe('BeansService', () => {
         expect(results[0].bean.title).toBe('Bean 1');
       }
 
-      // Second bean should fail
+      // Second bean should fail (null response = missing alias)
       expect(results[1].success).toBe(false);
       if (!results[1].success) {
         expect(results[1].error).toBeDefined();
         expect(results[1].error).toBeInstanceOf(Error);
-        expect(results[1].error.message).toContain('Failed to create bean 2');
+        expect(results[1].error.message).toContain('Mutation results missing for alias');
         expect((results[1] as any).bean).toBeUndefined();
       }
 
@@ -1249,21 +1211,19 @@ describe('BeansService', () => {
         expect(args).toContain('graphql');
 
         const mockResponse = {
-          data: {
-            c0: {
-              id: 'test-1',
-              title: 'Bean 1',
-              slug: 'bean-1',
-              path: 'beans/test-1.md',
-              body: '',
-              status: 'todo',
-              type: 'task',
-              createdAt: '2026-01-01T00:00:00Z',
-              updatedAt: '2026-01-02T00:00:00Z',
-              etag: 'etag1',
-            },
-            c1: null,
+          c0: {
+            id: 'test-1',
+            title: 'Bean 1',
+            slug: 'bean-1',
+            path: 'beans/test-1.md',
+            body: '',
+            status: 'todo',
+            type: 'task',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'etag1',
           },
+          c1: null,
           errors: [
             {
               message: 'Failed to create bean 2',
@@ -1303,21 +1263,19 @@ describe('BeansService', () => {
         expect(args).toContain('graphql');
 
         const mockResponse = {
-          data: {
-            c0: {
-              id: 'test-1',
-              title: 'Bean 1',
-              slug: 'bean-1',
-              path: 'beans/test-1.md',
-              body: '',
-              status: 'todo',
-              type: 'task',
-              createdAt: '2026-01-01T00:00:00Z',
-              updatedAt: '2026-01-02T00:00:00Z',
-              etag: 'etag1',
-            },
-            c1: null,
+          c0: {
+            id: 'test-1',
+            title: 'Bean 1',
+            slug: 'bean-1',
+            path: 'beans/test-1.md',
+            body: '',
+            status: 'todo',
+            type: 'task',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'etag1',
           },
+          c1: null,
           errors: [
             {
               message: 'Failed to create bean 2',
@@ -1355,31 +1313,29 @@ describe('BeansService', () => {
         expect(query).toContain('u1: updateBean');
 
         const mockResponse = {
-          data: {
-            u0: {
-              id: 'bean-1',
-              status: 'completed',
-              title: 'T1',
-              type: 'task',
-              slug: 't1',
-              path: 'beans/t1.md',
-              body: '',
-              createdAt: '2026-01-01T00:00:00Z',
-              updatedAt: '2026-01-02T00:00:00Z',
-              etag: 'e1',
-            },
-            u1: {
-              id: 'bean-2',
-              status: 'completed',
-              title: 'T2',
-              type: 'task',
-              slug: 't2',
-              path: 'beans/t2.md',
-              body: '',
-              createdAt: '2026-01-01T00:00:00Z',
-              updatedAt: '2026-01-02T00:00:00Z',
-              etag: 'e2',
-            },
+          u0: {
+            id: 'bean-1',
+            status: 'completed',
+            title: 'T1',
+            type: 'task',
+            slug: 't1',
+            path: 'beans/t1.md',
+            body: '',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'e1',
+          },
+          u1: {
+            id: 'bean-2',
+            status: 'completed',
+            title: 'T2',
+            type: 'task',
+            slug: 't2',
+            path: 'beans/t2.md',
+            body: '',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'e2',
           },
         };
         callback(null, { stdout: JSON.stringify(mockResponse), stderr: '' });
@@ -1403,10 +1359,8 @@ describe('BeansService', () => {
         expect(query).toContain('d1: deleteBean');
 
         const mockResponse = {
-          data: {
-            d0: true,
-            d1: true,
-          },
+          d0: true,
+          d1: true,
         };
         callback(null, { stdout: JSON.stringify(mockResponse), stderr: '' });
       });
@@ -1484,7 +1438,7 @@ describe('BeansService', () => {
 
     it('throws BeansJSONParseError when bean missing required fields', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify({ data: { beans: [{ id: 'test' }] } }), stderr: '' });
+        callback(null, { stdout: JSON.stringify({ beans: [{ id: 'test' }] }), stderr: '' });
       });
 
       await expect(service.listBeans()).rejects.toThrow(BeansJSONParseError);
@@ -1499,22 +1453,20 @@ describe('BeansService', () => {
         mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
           callback(null, {
             stdout: JSON.stringify({
-              data: {
-                beans: [
-                  {
-                    id: 'test-abc1',
-                    title: 'Test',
-                    slug: 'test',
-                    path: 'beans/test.md',
-                    body: '',
-                    status: 'todo',
-                    type: 'task',
-                    createdAt: 'not-a-date',
-                    updatedAt: 'still-not-a-date',
-                    etag: 'etag1',
-                  },
-                ],
-              },
+              beans: [
+                {
+                  id: 'test-abc1',
+                  title: 'Test',
+                  slug: 'test',
+                  path: 'beans/test.md',
+                  body: '',
+                  status: 'todo',
+                  type: 'task',
+                  createdAt: 'not-a-date',
+                  updatedAt: 'still-not-a-date',
+                  etag: 'etag1',
+                },
+              ],
             }),
             stderr: '',
           });
@@ -1533,17 +1485,15 @@ describe('BeansService', () => {
         if (Array.isArray(args) && args.includes('graphql')) {
           callback(null, {
             stdout: JSON.stringify({
-              data: {
-                beans: [
-                  {
-                    id: 'test-abc1',
-                    title: 'Test Bean',
-                    status: 'todo',
-                    type: 'task',
-                    // GraphQL fields are camelCase
-                  },
-                ],
-              },
+              beans: [
+                {
+                  id: 'test-abc1',
+                  title: 'Test Bean',
+                  status: 'todo',
+                  type: 'task',
+                  // GraphQL fields are camelCase
+                },
+              ],
             }),
             stderr: '',
           });
@@ -1582,7 +1532,7 @@ describe('BeansService', () => {
             updatedAt: '2026-01-02T00:00:00Z',
             etag: 'etag1',
           };
-          callback(null, { stdout: JSON.stringify({ data: { bean: mockBean } }), stderr: '' });
+          callback(null, { stdout: JSON.stringify({ bean: mockBean }), stderr: '' });
         }, 10);
       });
 
@@ -1600,22 +1550,20 @@ describe('BeansService', () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
         callback(null, {
           stdout: JSON.stringify({
-            data: {
-              beans: [
-                {
-                  id: 'test-abc1',
-                  title: 'Test',
-                  slug: 'test',
-                  path: 'beans/test.md',
-                  body: '',
-                  status: 'todo',
-                  type: 'task',
-                  createdAt: '2026-01-01T00:00:00Z',
-                  updatedAt: '2026-01-02T00:00:00Z',
-                  etag: 'etag1',
-                },
-              ],
-            },
+            beans: [
+              {
+                id: 'test-abc1',
+                title: 'Test',
+                slug: 'test',
+                path: 'beans/test.md',
+                body: '',
+                status: 'todo',
+                type: 'task',
+                createdAt: '2026-01-01T00:00:00Z',
+                updatedAt: '2026-01-02T00:00:00Z',
+                etag: 'etag1',
+              },
+            ],
           }),
           stderr: '',
         });

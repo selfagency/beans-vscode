@@ -113,7 +113,9 @@ class BeansCliBackend {
     });
 
     try {
-      return JSON.parse(stdout) as { data: T; errors?: any[] };
+      // CLI outputs the data portion directly (e.g. {"beans": [...]})
+      // without a {"data": ...} envelope.
+      return { data: JSON.parse(stdout) as T };
     } catch (error) {
       throw new Error(
         `Failed to parse Beans CLI GraphQL output: ${(error as Error).message}\nOutput: ${stdout.slice(0, 1000)}`

@@ -92,15 +92,11 @@ echo ""
 echo "=== Creating clean test directory ==="
 mkdir -p /tmp/beans-test
 cd /tmp/beans-test
-git init
-git config user.email "test@example.com"
-git config user.name "Test User"
 echo "✅ Test directory created"
 echo ""
 
 echo "=== Test 1: Initialize Beans workspace ==="
 beans init
-git add -A && git commit -m "init" --allow-empty
 if [ ! -f ".beans.yml" ]; then
   echo "❌ Failed to create .beans.yml"
   exit 1
@@ -115,7 +111,7 @@ beans create "New Feature" -t feature -s draft -p high -d "Feature in planning"
 beans create "Epic Story" -t epic -s todo -d "Large epic"
 beans create "Milestone Release" -t milestone -s draft -d "Release 1.0"
 
-BEAN_COUNT=$(beans graphql --json 'query ListBeans { beans { id } }' | jq '.data.beans | length')
+BEAN_COUNT=$(beans graphql --json 'query ListBeans { beans { id } }' | jq '.beans | length')
 if [ "$BEAN_COUNT" -ne 5 ]; then
   echo "❌ Expected 5 beans, found $BEAN_COUNT"
   exit 1
@@ -124,9 +120,9 @@ echo "✅ Created 5 beans successfully"
 echo ""
 
 echo "=== Test 3: Query and filter beans ==="
-TODO_COUNT=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"status":["todo"]}}' | jq '.data.beans | length')
-IP_COUNT=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"status":["in-progress"]}}' | jq '.data.beans | length')
-DRAFT_COUNT=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"status":["draft"]}}' | jq '.data.beans | length')
+TODO_COUNT=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"status":["todo"]}}' | jq '.beans | length')
+IP_COUNT=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"status":["in-progress"]}}' | jq '.beans | length')
+DRAFT_COUNT=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"status":["draft"]}}' | jq '.beans | length')
 
 echo "Todo beans: $TODO_COUNT (expected: 2)"
 echo "In-progress beans: $IP_COUNT (expected: 1)"
@@ -140,12 +136,12 @@ echo "✅ Filtering works correctly"
 echo ""
 
 echo "=== Test 4: Update bean status and metadata ==="
-FIRST_BEAN=$(beans graphql --json 'query ListBeans { beans { id } }' | jq -r '.data.beans[0].id')
+FIRST_BEAN=$(beans graphql --json 'query ListBeans { beans { id } }' | jq -r '.beans[0].id')
 echo "Updating bean: $FIRST_BEAN"
 
 beans graphql --json "mutation UpdateBean(\$id: ID!, \$input: BeanUpdateInput!) { updateBean(id: \$id, input: \$input) { id status priority } }" --variables "{\"id\":\"$FIRST_BEAN\",\"input\":{\"status\":\"completed\",\"priority\":\"high\"}}"
-UPDATED_STATUS=$(beans graphql --json "query ShowBean(\$id: ID!) { bean(id: \$id) { status } }" --variables "{\"id\":\"$FIRST_BEAN\"}" | jq -r '.data.bean.status')
-UPDATED_PRIORITY=$(beans graphql --json "query ShowBean(\$id: ID!) { bean(id: \$id) { priority } }" --variables "{\"id\":\"$FIRST_BEAN\"}" | jq -r '.data.bean.priority')
+UPDATED_STATUS=$(beans graphql --json "query ShowBean(\$id: ID!) { bean(id: \$id) { status } }" --variables "{\"id\":\"$FIRST_BEAN\"}" | jq -r '.bean.status')
+UPDATED_PRIORITY=$(beans graphql --json "query ShowBean(\$id: ID!) { bean(id: \$id) { priority } }" --variables "{\"id\":\"$FIRST_BEAN\"}" | jq -r '.bean.priority')
 
 if [ "$UPDATED_STATUS" != "completed" ] || [ "$UPDATED_PRIORITY" != "high" ]; then
   echo "❌ Bean update failed. Status: $UPDATED_STATUS, Priority: $UPDATED_PRIORITY"
@@ -155,11 +151,11 @@ echo "✅ Bean updates work correctly"
 echo ""
 
 echo "=== Test 5: Parent-child relationships ==="
-EPIC_ID=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"type":["epic"]}}' | jq -r '.data.beans[0].id')
-TASK_ID=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"type":["task"]}}' | jq -r '.data.beans[0].id')
+EPIC_ID=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"type":["epic"]}}' | jq -r '.beans[0].id')
+TASK_ID=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"type":["task"]}}' | jq -r '.beans[0].id')
 
 beans graphql --json "mutation UpdateBean(\$id: ID!, \$input: BeanUpdateInput!) { updateBean(id: \$id, input: \$input) { id parentId } }" --variables "{\"id\":\"$TASK_ID\",\"input\":{\"parent\":\"$EPIC_ID\"}}"
-PARENT=$(beans graphql --json "query ShowBean(\$id: ID!) { bean(id: \$id) { parentId } }" --variables "{\"id\":\"$TASK_ID\"}" | jq -r '.data.bean.parentId')
+PARENT=$(beans graphql --json "query ShowBean(\$id: ID!) { bean(id: \$id) { parentId } }" --variables "{\"id\":\"$TASK_ID\"}" | jq -r '.bean.parentId')
 
 if [ "$PARENT" != "$EPIC_ID" ]; then
   echo "❌ Parent relationship not set correctly"
@@ -169,11 +165,11 @@ echo "✅ Parent-child relationships work"
 echo ""
 
 echo "=== Test 6: Blocking relationships ==="
-BUG_ID=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"type":["bug"]}}' | jq -r '.data.beans[0].id')
-FEATURE_ID=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"type":["feature"]}}' | jq -r '.data.beans[0].id')
+BUG_ID=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"type":["bug"]}}' | jq -r '.beans[0].id')
+FEATURE_ID=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"type":["feature"]}}' | jq -r '.beans[0].id')
 
 beans graphql --json "mutation UpdateBean(\$id: ID!, \$input: BeanUpdateInput!) { updateBean(id: \$id, input: \$input) { id blockingIds } }" --variables "{\"id\":\"$FEATURE_ID\",\"input\":{\"blocking\":[\"$BUG_ID\"]}}"
-BLOCKED_BY=$(beans graphql --json "query ShowBean(\$id: ID!) { bean(id: \$id) { blockedByIds } }" --variables "{\"id\":\"$BUG_ID\"}" | jq -r '.data.bean.blockedByIds[0]')
+BLOCKED_BY=$(beans graphql --json "query ShowBean(\$id: ID!) { bean(id: \$id) { blockedByIds } }" --variables "{\"id\":\"$BUG_ID\"}" | jq -r '.bean.blockedByIds[0]')
 
 if [ "$BLOCKED_BY" != "$FEATURE_ID" ]; then
   echo "❌ Blocking relationship not set correctly"
@@ -184,7 +180,7 @@ echo ""
 
 echo "=== Test 7: GraphQL queries ==="
 QUERY_RESULT=$(beans graphql --json 'query ListBeans { beans { id title status type } }')
-QUERY_COUNT=$(echo "$QUERY_RESULT" | jq '.data.beans | length')
+QUERY_COUNT=$(echo "$QUERY_RESULT" | jq '.beans | length')
 
 if [ "$QUERY_COUNT" -ne 5 ]; then
   echo "❌ GraphQL query returned $QUERY_COUNT beans, expected 5"
@@ -195,7 +191,7 @@ echo ""
 
 echo "=== Test 8: Search functionality ==="
 SEARCH_RESULT=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id title } }' --variables '{"filter":{"search":"Critical"}}')
-if ! echo "$SEARCH_RESULT" | jq -e '.data.beans[] | select(.title | contains("Critical"))' > /dev/null; then
+if ! echo "$SEARCH_RESULT" | jq -e '.beans[] | select(.title | contains("Critical"))' > /dev/null; then
   echo "❌ Search didn't find expected bean"
   exit 1
 fi
@@ -204,7 +200,7 @@ echo ""
 
 echo "=== Test 9: Delete bean (draft/scrapped only) ==="
 beans graphql --json "mutation UpdateBean(\$id: ID!, \$input: BeanUpdateInput!) { updateBean(id: \$id, input: \$input) { id status } }" --variables "{\"id\":\"$FEATURE_ID\",\"input\":{\"status\":\"scrapped\"}}"
-DRAFT_ID=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"status":["draft"]}}' | jq -r '.data.beans[0].id')
+DRAFT_ID=$(beans graphql --json 'query ListBeans($filter: BeanFilter) { beans(filter: $filter) { id } }' --variables '{"filter":{"status":["draft"]}}' | jq -r '.beans[0].id')
 
 echo "Attempting to delete scrapped bean: $FEATURE_ID"
 if ! beans delete "$FEATURE_ID" 2>&1 | grep -q "deleted\|removed\|success"; then

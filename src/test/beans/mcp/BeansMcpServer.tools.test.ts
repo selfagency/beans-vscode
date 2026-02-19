@@ -86,7 +86,7 @@ function setupExecFileMock(): void {
           beans = beans.filter(b => !variables.filter.excludeStatus.includes(b.status));
         }
 
-        return done(JSON.stringify({ data: { beans } }));
+        return done(JSON.stringify({ beans }));
       }
 
       if (query.includes('ShowBean')) {
@@ -114,38 +114,34 @@ function setupExecFileMock(): void {
           bean.blockingIds = ['x'];
           bean.blockedByIds = ['y'];
         }
-        return done(JSON.stringify({ data: { bean } }));
+        return done(JSON.stringify({ bean }));
       }
 
       if (query.includes('UpdateBean')) {
         return done(
           JSON.stringify({
-            data: {
-              updateBean: {
-                id: variables.id,
-                title: 'Updated',
-                status: variables.input.status || 'todo',
-                type: 'task',
-              },
+            updateBean: {
+              id: variables.id,
+              title: 'Updated',
+              status: variables.input.status || 'todo',
+              type: 'task',
             },
           })
         );
       }
 
       if (query.includes('DeleteBean')) {
-        return done(JSON.stringify({ data: { deleteBean: true } }));
+        return done(JSON.stringify({ deleteBean: true }));
       }
 
       if (query.includes('CreateBean')) {
         return done(
           JSON.stringify({
-            data: {
-              createBean: {
-                id: 'new-1',
-                title: variables.input.title,
-                status: variables.input.status || 'todo',
-                type: 'task',
-              },
+            createBean: {
+              id: 'new-1',
+              title: variables.input.title,
+              status: variables.input.status || 'todo',
+              type: 'task',
             },
           })
         );

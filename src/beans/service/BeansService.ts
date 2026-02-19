@@ -391,10 +391,12 @@ export class BeansService {
           }
 
           try {
+            // CLI outputs the data portion directly (e.g. {"beans": [...]})
+            // without a {"data": ...} envelope. Errors are reported via
+            // stderr / non-zero exit code, not in the JSON payload.
             const parsed = JSON.parse(stdout);
             return {
-              data: parsed.data as T,
-              errors: parsed.errors,
+              data: parsed as T,
             };
           } catch (parseError) {
             throw new BeansJSONParseError('Failed to parse beans GraphQL JSON output', stdout, parseError as Error);

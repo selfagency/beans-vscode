@@ -56,7 +56,7 @@ describe('BeansMcpServer security review', () => {
 
     // Default mock implementations
     execFileMock.mockImplementation((_file, _args, _opts, cb) => {
-      cb(null, { stdout: JSON.stringify({ data: { beans: [], bean: {} } }), stderr: '' });
+      cb(null, { stdout: JSON.stringify({ beans: [], bean: {} }), stderr: '' });
     });
 
     const mod = await import('../../../beans/mcp/BeansMcpServer.js');
