@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-02-19
+
+## What's Changed
+* Fix malformed bean handling and silence noisy execution logs by @selfagency in https://github.com/selfagency/beans-vscode/pull/48
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.2.0...v1.2.1
+
+_Source: changes from v1.2.0 to v1.2.1._
+
+
 ## [1.2.0] - 2026-02-19
 
 ## What's Changed
