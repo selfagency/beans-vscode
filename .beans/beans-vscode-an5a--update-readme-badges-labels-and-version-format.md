@@ -10,3 +10,13 @@ updated_at: 2026-02-19T20:22:30Z
 ---
 
 Update README badges so version labels use capital V, rename display label CI to Tests, and rename Remote Compatibility display label to Remote Tests (display name change only).
+
+## Todo
+- [x] Add failing tests that assert the README badge strings (TDD)
+- [x] Update `README.md`: `label=version` → `label=Version`, alt text `CI` → `Tests`, `Remote Compatibility` → `Remote Tests`
+- [ ] Run full test & build locally (compile + lint + vitest)
+- [ ] Push branch & open PR
+- [ ] Update PR description and bean summary; mark bean `completed` on merge
+
+## Summary of changes (in progress)
+- WIP: test + README changes (branch: `feature/an5a-update-readme-badges`)
