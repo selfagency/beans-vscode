@@ -580,8 +580,66 @@ export class BeansService {
   }
 
   /**
+   * Attempt to recover missing required bean fields from the file's git history.
+   * Runs `git log` then `git show` via execFile argument arrays (no shell interpolation).
+   * Resolves with an empty object when git is unavailable, the file has no history, or parsing fails.
+   */
+  private async recoverFieldsFromGitHistory(
+    filePath: string
+  ): Promise<Partial<Pick<RawBeanFromCLI, 'id' | 'title' | 'status' | 'type' | 'priority'>>> {
+    try {
+      const relPath = path.relative(this.workspaceRoot, filePath);
+
+      const { stdout: shaOut } = await execFileAsync(
+        'git',
+        ['log', '--follow', '-n', '1', '--format=%H', '--', relPath],
+        { cwd: this.workspaceRoot }
+      );
+      const sha = shaOut.trim();
+      if (!sha) {
+        return {};
+      }
+
+      const { stdout: historicalContent } = await execFileAsync('git', ['show', `${sha}:${relPath}`], {
+        cwd: this.workspaceRoot,
+      });
+
+      const frontmatterMatch = /^(?:\uFEFF)?[ \t]*---\r?\n([\s\S]*?)\r?\n---/.exec(historicalContent);
+      if (!frontmatterMatch) {
+        return {};
+      }
+
+      const yamlText = frontmatterMatch[1];
+      const recovered: Partial<Pick<RawBeanFromCLI, 'id' | 'title' | 'status' | 'type' | 'priority'>> = {};
+      const fields = ['id', 'title', 'status', 'type', 'priority'] as const;
+
+      for (const field of fields) {
+        const match = new RegExp(`^\\s*${field}\\s*:[ \\t]*(.+)$`, 'm').exec(yamlText);
+        if (match) {
+          const value = match[1].trim().replace(/^["']|["']$/g, '');
+          if (value) {
+            recovered[field] = value;
+          }
+        }
+      }
+
+      if (Object.keys(recovered).length > 0) {
+        this.logger.info(
+          `Recovered ${Object.keys(recovered).join(', ')} from git history for ${path.basename(filePath)}`
+        );
+      }
+
+      return recovered;
+    } catch {
+      // git unavailable, not a git repo, or file has no history — all expected
+      return {};
+    }
+  }
+
+  /**
    * Attempt to repair malformed bean metadata and persist a corrected markdown frontmatter.
    * Returns a repaired bean payload if enough fields can be recovered.
+   * Checks git history first before falling back to filename inference.
    */
   private async tryRepairMalformedBean(rawBean: RawBeanFromCLI): Promise<RawBeanFromCLI | null> {
     const filePath = rawBean.path ? this.resolveBeanFilePath(rawBean.path) : undefined;
@@ -596,7 +654,12 @@ export class BeansService {
       // Ignore config read failures and keep hard defaults for repair fallback.
     }
 
-    const inferred = this.inferRequiredBeanFields(rawBean, filePath, {
+    // Recover fields from git history before falling back to filename inference.
+    // This preserves the correct values (e.g. original status/type) rather than guessing.
+    const historical = filePath ? await this.recoverFieldsFromGitHistory(filePath) : {};
+    const beanWithHistory: RawBeanFromCLI = { ...rawBean, ...historical };
+
+    const inferred = this.inferRequiredBeanFields(beanWithHistory, filePath, {
       status: defaultStatus,
       type: defaultType,
     });
@@ -607,6 +670,7 @@ export class BeansService {
 
     const repaired: RawBeanFromCLI = {
       ...rawBean,
+      ...historical,
       id: inferred.id,
       title: inferred.title,
       status: inferred.status,
@@ -680,8 +744,11 @@ export class BeansService {
     const body = frontmatterMatch ? originalContent.slice(frontmatterMatch[0].length) : originalContent;
 
     for (const [key, value] of requiredEntries) {
-      const keyRegex = new RegExp(`^\\s*${key}\\s*:`, 'm');
-      if (!keyRegex.test(frontmatter)) {
+      const keyLineRegex = new RegExp(`^[ \\t]*${key}[ \\t]*:.*$`, 'm');
+      if (keyLineRegex.test(frontmatter)) {
+        // Overwrite the existing line so that recovered/repaired values take precedence.
+        frontmatter = frontmatter.replace(keyLineRegex, `${key}: ${value}`);
+      } else {
         frontmatter = `${frontmatter}${frontmatter.trimEnd() ? '\n' : ''}${key}: ${value}`;
       }
     }
@@ -710,7 +777,7 @@ export class BeansService {
       await rename(sourcePath, targetPath);
       return targetPath;
     } catch (error) {
-      void error;
+      this.logger.warn(`Failed to quarantine malformed bean file at ${sourcePath}: ${(error as Error).message}`);
       return undefined;
     }
   }
@@ -719,7 +786,10 @@ export class BeansService {
    * Notify the user once per malformed quarantined file.
    */
   private notifyMalformedBeanQuarantined(rawBean: RawBeanFromCLI, quarantinedPath?: string): void {
-    const warningKey = quarantinedPath || rawBean.path || rawBean.id;
+    // Always key on the original bean identity so concurrent provider refreshes
+    // that encounter the same malformed bean (after it's already quarantined) don't
+    // fire duplicate notifications.
+    const warningKey = rawBean.path || rawBean.id;
     if (this.malformedWarningPaths.has(warningKey)) {
       return;
     }

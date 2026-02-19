@@ -1,11 +1,11 @@
 ---
 # beans-vscode-2mfl
 title: Use git history to recover missing fields in tryRepairMalformedBean
-status: ""
+status: completed
 type: feature
 priority: "3"
 created_at: 2026-02-19T19:56:39Z
-updated_at: 2026-02-19T19:56:39Z
+updated_at: 2026-02-19T20:05:15Z
 ---
 
 ## Overview

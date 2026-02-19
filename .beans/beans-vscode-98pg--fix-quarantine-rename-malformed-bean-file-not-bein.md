@@ -1,11 +1,11 @@
 ---
 # beans-vscode-98pg
 title: Fix quarantine rename — malformed bean file not being moved to .fixme
-status: ""
+status: completed
 type: bug
 priority: "2"
 created_at: 2026-02-19T19:56:39Z
-updated_at: 2026-02-19T19:56:39Z
+updated_at: 2026-02-19T20:05:15Z
 ---
 
 ## Problem
