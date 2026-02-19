@@ -254,6 +254,13 @@
         "when": "beans.initialized"
       },
       {
+        "command": "beans.openFirstMalformedBean",
+        "title": "Open First Malformed Bean",
+        "category": "Beans",
+        "icon": "$(warning)",
+        "when": "beans.initialized"
+      },
+      {
         "command": "beans.sort",
         "title": "Change Sort Mode",
         "category": "Beans",
@@ -406,6 +413,11 @@
           "command": "beans.create",
           "when": "view == beans.draft && beans.initialized",
           "group": "navigation@1"
+        },
+        {
+          "command": "beans.openFirstMalformedBean",
+          "when": "view == beans.draft && beans.initialized && beans.draftHasMalformedFiles",
+          "group": "navigation@2"
         },
         {
           "command": "beans.refresh",

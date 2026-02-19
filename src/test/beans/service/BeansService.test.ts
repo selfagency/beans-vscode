@@ -503,6 +503,144 @@ describe('BeansService', () => {
       const [renameSource, renameTarget] = mockRename.mock.calls[0] as [string, string];
       expect(renameSource).toContain('test-bad2--broken-bean.md');
       expect(renameTarget).toContain('test-bad2--broken-bean.fixme');
+      expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+        expect.stringContaining('could not be auto-fixed and was quarantined'),
+        'Open File'
+      );
+    });
+
+    it('uses git history to recover missing fields when a previous commit exists', async () => {
+      const historicalContent =
+        '---\nid: test-hist1\ntitle: "My Historical Title"\nstatus: completed\ntype: feature\n---\n## Body';
+
+      const malformedBean = {
+        id: '',
+        title: '',
+        slug: 'historical-bean',
+        path: '.beans/test-hist1--historical-bean.md',
+        body: '',
+        status: '',
+        type: '',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+        etag: 'etag-hist1',
+      };
+
+      mockExecFile.mockImplementation((cmd: string, args: string[], _opts: unknown, callback: Function) => {
+        if (cmd === 'git' && args.includes('log')) {
+          callback(null, { stdout: 'abc1234567890abcdef', stderr: '' });
+        } else if (cmd === 'git' && args.includes('show')) {
+          callback(null, { stdout: historicalContent, stderr: '' });
+        } else {
+          callback(null, { stdout: JSON.stringify({ beans: [malformedBean] }), stderr: '' });
+        }
+      });
+
+      const beans = await service.listBeans();
+
+      expect(beans).toHaveLength(1);
+      expect(beans[0].id).toBe('test-hist1');
+      expect(beans[0].title).toBe('My Historical Title');
+      expect(beans[0].status).toBe('completed');
+      expect(beans[0].type).toBe('feature');
+      const writtenContent = mockWriteFile.mock.calls[0][1] as string;
+      expect(writtenContent).toContain('id: "test-hist1"');
+      expect(writtenContent).toContain('title: "My Historical Title"');
+      expect(writtenContent).toContain('status: "completed"');
+      expect(writtenContent).toContain('type: "feature"');
+    });
+
+    it('falls back to filename inference when git log returns no commits', async () => {
+      const malformedBean = {
+        id: '',
+        title: '',
+        slug: 'no-history-bean',
+        path: '.beans/test-nogh1--no-history-bean.md',
+        body: '',
+        status: '',
+        type: '',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+        etag: 'etag-nogh1',
+      };
+
+      mockExecFile.mockImplementation((cmd: string, args: string[], _opts: unknown, callback: Function) => {
+        if (cmd === 'git' && args.includes('log')) {
+          callback(null, { stdout: '', stderr: '' }); // empty SHA = no history
+        } else {
+          callback(null, { stdout: JSON.stringify({ beans: [malformedBean] }), stderr: '' });
+        }
+      });
+
+      const beans = await service.listBeans();
+
+      expect(beans).toHaveLength(1);
+      expect(beans[0].id).toBe('test-nogh1');
+      expect(beans[0].title).toBe('no history bean');
+    });
+
+    it('falls back to filename inference when git is unavailable', async () => {
+      const malformedBean = {
+        id: '',
+        title: '',
+        slug: 'no-git-bean',
+        path: '.beans/test-nogit--no-git-bean.md',
+        body: '',
+        status: '',
+        type: '',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+        etag: 'etag-nogit',
+      };
+
+      mockExecFile.mockImplementation((cmd: string, _args: string[], _opts: unknown, callback: Function) => {
+        if (cmd === 'git') {
+          callback(createErrnoError('git not found', 'ENOENT'), null);
+        } else {
+          callback(null, { stdout: JSON.stringify({ beans: [malformedBean] }), stderr: '' });
+        }
+      });
+
+      const beans = await service.listBeans();
+
+      expect(beans).toHaveLength(1);
+      expect(beans[0].id).toBe('test-nogit');
+      expect(beans[0].title).toBe('no git bean');
+    });
+
+    it('falls back to filename inference when historical frontmatter cannot be parsed', async () => {
+      const malformedBean = {
+        id: '',
+        title: '',
+        slug: 'corrupt-hist',
+        path: '.beans/test-crpt1--corrupt-hist.md',
+        body: '',
+        status: '',
+        type: '',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+        etag: 'etag-crpt1',
+      };
+
+      mockExecFile.mockImplementation((cmd: string, args: string[], _opts: unknown, callback: Function) => {
+        if (cmd === 'git' && args.includes('log')) {
+          callback(null, { stdout: 'deadbeef01234567', stderr: '' });
+        } else if (cmd === 'git' && args.includes('show')) {
+          callback(null, { stdout: 'not yaml at all\njust garbage\n', stderr: '' });
+        } else {
+          callback(null, { stdout: JSON.stringify({ beans: [malformedBean] }), stderr: '' });
+        }
+      });
+
+      const beans = await service.listBeans();
+
+      expect(beans).toHaveLength(1);
+      expect(beans[0].id).toBe('test-crpt1');
+      expect(beans[0].title).toBe('corrupt hist');
     });
   });
 

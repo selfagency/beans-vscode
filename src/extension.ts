@@ -52,6 +52,7 @@ let mcpIntegration: BeansMcpIntegration | undefined;
 let chatIntegration: BeansChatIntegration | undefined;
 let initPromptDismissed = false; // Track if user dismissed init prompt in this session
 let aiArtifactSyncInProgress = false;
+let firstMalformedBeanFilePath: string | undefined;
 const ARTIFACT_GENERATION_PREF_KEY = 'beans.ai.artifactsGenerationPreference';
 const AI_ENABLEMENT_PREF_KEY = 'beans.ai.enablementPreference';
 
@@ -143,6 +144,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const isInitialized = hasBeansMarkers ? await beansService.checkInitialized() : false;
     await vscode.commands.executeCommand('setContext', 'beans.initialized', isInitialized);
+    await refreshMalformedDraftWarningContext(workspaceFolder.uri.fsPath);
 
     if (!isInitialized) {
       await promptForInitialization(context, beansService, workspaceFolder.uri.fsPath);
@@ -199,6 +201,7 @@ export async function activate(context: vscode.ExtensionContext) {
           // Register tree views after successful initialization
           // filterManager and detailsProvider are guaranteed to exist
           registerTreeViews(context, beansService, filterManager!, detailsProvider!);
+          await refreshMalformedDraftWarningContext(workspaceFolder.uri.fsPath);
 
           const aiEnabledNow = vscode.workspace.getConfiguration('beans').get<boolean>('ai.enabled', true);
           triggerCopilotAiArtifactSync(context, beansService, workspaceFolder.uri.fsPath, aiEnabledNow);
@@ -215,11 +218,33 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Register global refresh command that refreshes all providers
     context.subscriptions.push(
-      vscode.commands.registerCommand('beans.refreshAll', () => {
+      vscode.commands.registerCommand('beans.refreshAll', async () => {
         logger.info('Refreshing all tree views');
         activeProvider?.refresh();
         completedProvider?.refresh();
         draftProvider?.refresh();
+        await refreshMalformedDraftWarningContext(workspaceFolder.uri.fsPath);
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('beans.openFirstMalformedBean', async () => {
+        await refreshMalformedDraftWarningContext(workspaceFolder.uri.fsPath);
+
+        if (!firstMalformedBeanFilePath) {
+          vscode.window.showInformationMessage('No malformed bean files found.');
+          return;
+        }
+
+        try {
+          const doc = await vscode.workspace.openTextDocument(firstMalformedBeanFilePath);
+          await vscode.window.showTextDocument(doc, { preview: false });
+        } catch (error) {
+          logger.warn(`Unable to open malformed bean file: ${(error as Error).message}`);
+          vscode.window.showWarningMessage(
+            'Unable to open the malformed bean file. It may have been deleted or fixed.'
+          );
+        }
       })
     );
 
@@ -631,6 +656,23 @@ function debounceRefresh(callback: () => void, delayMs: number): () => void {
       callback();
     }, delayMs);
   };
+}
+
+async function refreshMalformedDraftWarningContext(workspaceRoot: string): Promise<void> {
+  try {
+    const beansDir = path.resolve(workspaceRoot, '.beans');
+    const entries = await fs.readdir(beansDir, { withFileTypes: true });
+    const malformedPaths = entries
+      .filter(entry => entry.isFile() && entry.name.endsWith('.fixme'))
+      .map(entry => path.join(beansDir, entry.name))
+      .sort((a, b) => a.localeCompare(b));
+
+    firstMalformedBeanFilePath = malformedPaths[0];
+    await vscode.commands.executeCommand('setContext', 'beans.draftHasMalformedFiles', malformedPaths.length > 0);
+  } catch {
+    firstMalformedBeanFilePath = undefined;
+    await vscode.commands.executeCommand('setContext', 'beans.draftHasMalformedFiles', false);
+  }
 }
 
 /**
