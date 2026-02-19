@@ -117,7 +117,7 @@ jobs:
 
           echo ""
           echo "=== Listing beans ==="
-          BEAN_COUNT=$(beans graphql --json "{ beans { id } }" | jq ".data.beans | length")
+          BEAN_COUNT=$(beans graphql --json "query ListBeans { beans { id } }" | jq ".data.beans | length")
           echo "Found $BEAN_COUNT beans"
 
           if [ "$BEAN_COUNT" -ne 3 ]; then
@@ -127,7 +127,7 @@ jobs:
 
           echo ""
           echo "=== Testing bean operations ==="
-          FIRST_BEAN=$(beans graphql --json "{ beans { id } }" | jq -r ".data.beans[0].id")
+          FIRST_BEAN=$(beans graphql --json "query ListBeans { beans { id } }" | jq -r ".data.beans[0].id")
           echo "Testing with bean: $FIRST_BEAN"
 
           beans graphql --json "{ bean(id: \"$FIRST_BEAN\") { id title status } }" | jq .

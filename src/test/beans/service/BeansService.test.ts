@@ -1169,6 +1169,80 @@ describe('BeansService', () => {
       }
     });
 
+    it('batch creates multiple beans with partial failures', async () => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        expect(args).toContain('graphql');
+
+        const mockResponse = {
+          data: {
+            c0: {
+              id: 'test-1',
+              title: 'Bean 1',
+              slug: 'bean-1',
+              path: 'beans/test-1.md',
+              body: '',
+              status: 'todo',
+              type: 'task',
+              createdAt: '2026-01-01T00:00:00Z',
+              updatedAt: '2026-01-02T00:00:00Z',
+              etag: 'etag1',
+            },
+            c1: null,
+            c2: {
+              id: 'test-3',
+              title: 'Bean 3',
+              slug: 'bean-3',
+              path: 'beans/test-3.md',
+              body: '',
+              status: 'todo',
+              type: 'feature',
+              createdAt: '2026-01-01T00:00:00Z',
+              updatedAt: '2026-01-02T00:00:00Z',
+              etag: 'etag3',
+            },
+          },
+          errors: [
+            {
+              message: 'Failed to create bean 2: invalid type',
+              path: ['c1', 'createBean'],
+            },
+          ],
+        };
+
+        callback(null, { stdout: JSON.stringify(mockResponse), stderr: '' });
+      });
+
+      const results = await service.batchCreateBeans([
+        { title: 'Bean 1', type: 'task' },
+        { title: 'Bean 2', type: 'invalid' },
+        { title: 'Bean 3', type: 'feature' },
+      ]);
+
+      expect(results).toHaveLength(3);
+
+      // First bean should succeed
+      expect(results[0].success).toBe(true);
+      if (results[0].success) {
+        expect(results[0].bean.id).toBe('test-1');
+        expect(results[0].bean.title).toBe('Bean 1');
+      }
+
+      // Second bean should fail
+      expect(results[1].success).toBe(false);
+      if (!results[1].success) {
+        expect(results[1].error).toBeDefined();
+        expect(results[1].error).toContain('Failed to create bean 2');
+        expect((results[1] as any).bean).toBeUndefined();
+      }
+
+      // Third bean should succeed
+      expect(results[2].success).toBe(true);
+      if (results[2].success) {
+        expect(results[2].bean.id).toBe('test-3');
+        expect(results[2].bean.title).toBe('Bean 3');
+      }
+    });
+
     it('maps per-alias errors to individual results', async () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('graphql');
