@@ -2,7 +2,7 @@
 
 import { Octokit } from '@octokit/rest';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ora from 'ora';
@@ -238,9 +238,12 @@ async function main() {
   const sourceLine = previousTag ? `\n\n_Source: changes from ${previousTag} to ${tag}._` : '';
   const section = `\n${heading}\n\n${releaseNotes}${sourceLine}\n`;
 
-  const original = existsSync(changelogPath)
-    ? readFileSync(changelogPath, 'utf8')
-    : '# Change Log\n\n## [Unreleased]\n';
+  let original;
+  try {
+    original = readFileSync(changelogPath, 'utf8');
+  } catch {
+    original = '# Change Log\n\n## [Unreleased]\n';
+  }
 
   if (!original.includes(heading)) {
     const marker = '## [Unreleased]';
