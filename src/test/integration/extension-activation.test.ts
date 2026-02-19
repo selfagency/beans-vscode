@@ -54,7 +54,7 @@ describe('Extension Activation', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('should activate without errors when workspace folder exists', async () => {
@@ -78,7 +78,7 @@ describe('Extension Activation', () => {
     } as any);
 
     // Mock file system operations
-    vi.spyOn(vscode.workspace, 'findFiles').mockResolvedValue([]);
+    vi.spyOn(vscode.workspace, 'findFiles').mockResolvedValue([vscode.Uri.file('/mock/workspace/.beans.yml')]);
 
     await expect(activate(mockContext)).resolves.toBeUndefined();
 
@@ -117,8 +117,7 @@ describe('Extension Activation', () => {
 
     await activate(mockContext);
 
-    // Should return early
-    expect(mockContext.subscriptions.length).toBe(0);
+    expect(vscode.workspace.findFiles).toHaveBeenCalledWith('.beans.yml', null, 1);
   });
 
   it('should proceed with activation when enableOnlyIfInitialized is true and .beans.yml is found', async () => {
@@ -170,7 +169,13 @@ describe('Extension Activation', () => {
       update: vi.fn(),
     } as any);
 
-    vi.spyOn(vscode.workspace, 'findFiles').mockResolvedValue([]);
+    vi.spyOn(vscode.workspace, 'findFiles').mockImplementation(async (pattern: any) => {
+      const patternValue = typeof pattern === 'string' ? pattern : pattern?.pattern;
+      if (typeof patternValue === 'string' && patternValue.includes('.beans.yml')) {
+        return [vscode.Uri.file('/mock/workspace/.beans.yml')];
+      }
+      return [];
+    });
 
     await activate(mockContext);
 
@@ -198,7 +203,13 @@ describe('Extension Activation', () => {
       update: vi.fn(),
     } as any);
 
-    vi.spyOn(vscode.workspace, 'findFiles').mockResolvedValue([]);
+    vi.spyOn(vscode.workspace, 'findFiles').mockImplementation(async (pattern: any) => {
+      const patternValue = typeof pattern === 'string' ? pattern : pattern?.pattern;
+      if (typeof patternValue === 'string' && patternValue.includes('.beans.yml')) {
+        return [vscode.Uri.file('/mock/workspace/.beans.yml')];
+      }
+      return [];
+    });
 
     // Simulate user not responding to "Generate now / Not now" prompt yet.
     vi.spyOn(vscode.window, 'showInformationMessage').mockImplementation((() => new Promise(() => {})) as any);

@@ -16,6 +16,7 @@ const state = vi.hoisted(() => ({
   cliAvailable: true,
   checkCliThrows: undefined as unknown,
   initialized: true,
+  checkInitializedCalls: 0,
   checkInitializedThrows: undefined as unknown,
   initThrows: undefined as unknown,
   primeOutput: 'prime output',
@@ -79,6 +80,7 @@ vi.mock('../../beans/service', () => ({
       return state.cliAvailable;
     }
     async checkInitialized(): Promise<boolean> {
+      state.checkInitializedCalls += 1;
       if (state.checkInitializedThrows !== undefined) {
         throw state.checkInitializedThrows;
       }
@@ -196,6 +198,7 @@ describe('Extension lifecycle coverage', () => {
     state.cliAvailable = true;
     state.checkCliThrows = undefined;
     state.initialized = true;
+    state.checkInitializedCalls = 0;
     state.checkInitializedThrows = undefined;
     state.initThrows = undefined;
     state.primeOutput = 'prime output';
@@ -214,7 +217,13 @@ describe('Extension lifecycle coverage', () => {
     vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue([
       { uri: vscode.Uri.file('/ws'), name: 'ws', index: 0 } as vscode.WorkspaceFolder,
     ]);
-    vi.spyOn(vscode.workspace, 'findFiles').mockResolvedValue([]);
+    vi.spyOn(vscode.workspace, 'findFiles').mockImplementation(async (pattern: any) => {
+      const patternValue = typeof pattern === 'string' ? pattern : pattern?.pattern;
+      if (typeof patternValue === 'string' && patternValue.includes('.beans.yml')) {
+        return [vscode.Uri.file('/ws/.beans.yml')];
+      }
+      return [];
+    });
 
     vi.spyOn(vscode.workspace, 'getConfiguration').mockImplementation((_section?: string) => {
       return {
@@ -369,6 +378,15 @@ describe('Extension lifecycle coverage', () => {
     expect(logger.show).toHaveBeenCalledTimes(2);
   });
 
+  it('does not call checkInitialized when workspace has no Beans markers', async () => {
+    vi.spyOn(vscode.workspace, 'findFiles').mockResolvedValue([]);
+    state.checkInitializedThrows = new Error('should not be called');
+
+    await activate(makeContext());
+
+    expect(state.checkInitializedCalls).toBe(0);
+  });
+
   it('covers init prompt initialize, not-now dismissal, and learn-more branches', async () => {
     // Use real timers for this test due to complex async flows
     vi.useRealTimers();
@@ -376,6 +394,9 @@ describe('Extension lifecycle coverage', () => {
     state.initialized = false;
 
     vi.spyOn(vscode.window, 'showInformationMessage').mockImplementation(async (message: string) => {
+      if (message.includes('Enable Beans AI features for this workspace?')) {
+        return 'Enable AI Features' as any;
+      }
       if (message.includes('Generate the Copilot instructions file for this workspace now?')) {
         return 'Generate now' as any;
       }
