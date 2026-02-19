@@ -207,13 +207,11 @@ Use CLI only when extension, `@beans`, and MCP tools are all unavailable.
 
 **Allowed CLI command:**
 
-- `beans graphql --json --query <query> [--variables <json>]` (strictly use the GraphQL API for all data operations)
+- `beans graphql --json "<query>" [--variables <json>]` (strictly use the GraphQL API for all data operations)
 - `beans archive <id>` — only with explicit user request
 
-## Beans GraphQL baseline (from `beans graphql --schema`)
+## Beans baseline
 
-For detailed data schema, run:
+The following baseline is derived from `beans graphql --schema` and provides comprehensive guidance for working with beans in this project.
 
-```bash
-beans graphql --schema
-```
+{{GRAPHQL_SCHEMA}}

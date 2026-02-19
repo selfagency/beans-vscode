@@ -4,8 +4,8 @@ import template from './templates/copilot-skill.template.md';
 
 export const COPILOT_SKILL_RELATIVE_PATH = path.join('.github', 'skills', 'beans', 'SKILL.md');
 
-export function buildBeansCopilotSkill(primeOutput: string): string {
-  return template.replace('{{PRIME_OUTPUT}}', primeOutput.trim());
+export function buildBeansCopilotSkill(graphqlSchema: string): string {
+  return template.replace('{{GRAPHQL_SCHEMA}}', graphqlSchema.trim());
 }
 
 export async function writeBeansCopilotSkill(workspaceRoot: string, content: string): Promise<string> {

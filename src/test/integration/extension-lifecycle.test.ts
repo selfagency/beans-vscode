@@ -48,9 +48,9 @@ const logger = vi.hoisted(() => ({
 }));
 
 const configFns = vi.hoisted(() => ({
-  buildBeansCopilotInstructions: vi.fn((prime: string) => `instructions:${prime}`),
+  buildBeansCopilotInstructions: vi.fn((graphqlSchema: string) => `instructions:${graphqlSchema}`),
   writeBeansCopilotInstructions: vi.fn(async () => '/ws/.github/instructions/tasks.instructions.md'),
-  buildBeansCopilotSkill: vi.fn((prime: string) => `skill:${prime}`),
+  buildBeansCopilotSkill: vi.fn((graphqlSchema: string) => `skill:${graphqlSchema}`),
   writeBeansCopilotSkill: vi.fn(async () => '/ws/.github/skills/beans/SKILL.md'),
   removeBeansCopilotSkill: vi.fn(async () => undefined),
 }));
@@ -89,7 +89,7 @@ vi.mock('../../beans/service', () => ({
         throw state.initThrows;
       }
     }
-    async prime(): Promise<string> {
+    async graphqlSchema(): Promise<string> {
       return state.primeOutput;
     }
   },

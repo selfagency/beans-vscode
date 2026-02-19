@@ -262,7 +262,7 @@ class BeansCliBackend {
     return { configPath, content };
   }
 
-  async prime(): Promise<string> {
+  async graphqlSchema(): Promise<string> {
     const { stdout } = await execFileAsync(this.cliPath, ['graphql', '--schema'], {
       cwd: this.workspaceRoot,
       env: this.getSafeEnv(),
@@ -945,14 +945,14 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       },
     },
     async ({ writeToWorkspaceInstructions }: { writeToWorkspaceInstructions: boolean }) => {
-      const primeOutput = await backend.prime();
-      const generatedInstructions = buildBeansCopilotInstructions(primeOutput);
+      const graphqlSchema = await backend.graphqlSchema();
+      const generatedInstructions = buildBeansCopilotInstructions(graphqlSchema);
       const instructionsPath = writeToWorkspaceInstructions
         ? await backend.writeInstructions(generatedInstructions)
         : null;
 
       return makeTextAndStructured({
-        primeOutput,
+        graphqlSchema,
         generatedInstructions,
         instructionsPath,
       });

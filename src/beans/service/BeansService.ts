@@ -1109,7 +1109,7 @@ export class BeansService {
   /**
    * Get project-focused guidance text from `beans graphql --schema`.
    */
-  async prime(): Promise<string> {
+  async graphqlSchema(): Promise<string> {
     return (await this.executeText(['graphql', '--schema'])).trim();
   }
 }

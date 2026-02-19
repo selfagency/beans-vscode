@@ -1272,7 +1272,7 @@ describe('BeansService', () => {
         callback(null, { stdout: 'Guidance text here\n', stderr: '' });
       });
 
-      const guidance = await service.prime();
+      const guidance = await service.graphqlSchema();
       expect(guidance).toBe('Guidance text here');
     });
   });

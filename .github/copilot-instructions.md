@@ -30,7 +30,7 @@ pnpm run lint             # ESLint
 | `src/beans/mcp/BeansMcpIntegration.ts`          | Stdio MCP server lifecycle; port from `beans.mcp.port` (default 39173)                                                |
 | `src/beans/chat/BeansChatIntegration.ts`        | `@beans` chat participant + slash commands                                                                            |
 | `src/beans/config/BeansConfigManager.ts`        | Reads/writes `.beans.yml`, generates `.github/instructions/tasks.instructions.md` and `.github/skills/beans/SKILL.md` |
-| `src/beans/config/templates/`                   | Markdown templates for generated Copilot artifacts; `{{PRIME_OUTPUT}}` placeholder replaced at write time             |
+| `src/beans/config/templates/`                   | Markdown templates for generated Copilot artifacts; `{{GRAPHQL_SCHEMA}}` placeholder replaced at write time           |
 | `src/beans/model/`                              | `Bean` type, `errors.ts` typed error classes, `config.ts` workspace config types                                      |
 
 ## Key patterns
@@ -54,7 +54,7 @@ where `codiconFontUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 
 
 **Tree providers** — each status pane is a subclass of `BeansTreeDataProvider` with a fixed `statusFilter`. Shared sort/filter/refresh logic lives in the base class. Registered and disposed in `registerBeansTreeViews.ts`.
 
-**Markdown templates** — `CopilotInstructions.ts` and `CopilotSkill.ts` import from `.md` template files (inlined by esbuild). Use `{{PRIME_OUTPUT}}` as the sole placeholder; no complex interpolation in TS.
+**Markdown templates** — `CopilotInstructions.ts` and `CopilotSkill.ts` import from `.md` template files (inlined by esbuild). Use `{{GRAPHQL_SCHEMA}}` as the sole placeholder; no complex interpolation in TS.
 
 ## Testing
 
@@ -103,7 +103,7 @@ where `codiconFontUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'node_mo
 
 **Tree providers** — each status pane is a subclass of `BeansTreeDataProvider` with a fixed `statusFilter`. Shared sort/filter/refresh logic lives in the base class. Registered and disposed in `registerBeansTreeViews.ts`.
 
-**Markdown templates** — `CopilotInstructions.ts` and `CopilotSkill.ts` import from `.md` template files (inlined by esbuild). Use `{{PRIME_OUTPUT}}` as the sole placeholder; no complex interpolation in TS.
+**Markdown templates** — `CopilotInstructions.ts` and `CopilotSkill.ts` import from `.md` template files (inlined by esbuild). Use `{{GRAPHQL_SCHEMA}}` as the sole placeholder; no complex interpolation in TS.
 
 ## Testing
 

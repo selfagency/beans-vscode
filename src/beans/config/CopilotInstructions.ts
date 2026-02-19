@@ -3,7 +3,7 @@
  *
  * Helpers for building and writing Copilot instruction artifacts used by the
  * Copilot/Chat prompt generation flow. Templates live under
- * `src/beans/config/templates/*` and use a single placeholder `{{PRIME_OUTPUT}}`.
+ * `src/beans/config/templates/*` and use a single placeholder `{{GRAPHQL_SCHEMA}}`.
  *
  * NOTE: Tests import the markdown templates directly via a .md loader (see
  * `vitest.config.ts`), so keep the placeholder exact and avoid additional
@@ -15,8 +15,8 @@ import template from './templates/copilot-instructions.template.md';
 
 export const COPILOT_INSTRUCTIONS_RELATIVE_PATH = path.join('.github', 'instructions', 'tasks.instructions.md');
 
-export function buildBeansCopilotInstructions(primeOutput: string): string {
-  return template.replace('{{PRIME_OUTPUT}}', primeOutput.trim());
+export function buildBeansCopilotInstructions(graphqlSchema: string): string {
+  return template.replace('{{GRAPHQL_SCHEMA}}', graphqlSchema.trim());
 }
 
 export async function writeBeansCopilotInstructions(workspaceRoot: string, content: string): Promise<string> {
