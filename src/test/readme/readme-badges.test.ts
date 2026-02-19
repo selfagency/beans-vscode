@@ -1,5 +1,10 @@
+// Used to load README.md for assertions in these tests.
 import { readFileSync } from 'fs';
+// Path utility for resolve/__dirname usage below.
 import { resolve } from 'path';
+// Explicit Vitest imports are required because globals are not enabled in
+// `vitest.config.ts` for this repo — import `describe`, `expect`, `test` to
+// avoid runtime failures (see Copilot suggestion).
 import { describe, expect, test } from 'vitest';
 
 describe('README badges (beans-vscode-an5a)', () => {
