@@ -132,7 +132,7 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
       '--port',
       String(mcpPort),
     ];
-    const outputLogPath = path.join(this.workspaceRoot, '.beans', '.vscode', 'beans-output.log');
+    const outputLogPath = path.join(this.workspaceRoot, '.vscode', 'logs', 'beans-output.log');
 
     const version = (this.context.extension.packageJSON as { version?: string }).version || '0.1.0';
 

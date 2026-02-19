@@ -13,7 +13,7 @@
  *
  * Notes for contributors:
  * - Keep activation fast; avoid long-running work on startup
- * - Use `BeansOutput` for logging (mirrored to .beans/.vscode/beans-output.log)
+ * - Use `BeansOutput` for logging (mirrored to .vscode/logs/beans-output.log)
  */
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -87,7 +87,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   try {
     // Mirror output channel logs to a file that MCP tools can read.
-    const outputMirrorPath = path.join(workspaceFolder.uri.fsPath, '.beans', '.vscode', 'beans-output.log');
+    const outputMirrorPath = path.join(workspaceFolder.uri.fsPath, '.vscode', 'logs', 'beans-output.log');
     logger.setMirrorFilePath(outputMirrorPath);
 
     beansService = new BeansService(workspaceFolder.uri.fsPath);
@@ -434,7 +434,7 @@ async function ensureAiFeaturesEnabledForArtifacts(
   }
 
   const selection = await vscode.window.showInformationMessage(
-    'Enable Beans AI features for this workspace? (MCP tools, chat participant, and Copilot guidance files)',
+    'Enable Beans AI features for this workspace? (Copilot guidance files are available now; MCP tools and chat participant require a window reload.)',
     'Enable AI Features',
     'Disable AI Features',
     'Not Now'
@@ -443,7 +443,13 @@ async function ensureAiFeaturesEnabledForArtifacts(
   if (selection === 'Enable AI Features') {
     await context.workspaceState.update(AI_ENABLEMENT_PREF_KEY, 'enabled');
     if (!aiEnabled) {
-      return updateAiEnabledSetting(true);
+      const updated = await updateAiEnabledSetting(true);
+      if (updated) {
+        void vscode.window.showInformationMessage(
+          'Beans AI features were enabled. Reload the window to activate MCP tools and chat participant.'
+        );
+      }
+      return updated;
     }
     return true;
   }
@@ -451,7 +457,12 @@ async function ensureAiFeaturesEnabledForArtifacts(
   if (selection === 'Disable AI Features') {
     await context.workspaceState.update(AI_ENABLEMENT_PREF_KEY, 'disabled');
     if (aiEnabled) {
-      await updateAiEnabledSetting(false);
+      const updated = await updateAiEnabledSetting(false);
+      if (updated) {
+        void vscode.window.showInformationMessage(
+          'Beans AI features were disabled. Reload the window to fully remove MCP tools and chat participant for this session.'
+        );
+      }
     }
     return false;
   }
