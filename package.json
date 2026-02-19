@@ -22,6 +22,7 @@
   "bugs": {
     "url": "https://github.com/selfagency/beans-vscode/issues"
   },
+  "qna": "marketplace",
   "repository": {
     "type": "git",
     "url": "https://github.com/selfagency/beans-vscode.git"
