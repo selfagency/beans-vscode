@@ -1,6 +1,7 @@
 #!/usr/bin/env zx
 
 import { Octokit } from '@octokit/rest';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +36,26 @@ let commitLocal = false;
 let commitPushed = false;
 let tagPushed = false;
 let releaseDone = false;
+let gitCmd = 'git';
+
+function resolveGitExecutable() {
+  const direct = spawnSync('git', ['--version'], { stdio: 'ignore', shell: false });
+  if (direct.status === 0) {return 'git';}
+
+  const locatorCommand = process.platform === 'win32' ? 'where' : 'which';
+  const located = spawnSync(locatorCommand, ['git'], { encoding: 'utf8', shell: false });
+  if (located.status === 0) {
+    const candidate = located.stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find(Boolean);
+    if (candidate) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
 
 async function rollback() {
   if (releaseDone) {return;}
@@ -43,8 +64,8 @@ async function rollback() {
     if (tagPushed) {
       console.log(`\n⚠️  Release workflow failed or was interrupted. Deleting remote tag ${tag}...`);
       try {
-        await $`git push origin --delete ${tag}`;
-        await $`git tag -d ${tag}`;
+        await $`${gitCmd} push origin --delete ${tag}`;
+        await $`${gitCmd} tag -d ${tag}`;
         console.log(`↩️  Tag ${tag} deleted from remote and local.`);
       } catch {
         console.error(`❌ Could not delete tag. Manually run:`);
@@ -54,8 +75,8 @@ async function rollback() {
     if (commitPushed) {
       console.log('\n⚠️  Reverting release commit on origin/main...');
       try {
-        await $`git revert --no-edit HEAD`;
-        await $`git push origin main`;
+        await $`${gitCmd} revert --no-edit HEAD`;
+        await $`${gitCmd} push origin main`;
         console.log('↩️  Release commit reverted and pushed. Working tree is clean.');
       } catch {
         console.error('❌ Automatic revert failed. Manually run:');
@@ -64,7 +85,7 @@ async function rollback() {
     } else if (commitLocal) {
       console.log('\n⚠️  Release aborted before push. Resetting local release commit...');
       try {
-        await $`git reset --hard HEAD~1`;
+        await $`${gitCmd} reset --hard HEAD~1`;
         console.log('↩️  Local release commit removed. Working tree restored.');
       } catch {
         console.error('❌ Reset failed. Manually run: git reset --hard HEAD~1');
@@ -83,12 +104,12 @@ process.on('SIGTERM', async () => { await rollback(); process.exit(143); });
 async function main() {
   // --- Prerequisites -------------------------------------------------------
 
-  try {
-    await $`git --version`;
-  } catch {
+  const resolvedGit = resolveGitExecutable();
+  if (!resolvedGit) {
     console.error("❌ 'git' is required but not found in PATH.");
     process.exit(1);
   }
+  gitCmd = resolvedGit;
 
   // Resolve GitHub auth token: prefer env vars, then ask the gh CLI.
   let githubToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? '';
@@ -105,24 +126,24 @@ async function main() {
 
   // --- Precondition checks --------------------------------------------------
 
-  const dirty = (await $`git status --porcelain`).stdout.trim();
+  const dirty = (await $`${gitCmd} status --porcelain`).stdout.trim();
   if (dirty) {
     console.error('❌ Working tree is not clean. Commit or stash changes first.');
     process.exit(1);
   }
 
-  const branch = (await $`git rev-parse --abbrev-ref HEAD`).stdout.trim();
+  const branch = (await $`${gitCmd} rev-parse --abbrev-ref HEAD`).stdout.trim();
   if (branch !== 'main') {
     console.error(`❌ Must run from 'main'. Current branch: ${branch}`);
     process.exit(1);
   }
 
   console.log('🔄 Fetching latest refs...');
-  await $`git fetch origin main`;
-  await $`git pull --ff-only origin main`;
+  await $`${gitCmd} fetch origin main`;
+  await $`${gitCmd} pull --ff-only origin main`;
 
   // Derive owner/repo from the git remote URL.
-  const remoteUrl = (await $`git remote get-url origin`).stdout.trim();
+  const remoteUrl = (await $`${gitCmd} remote get-url origin`).stdout.trim();
   const repoMatch = remoteUrl.match(/[:/]([^/]+)\/([^/.]+?)(\.git)?$/);
   if (!repoMatch) {
     console.error(`❌ Cannot parse owner/repo from remote URL: ${remoteUrl}`);
@@ -131,7 +152,7 @@ async function main() {
   const [, owner, repo] = repoMatch;
 
   // Check for existing local tag.
-  const localTag = (await $`git tag -l ${tag}`).stdout.trim();
+  const localTag = (await $`${gitCmd} tag -l ${tag}`).stdout.trim();
   if (localTag) {
     console.error(`❌ Local tag ${tag} already exists.`);
     process.exit(1);
@@ -217,22 +238,22 @@ async function main() {
 
   // --- Commit + push --------------------------------------------------------
 
-  const hasChanges = (await $`git diff --name-only -- package.json CHANGELOG.md`).stdout.trim();
+  const hasChanges = (await $`${gitCmd} diff --name-only -- package.json CHANGELOG.md`).stdout.trim();
   if (hasChanges) {
     console.log('📦 Committing release metadata changes...');
-    await $`git add package.json CHANGELOG.md`;
-    await $`git commit -m ${'chore(release): update version and changelog for ' + tag}`;
+    await $`${gitCmd} add package.json CHANGELOG.md`;
+    await $`${gitCmd} commit -m ${'chore(release): update version and changelog for ' + tag}`;
     commitLocal = true;
   } else {
     console.log('ℹ️  No version/changelog changes detected; nothing to commit.');
   }
 
   console.log('🚀 Pushing main...');
-  await $`git push origin main`;
+  await $`${gitCmd} push origin main`;
   commitPushed = true;
   commitLocal = false;
 
-  const headSha = (await $`git rev-parse HEAD`).stdout.trim();
+  const headSha = (await $`${gitCmd} rev-parse HEAD`).stdout.trim();
 
   // --- Wait for required workflows (sequential to avoid concurrent-spinner visual corruption) ------
 
@@ -261,10 +282,10 @@ async function main() {
     .filter(Boolean)
     .join('\n\n');
 
-  await $`git tag -a ${tag} ${headSha} -m ${tagMessage}`;
+  await $`${gitCmd} tag -a ${tag} ${headSha} -m ${tagMessage}`;
 
   console.log(`🚀 Pushing tag ${tag}...`);
-  await $`git push origin ${tag}`;
+  await $`${gitCmd} push origin ${tag}`;
   tagPushed = true;
 
   // --- Watch the release workflow ------------------------------------------
