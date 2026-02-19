@@ -18,6 +18,7 @@ private predicate inUserSource(InvokeExpr call) {
 from CallExpr call
 where
   inUserSource(call) and
+  not call.getCallee() instanceof PropAccess and
   call.getCalleeName() = ["exec", "execSync"]
 select call,
   "Shell-based process execution ($@) is harder to secure. Prefer execFile/spawn with argument arrays and strict input validation.",

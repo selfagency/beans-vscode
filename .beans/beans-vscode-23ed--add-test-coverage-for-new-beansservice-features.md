@@ -1,13 +1,14 @@
 ---
 # beans-vscode-23ed
 title: Add test coverage for new BeansService features
-status: todo
+status: in-progress
 type: task
 priority: normal
 created_at: 2026-02-17T02:32:49Z
-updated_at: 2026-02-17T22:51:56Z
+updated_at: 2026-02-19T17:02:07Z
 parent: beans-vscode-tkaj
 ---
+
 
 New BeansService features lack unit test coverage:
 
