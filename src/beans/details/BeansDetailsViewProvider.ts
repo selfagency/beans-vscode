@@ -930,24 +930,26 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       return '';
     }
 
-    const normalizedText = this.normalizeEscapedNewlinesOutsideCodeBlocks(text);
-
     const checklistLineStates = new Map<number, boolean>();
-    const withChecklistMarkers = normalizedText
+    const textWithChecklistMarkers = text
       .split('\n')
       .map((line, lineIndex) => {
-        const checklistMatch = /^- \[( |x|X)\] (.+)$/.exec(line);
+        const checklistMatch = /^(\s*)- \[( |x|X)\] (.*)$/.exec(line);
         if (!checklistMatch) {
           return line;
         }
 
-        const checked = checklistMatch[1].toLowerCase() === 'x';
+        const indent = checklistMatch[1] ?? '';
+        const checked = checklistMatch[2].toLowerCase() === 'x';
+        const label = checklistMatch[3] ?? '';
         checklistLineStates.set(lineIndex, checked);
-        return `- @@CHECKLIST_${lineIndex}@@ ${checklistMatch[2]}`;
+        return `${indent}- @@CHECKLIST_${lineIndex}@@ ${label}`;
       })
       .join('\n');
 
-    let html = this.escapeHtml(withChecklistMarkers);
+    const normalizedText = this.normalizeEscapedNewlinesOutsideCodeBlocks(textWithChecklistMarkers);
+
+    let html = this.escapeHtml(normalizedText);
 
     // Headers
     html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
@@ -972,7 +974,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     });
 
     // Lists
-    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/^\s*- (.+)$/gm, '<li>$1</li>');
     html = html.replace(/<li>@@CHECKLIST_(\d+)@@ (.*?)<\/li>/g, (_match, lineIndexText: string, labelHtml: string) => {
       const lineIndex = Number.parseInt(lineIndexText, 10);
       const isChecked = checklistLineStates.get(lineIndex) ?? false;

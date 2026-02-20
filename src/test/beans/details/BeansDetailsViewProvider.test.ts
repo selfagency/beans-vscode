@@ -320,6 +320,45 @@ describe('BeansDetailsViewProvider', () => {
     expect(webview.html).toContain('checked><span class="checklist-label">first task</span>');
   });
 
+  it('does not apply edits when checklist is already in the requested state', async () => {
+    const bean = makeBean({
+      id: 'beans-vscode-checklist-idempotent',
+      code: 'checklist-idempotent',
+      path: 'beans-vscode-checklist-idempotent.md',
+      body: '- [x] already checked',
+    });
+    (provider as unknown as ProviderPrivate)._currentBean = bean;
+
+    const lineTexts = ['---', 'id: beans-vscode-checklist-idempotent', '---', '- [x] already checked'];
+    const saveSpy = vi.fn().mockResolvedValue(true);
+    vi.spyOn(vscode.workspace, 'openTextDocument').mockResolvedValue({
+      lineCount: lineTexts.length,
+      getText: () => lineTexts.join('\n'),
+      lineAt: (index: number) => ({
+        text: lineTexts[index],
+        range: {
+          start: { line: index, character: 0 },
+          end: { line: index, character: lineTexts[index].length },
+        },
+      }),
+      save: saveSpy,
+    } as any);
+    const applyEditSpy = vi.spyOn(vscode.workspace, 'applyEdit').mockResolvedValue(true);
+    const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand');
+
+    (vscode.workspace as unknown as { workspaceFolders?: Array<{ uri: vscode.Uri }> }).workspaceFolders = [
+      { uri: vscode.Uri.file('/workspace') as unknown as vscode.Uri },
+    ];
+
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
+    await receivedHandler?.({ command: 'toggleChecklist', lineIndex: 0, checked: true });
+
+    expect(applyEditSpy).not.toHaveBeenCalled();
+    expect(saveSpy).not.toHaveBeenCalled();
+    expect(service.showBean).not.toHaveBeenCalled();
+    expect(executeCommandSpy).not.toHaveBeenCalledWith('beans.refreshAll');
+  });
+
   it('orders details select options for status/type and adds spacing on priority labels', async () => {
     const bean = makeBean({
       id: 'beans-vscode-ordering',
@@ -384,6 +423,18 @@ describe('BeansDetailsViewProvider', () => {
     expect(html).toContain('unchecked task');
     expect(html).toContain('checked task');
     expect(html).toContain('<li>plain bullet</li>');
+  });
+
+  it('renders indented and empty-label checklist items as checkbox controls', () => {
+    const markdown = ['  - [ ] indented task', '- [x] ', '- [ ]'].join('\n');
+
+    const html = (provider as unknown as ProviderPrivate).renderMarkdown(markdown);
+
+    expect(html).toContain('data-line-index="0"');
+    expect(html).toContain('data-line-index="1"');
+    expect(html).toContain('indented task');
+    expect(html).toContain('checked><span class="checklist-label"></span>');
+    expect(html).not.toContain('data-line-index="2"');
   });
 
   it('renders markdown features and html escaping', () => {
