@@ -4,9 +4,11 @@ import { Bean } from '../model';
 import { BeansService } from '../service';
 
 type DetailsWebviewMessage = {
-  command?: 'updateBean' | 'openBeanFromReference';
+  command?: 'updateBean' | 'openBeanFromReference' | 'toggleChecklist';
   updates?: unknown;
   beanId?: unknown;
+  lineIndex?: unknown;
+  checked?: unknown;
 };
 
 /**
@@ -59,6 +61,11 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
         case 'openBeanFromReference':
           if (typeof message.beanId === 'string') {
             await this.openBeanFromReference(message.beanId);
+          }
+          break;
+        case 'toggleChecklist':
+          if (typeof message.lineIndex === 'number' && typeof message.checked === 'boolean') {
+            await this.handleToggleChecklist(message.lineIndex, message.checked);
           }
           break;
       }
@@ -161,6 +168,15 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   /** Navigate back to the previously opened bean, if any history exists. */
   public async goBackFromHistory(): Promise<void> {
     await this.goBack();
+  }
+
+  /** Refresh the currently displayed bean from disk/CLI and rerender details view. */
+  public async refreshCurrentBean(): Promise<void> {
+    if (!this._currentBean) {
+      return;
+    }
+
+    await this.showBeanById(this._currentBean.id);
   }
 
   /**
@@ -285,30 +301,30 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 
     const statusOptions = this.escapeHtml(
       JSON.stringify([
+        { value: 'draft', label: 'Draft', icon: 'issue-draft' },
         { value: 'todo', label: 'Todo', icon: 'issues' },
         { value: 'in-progress', label: 'In Progress', icon: 'play-circle' },
         { value: 'completed', label: 'Completed', icon: 'issue-closed' },
-        { value: 'draft', label: 'Draft', icon: 'issue-draft' },
         { value: 'scrapped', label: 'Scrapped', icon: 'stop' },
       ])
     );
     const typeOptions = this.escapeHtml(
       JSON.stringify([
+        { value: 'milestone', label: 'Milestone', icon: 'milestone' },
+        { value: 'epic', label: 'Epic', icon: 'zap' },
+        { value: 'feature', label: 'Feature', icon: 'lightbulb' },
         { value: 'task', label: 'Task', icon: 'list-unordered' },
         { value: 'bug', label: 'Bug', icon: 'bug' },
-        { value: 'feature', label: 'Feature', icon: 'lightbulb' },
-        { value: 'epic', label: 'Epic', icon: 'zap' },
-        { value: 'milestone', label: 'Milestone', icon: 'milestone' },
       ])
     );
     const priorityOptions = this.escapeHtml(
       JSON.stringify([
         { value: '', label: '— None', icon: '' },
-        { value: 'critical', label: '① Critical', icon: '' },
-        { value: 'high', label: '② High', icon: '' },
-        { value: 'normal', label: '③ Normal', icon: '' },
-        { value: 'low', label: '④ Low', icon: '' },
-        { value: 'deferred', label: '⑤ Deferred', icon: '' },
+        { value: 'critical', label: ' ① Critical', icon: '' },
+        { value: 'high', label: ' ② High', icon: '' },
+        { value: 'normal', label: ' ③ Normal', icon: '' },
+        { value: 'low', label: ' ④ Low', icon: '' },
+        { value: 'deferred', label: ' ⑤ Deferred', icon: '' },
       ])
     );
 
@@ -587,6 +603,24 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     .body-content li {
       margin: 4px 0;
     }
+    .body-content .checklist-item {
+      list-style: none;
+      margin-left: -20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 2px 0;
+    }
+    .body-content .checklist-checkbox {
+      margin-top: 1px;
+      accent-color: var(--vscode-checkbox-selectBackground, var(--vscode-focusBorder));
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .body-content .checklist-label {
+      display: inline-block;
+      min-width: 0;
+    }
     .body-content code {
       font-family: var(--vscode-editor-font-family);
       background: var(--vscode-textCodeBlock-background);
@@ -819,6 +853,33 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 
     document.querySelectorAll('.icon-select').forEach(initIconSelect);
 
+    document.addEventListener('change', event => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+
+      if (target.type !== 'checkbox' || !target.classList.contains('checklist-checkbox')) {
+        return;
+      }
+
+      const lineIndexText = target.getAttribute('data-line-index');
+      if (!lineIndexText) {
+        return;
+      }
+
+      const lineIndex = Number.parseInt(lineIndexText, 10);
+      if (!Number.isInteger(lineIndex) || lineIndex < 0) {
+        return;
+      }
+
+      vscode.postMessage({
+        command: 'toggleChecklist',
+        lineIndex,
+        checked: target.checked,
+      });
+    });
+
     document.addEventListener('click', event => {
       // Close any open dropdowns when clicking outside
       document.querySelectorAll('.icon-select-list.open').forEach(function(openList) {
@@ -870,7 +931,22 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 
     const normalizedText = this.normalizeEscapedNewlinesOutsideCodeBlocks(text);
 
-    let html = this.escapeHtml(normalizedText);
+    const checklistLineStates = new Map<number, boolean>();
+    const withChecklistMarkers = normalizedText
+      .split('\n')
+      .map((line, lineIndex) => {
+        const checklistMatch = /^- \[( |x|X)\] (.+)$/.exec(line);
+        if (!checklistMatch) {
+          return line;
+        }
+
+        const checked = checklistMatch[1].toLowerCase() === 'x';
+        checklistLineStates.set(lineIndex, checked);
+        return `- @@CHECKLIST_${lineIndex}@@ ${checklistMatch[2]}`;
+      })
+      .join('\n');
+
+    let html = this.escapeHtml(withChecklistMarkers);
 
     // Headers
     html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
@@ -896,6 +972,13 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 
     // Lists
     html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/<li>@@CHECKLIST_(\d+)@@ (.*?)<\/li>/g, (_match, lineIndexText: string, labelHtml: string) => {
+      const lineIndex = Number.parseInt(lineIndexText, 10);
+      const isChecked = checklistLineStates.get(lineIndex) ?? false;
+      const checkedAttribute = isChecked ? ' checked' : '';
+
+      return `<li class="checklist-item"><input class="checklist-checkbox" type="checkbox" data-line-index="${lineIndex}" aria-label="Toggle checklist item"${checkedAttribute}><span class="checklist-label">${labelHtml}</span></li>`;
+    });
     html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
 
     // Paragraphs
@@ -1020,6 +1103,104 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       }
       await this.updateDetailsContextKeys();
     }
+  }
+
+  private async handleToggleChecklist(lineIndex: number, checked: boolean): Promise<void> {
+    if (!this._currentBean) {
+      return;
+    }
+
+    if (!Number.isInteger(lineIndex) || lineIndex < 0) {
+      return;
+    }
+
+    try {
+      const fileUri = this.resolveCurrentBeanFileUri();
+      const document = await vscode.workspace.openTextDocument(fileUri);
+      const bodyStartLine = this.getBeanBodyStartLine(document.getText());
+      const targetLineIndex = bodyStartLine + lineIndex;
+
+      if (targetLineIndex < 0 || targetLineIndex >= document.lineCount) {
+        throw new Error(`Checklist line out of range: ${lineIndex}`);
+      }
+
+      const targetLine = document.lineAt(targetLineIndex);
+      const checklistMatch = /^(\s*- \[)( |x|X)(\] .*)$/.exec(targetLine.text);
+      if (!checklistMatch) {
+        throw new Error(`Line ${lineIndex} is not a checklist item`);
+      }
+
+      const desiredMarker = checked ? 'x' : ' ';
+      const updatedLine = `${checklistMatch[1]}${desiredMarker}${checklistMatch[3]}`;
+
+      if (updatedLine === targetLine.text) {
+        return;
+      }
+
+      const edit = new vscode.WorkspaceEdit();
+      edit.replace(fileUri, targetLine.range, updatedLine);
+
+      const applied = await vscode.workspace.applyEdit(edit);
+      if (!applied) {
+        throw new Error('Failed to apply checklist edit');
+      }
+
+      await document.save();
+
+      const refreshed = await this.service.showBean(this._currentBean.id);
+      this._currentBean = refreshed;
+
+      this._parentBean = undefined;
+      if (refreshed.parent) {
+        try {
+          this._parentBean = await this.service.showBean(refreshed.parent);
+        } catch {
+          // Parent may not be resolvable; ignore
+        }
+      }
+
+      if (this._view) {
+        this.updateView(refreshed);
+      }
+
+      await vscode.commands.executeCommand('beans.refreshAll');
+    } catch (error) {
+      this.logger.error('Failed to toggle checklist item', error as Error);
+      vscode.window.showErrorMessage(`Failed to toggle checklist item: ${(error as Error).message}`);
+    }
+  }
+
+  private resolveCurrentBeanFileUri(): vscode.Uri {
+    if (!this._currentBean) {
+      throw new Error('No selected bean');
+    }
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      throw new Error('No workspace folder open');
+    }
+
+    const beanPath = this._currentBean.path.replace(/\\/g, '/');
+    if (beanPath.startsWith('.beans/')) {
+      return vscode.Uri.joinPath(workspaceFolder.uri, beanPath);
+    }
+
+    return vscode.Uri.joinPath(workspaceFolder.uri, '.beans', beanPath);
+  }
+
+  private getBeanBodyStartLine(fileContent: string): number {
+    const lines = fileContent.split('\n');
+    if (lines.length === 0 || lines[0].trim() !== '---') {
+      return 0;
+    }
+
+    for (let i = 1; i < lines.length; i += 1) {
+      if (lines[i].trim() === '---') {
+        return i + 1;
+      }
+    }
+
+    return 0;
   }
 
   private async goBack(): Promise<void> {

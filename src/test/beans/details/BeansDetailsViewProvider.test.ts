@@ -272,6 +272,85 @@ describe('BeansDetailsViewProvider', () => {
     expect(webview.html).toContain('codicon codicon-play-circle');
   });
 
+  it('toggles checklist item via webview message and refreshes bean details', async () => {
+    const bean = makeBean({
+      id: 'beans-vscode-checklist',
+      code: 'checklist',
+      path: 'beans-vscode-checklist.md',
+      body: '- [ ] first task\n- [x] second task',
+    });
+    (provider as unknown as ProviderPrivate)._currentBean = bean;
+    service.showBean.mockResolvedValueOnce({
+      ...bean,
+      body: '- [x] first task\n- [x] second task',
+    });
+
+    const lineTexts = ['---', 'id: beans-vscode-checklist', '---', '- [ ] first task', '- [x] second task'];
+    const saveSpy = vi.fn().mockResolvedValue(true);
+    const openTextDocumentSpy = vi.spyOn(vscode.workspace, 'openTextDocument').mockResolvedValue({
+      lineCount: lineTexts.length,
+      getText: () => lineTexts.join('\n'),
+      lineAt: (index: number) => ({
+        text: lineTexts[index],
+        range: {
+          start: { line: index, character: 0 },
+          end: { line: index, character: lineTexts[index].length },
+        },
+      }),
+      save: saveSpy,
+    } as any);
+    const applyEditSpy = vi.spyOn(vscode.workspace, 'applyEdit').mockResolvedValue(true);
+    const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand');
+
+    (vscode.workspace as unknown as { workspaceFolders?: Array<{ uri: vscode.Uri }> }).workspaceFolders = [
+      { uri: vscode.Uri.file('/workspace') as unknown as vscode.Uri },
+    ];
+
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
+    await receivedHandler?.({ command: 'toggleChecklist', lineIndex: 0, checked: true });
+
+    expect(openTextDocumentSpy).toHaveBeenCalledTimes(1);
+    expect(applyEditSpy).toHaveBeenCalledTimes(1);
+    const workspaceEdit = applyEditSpy.mock.calls[0][0] as unknown as { edits?: Array<{ newText: string }> };
+    expect(workspaceEdit.edits?.[0]?.newText).toBe('- [x] first task');
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+    expect(service.showBean).toHaveBeenCalledWith('beans-vscode-checklist');
+    expect(executeCommandSpy).toHaveBeenCalledWith('beans.refreshAll');
+    expect(webview.html).toContain('data-line-index="0"');
+    expect(webview.html).toContain('checked><span class="checklist-label">first task</span>');
+  });
+
+  it('orders details select options for status/type and adds spacing on priority labels', async () => {
+    const bean = makeBean({
+      id: 'beans-vscode-ordering',
+      code: 'ordering',
+      path: 'beans-vscode-ordering.md',
+    });
+    service.showBean.mockResolvedValueOnce(bean);
+
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
+    await provider.showBean(bean);
+
+    const statusDraft = webview.html.indexOf('&quot;value&quot;:&quot;draft&quot;');
+    const statusTodo = webview.html.indexOf('&quot;value&quot;:&quot;todo&quot;');
+    expect(statusDraft).toBeGreaterThan(-1);
+    expect(statusTodo).toBeGreaterThan(-1);
+    expect(statusDraft).toBeLessThan(statusTodo);
+
+    const typeMilestone = webview.html.indexOf('&quot;value&quot;:&quot;milestone&quot;');
+    const typeTask = webview.html.indexOf('&quot;value&quot;:&quot;task&quot;');
+    const typeBug = webview.html.indexOf('&quot;value&quot;:&quot;bug&quot;');
+    expect(typeMilestone).toBeGreaterThan(-1);
+    expect(typeTask).toBeGreaterThan(-1);
+    expect(typeBug).toBeGreaterThan(-1);
+    expect(typeMilestone).toBeLessThan(typeTask);
+    expect(typeTask).toBeLessThan(typeBug);
+
+    expect(webview.html).toContain('&quot;label&quot;:&quot; ① Critical&quot;');
+    expect(webview.html).toContain('&quot;label&quot;:&quot; ③ Normal&quot;');
+    expect(webview.html).toContain('&quot;label&quot;:&quot; ⑤ Deferred&quot;');
+  });
+
   it('handles update errors from message handler', async () => {
     (provider as unknown as ProviderPrivate)._currentBean = makeBean({ id: 'beans-vscode-2' });
     service.updateBean.mockRejectedValue(new Error('update failed'));
@@ -291,6 +370,20 @@ describe('BeansDetailsViewProvider', () => {
     visibilityHandler?.();
 
     expect(webview.html).toContain('Visible bean');
+  });
+
+  it('renders checklist markdown items as checkbox controls', () => {
+    const markdown = ['- [ ] unchecked task', '- [x] checked task', '- plain bullet'].join('\n');
+
+    const html = (provider as unknown as ProviderPrivate).renderMarkdown(markdown);
+
+    expect(html).toContain('class="checklist-item"');
+    expect(html).toContain('type="checkbox"');
+    expect(html).toContain('data-line-index="0"');
+    expect(html).toContain('data-line-index="1"');
+    expect(html).toContain('unchecked task');
+    expect(html).toContain('checked task');
+    expect(html).toContain('<li>plain bullet</li>');
   });
 
   it('renders markdown features and html escaping', () => {

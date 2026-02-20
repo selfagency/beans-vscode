@@ -164,6 +164,13 @@
         "when": "beans.initialized"
       },
       {
+        "command": "beans.details.refresh",
+        "title": "Refresh Bean Details",
+        "category": "Beans",
+        "icon": "$(refresh)",
+        "when": "beans.initialized"
+      },
+      {
         "command": "beans.copilotStartWork",
         "title": "Copilot: Start Work on Bean",
         "category": "Beans",
@@ -461,14 +468,19 @@
           "group": "navigation@1"
         },
         {
-          "command": "beans.edit",
+          "command": "beans.details.refresh",
           "when": "view == beans.details && beans.hasSelectedBean",
           "group": "navigation@2"
         },
         {
+          "command": "beans.edit",
+          "when": "view == beans.details && beans.hasSelectedBean",
+          "group": "navigation@3"
+        },
+        {
           "command": "beans.copilotStartWork",
           "when": "view == beans.details && beans.hasSelectedBean && beans.aiEnabled",
-          "group": "navigation@3"
+          "group": "navigation@4"
         }
       ],
       "view/item/context": [

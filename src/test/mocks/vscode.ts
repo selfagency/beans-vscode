@@ -68,6 +68,14 @@ export class Uri {
   }
 }
 
+export class WorkspaceEdit {
+  public readonly edits: Array<{ uri: Uri; range: unknown; newText: string }> = [];
+
+  replace(uri: Uri, range: unknown, newText: string): void {
+    this.edits.push({ uri, range, newText });
+  }
+}
+
 class OutputChannel {
   name: string;
 
@@ -142,6 +150,8 @@ export const workspace = {
   onDidChangeConfiguration: (): { dispose: () => void } => {
     return { dispose: () => {} };
   },
+  openTextDocument: (_uri: Uri | string): Promise<any> => Promise.resolve(undefined),
+  applyEdit: (_edit: WorkspaceEdit): Promise<boolean> => Promise.resolve(true),
 };
 
 export const commands = {
