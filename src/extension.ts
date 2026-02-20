@@ -38,7 +38,12 @@ import { BeansCLINotFoundError } from './beans/model';
 import { BeansPreviewProvider } from './beans/preview';
 import { BeansService } from './beans/service';
 import { BeansFilterManager } from './beans/tree';
-import { ActiveBeansProvider, CompletedBeansProvider, DraftBeansProvider } from './beans/tree/providers';
+import {
+  ActiveBeansProvider,
+  CompletedBeansProvider,
+  DraftBeansProvider,
+  ScrappedBeansProvider,
+} from './beans/tree/providers';
 import { registerBeansTreeViews } from './beans/tree/registerBeansTreeViews';
 
 let beansService: BeansService | undefined;
@@ -46,6 +51,7 @@ let logger: BeansOutput;
 let activeProvider: ActiveBeansProvider | undefined;
 let completedProvider: CompletedBeansProvider | undefined;
 let draftProvider: DraftBeansProvider | undefined;
+let scrappedProvider: ScrappedBeansProvider | undefined;
 let filterManager: BeansFilterManager | undefined;
 let detailsProvider: BeansDetailsViewProvider | undefined;
 let mcpIntegration: BeansMcpIntegration | undefined;
@@ -263,6 +269,7 @@ export async function activate(context: vscode.ExtensionContext) {
         logger.info('Refreshing all tree views');
         activeProvider?.refresh();
         completedProvider?.refresh();
+        scrappedProvider?.refresh();
         draftProvider?.refresh();
         await refreshMalformedDraftWarningContext(workspaceFolder.uri.fsPath);
       })
@@ -709,6 +716,7 @@ function registerTreeViews(
   activeProvider = providers.activeProvider;
   completedProvider = providers.completedProvider;
   draftProvider = providers.draftProvider;
+  scrappedProvider = providers.scrappedProvider;
 }
 
 /**
