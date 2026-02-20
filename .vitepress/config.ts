@@ -11,7 +11,7 @@ export default {
       { text: 'Getting started', link: '/getting-started' },
       { text: 'User Guide', link: '/user-guide' },
       { text: 'Developers', link: '/developers/' },
-      { text: 'VS Marketplace', link: 'https://marketplace.visualstudio.com/items?itemName=selfagency.beans' },
+      { text: 'VS Marketplace', link: 'https://marketplace.visualstudio.com/items?itemName=selfagency.beans-vscode' },
       { text: 'Open VSX', link: 'https://open-vsx.org/extension/selfagency/beans' },
       { text: 'GitHub', link: 'https://github.com/selfagency/beans-vscode' },
     ],
