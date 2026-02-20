@@ -13,7 +13,7 @@ Add an extension setting to enable debug logging that includes fuller diagnostic
 
 ## Todo
 
-- [ ] Add a new boolean setting to enable diagnostic debug mode in extension configuration
-- [ ] Wire debug mode into logger/service execution paths for GraphQL and CLI diagnostics
-- [ ] Add/update unit tests for config + logging behavior
-- [ ] Compile and run focused tests, then full test suite checkpoints
+- [x] Add a new boolean setting to enable diagnostic debug mode in extension configuration
+- [x] Wire debug mode into logger/service execution paths for GraphQL and CLI diagnostics
+- [x] Add/update unit tests for config + logging behavior
+- [x] Compile and run focused tests, then full test suite checkpoints

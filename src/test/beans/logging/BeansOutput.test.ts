@@ -18,6 +18,9 @@ vi.mock('vscode', () => {
       if (key === 'logging.level') {
         return 'info';
       }
+      if (key === 'logging.diagnostics.enabled') {
+        return false;
+      }
       return defaultValue;
     }),
   };
@@ -177,6 +180,48 @@ describe('BeansOutput', () => {
       vi.clearAllMocks();
       logger.debug('Should now log');
       expect(mockOutputChannel.appendLine).toHaveBeenCalled();
+    });
+  });
+
+  describe('diagnostics mode', () => {
+    it('does not log diagnostics payload when diagnostics mode is disabled', () => {
+      const config = vscode.workspace.getConfiguration('beans');
+      (config.get as any).mockImplementation((key: string, defaultValue?: any) => {
+        if (key === 'logging.level') {
+          return 'debug';
+        }
+        if (key === 'logging.diagnostics.enabled') {
+          return false;
+        }
+        return defaultValue;
+      });
+      logger.refreshConfig();
+
+      vi.clearAllMocks();
+      logger.diagnostics('GraphQL variables', { filter: { status: ['todo'] } });
+
+      expect(mockOutputChannel.appendLine).not.toHaveBeenCalled();
+    });
+
+    it('logs diagnostics payload when diagnostics mode is enabled', () => {
+      const config = vscode.workspace.getConfiguration('beans');
+      (config.get as any).mockImplementation((key: string, defaultValue?: any) => {
+        if (key === 'logging.level') {
+          return 'debug';
+        }
+        if (key === 'logging.diagnostics.enabled') {
+          return true;
+        }
+        return defaultValue;
+      });
+      logger.refreshConfig();
+
+      logger.diagnostics('GraphQL query', 'query ListBeans { beans { id } }');
+
+      expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('[DEBUG] [DIAGNOSTICS] GraphQL query')
+      );
+      expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(expect.stringContaining('ListBeans'));
     });
   });
 
