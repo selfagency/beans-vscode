@@ -222,4 +222,37 @@ describe('Extension Activation', () => {
     expect(outcome).toBe('resolved');
     expect(mockContext.subscriptions.length).toBeGreaterThan(0);
   });
+
+  it('should offer an OS-specific install action when Beans CLI is missing', async () => {
+    vi.spyOn(BeansService.prototype, 'checkCLIAvailable').mockResolvedValue(false);
+    vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue([mockWorkspaceFolder]);
+    vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+      get: vi.fn((key: string, defaultValue?: any) => {
+        if (key === 'enableOnlyIfInitialized') {
+          return false;
+        }
+        if (key === 'ai.enabled') {
+          return true;
+        }
+        if (key === 'cliPath') {
+          return 'beans';
+        }
+        return defaultValue;
+      }),
+      has: vi.fn(),
+      inspect: vi.fn(),
+      update: vi.fn(),
+    } as any);
+
+    const showErrorMessageSpy = vi
+      .spyOn(vscode.window, 'showErrorMessage')
+      .mockResolvedValue(undefined as unknown as any);
+
+    await activate(mockContext);
+
+    expect(showErrorMessageSpy).toHaveBeenCalled();
+    const args = showErrorMessageSpy.mock.calls[0] as unknown[];
+    const actions = args.slice(1).filter(arg => typeof arg === 'string') as string[];
+    expect(actions.some(action => /Install .*?(macOS|Linux|Windows)/.test(action))).toBe(true);
+  });
 });
