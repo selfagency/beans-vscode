@@ -108,6 +108,16 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
   }
 
   /**
+   * Fetch beans from the service and update the internal count without
+   * triggering a full tree rebuild. Use this to keep pane header counts
+   * accurate even when the tree view is collapsed / not visible.
+   */
+  async refreshCount(): Promise<number> {
+    await this.fetchBeans();
+    return this.beans.length;
+  }
+
+  /**
    * Get children for a tree element
    */
   async getChildren(element?: BeanTreeItem): Promise<BeanTreeItem[]> {

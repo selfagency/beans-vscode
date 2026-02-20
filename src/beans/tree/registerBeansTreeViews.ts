@@ -85,8 +85,17 @@ export function registerBeansTreeViews(
     searchTreeView.title = formatTitle(baseTitles.search, searchProvider.getVisibleCount());
   };
 
-  const refreshCountTitles = (): void => {
+  const refreshCountTitles = async (): Promise<void> => {
     try {
+      // Fetch counts for all providers in parallel so that pane header
+      // counts are accurate even when a tree view is collapsed / not visible.
+      await Promise.all([
+        activeProvider.refreshCount(),
+        completedProvider.refreshCount(),
+        scrappedProvider.refreshCount(),
+        draftProvider.refreshCount(),
+        searchProvider.refreshCount(),
+      ]);
       applyCountTitles();
     } catch (error) {
       logger.warn('Failed to refresh bean counts for side panel headers', error as Error);
@@ -227,17 +236,9 @@ export function registerBeansTreeViews(
 
   context.subscriptions.push(activeTreeView, completedTreeView, scrappedTreeView, draftTreeView, searchTreeView);
 
-  applyCountTitles();
-  if (
-    activeTreeView.visible ||
-    completedTreeView.visible ||
-    scrappedTreeView.visible ||
-    draftTreeView.visible ||
-    searchTreeView.visible
-  ) {
-    // Only trigger the potentially expensive count refresh if any view is visible
-    void refreshCountTitles();
-  }
+  // Fetch counts for all panes on startup, regardless of visibility,
+  // so that collapsed pane headers show accurate numbers immediately.
+  void refreshCountTitles();
 
   logger.info('Tree views registered with drag-and-drop support and details view integration');
 
