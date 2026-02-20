@@ -14,6 +14,7 @@ const showWarningMessage = vi.hoisted(() => vi.fn());
 const showErrorMessage = vi.hoisted(() => vi.fn());
 const showTextDocument = vi.hoisted(() => vi.fn());
 const createQuickPickMock = vi.hoisted(() => vi.fn());
+const createWebviewPanel = vi.hoisted(() => vi.fn());
 const executeCommand = vi.hoisted(() => vi.fn());
 const openTextDocument = vi.hoisted(() => vi.fn());
 const openExternal = vi.hoisted(() => vi.fn());
@@ -53,6 +54,7 @@ vi.mock('vscode', () => {
   return {
     Uri,
     ThemeIcon,
+    ViewColumn: { One: 1 },
     ConfigurationTarget: { Workspace: 2 },
     commands: {
       registerCommand: vi.fn((name: string, handler: (...args: any[]) => any) => {
@@ -82,6 +84,7 @@ vi.mock('vscode', () => {
       showErrorMessage,
       showTextDocument,
       createQuickPick: createQuickPickMock,
+      createWebviewPanel,
     },
     env: {
       openExternal,
@@ -149,6 +152,14 @@ describe('BeansCommands', () => {
         dispose: vi.fn(),
       };
       return qp;
+    });
+
+    createWebviewPanel.mockImplementation(() => {
+      const panel: any = {
+        webview: { html: '' },
+        dispose: vi.fn(),
+      };
+      return panel;
     });
 
     service = {
@@ -528,14 +539,18 @@ describe('BeansCommands', () => {
     );
   });
 
-  it('opens user guide via preview and falls back to text editor', async () => {
-    executeCommand.mockRejectedValueOnce(new Error('preview failed'));
-    showTextDocument.mockResolvedValueOnce(undefined);
-
+  it('opens user guide in a webview panel', async () => {
     await (commands as any).openUserGuide();
 
-    expect(executeCommand).toHaveBeenCalledWith('markdown.showPreview', expect.anything());
-    expect(showTextDocument).toHaveBeenCalled();
+    expect(createWebviewPanel).toHaveBeenCalledWith(
+      'beans.docs',
+      'Beans — User Guide',
+      expect.anything(),
+      expect.anything()
+    );
+    // Ensure the webview HTML was populated with the docs URL
+    const panel = (createWebviewPanel as any).mock.results[0].value;
+    expect(panel.webview.html).toContain('beans.self.agency');
   });
 
   it('opens extension settings filtered to this extension', async () => {
