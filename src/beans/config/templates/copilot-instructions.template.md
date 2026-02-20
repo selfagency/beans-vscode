@@ -17,7 +17,12 @@ description: Generated Copilot instructions for Beans workflows in this workspac
    - Commit a bean immediately after creating or modifying it — unless you are creating a milestone/epic and are about to create its child beans, in which case commit everything together once the hierarchy is complete.
    - Completed todo items may be committed together with the code changes they relate to.
 
-5. **Create a branch before you write code.** When starting work on a bean, create a new branch named after the bean (e.g. `feature/<bean-id>-<slug>`) unless the current branch is already directly related to that bean. Push the branch before making your first commit.
+5. **Start or resume on the correct issue branch before writing code.**
+   - If the issue does not already have a branch, create one when you begin work.
+   - If you are resuming work, checkout the existing branch for that issue first.
+   - Branch names must follow: `[type]/[issue-number-without-prefix]-[short-title]`.
+   - Examples: `feat/1234-add-search`, `fix/987-crash-on-init`.
+   - Push the branch and record it in the bean frontmatter as soon as it exists.
 
 6. **Record the branch and PR in the bean.** As soon as a branch or PR exists, add it to the bean's YAML frontmatter:
 
@@ -61,8 +66,11 @@ Use these as authoritative guidance for Beans workflows in this repository.
 ## Core Beans workflow
 
 1. **Before any work:** search for a relevant bean using `beans.search` or `@beans /search`. If none fits, create one with `beans.create` and set it to `in-progress`.
-2. **Create a branch** (if not already on one related to this bean). Name it `feature/<bean-id>-<slug>` or `fix/<bean-id>-<slug>`.
-3. **Add branch/PR to bean frontmatter** as soon as they exist. Commit the bean update.
+2. **Create or checkout the issue branch** before coding.
+   - If starting new issue work, create a branch using `[type]/[issue-number-without-prefix]-[short-title]`.
+   - If resuming, checkout the issue's existing branch.
+   - Examples: `feat/1234-add-search`, `fix/987-crash-on-init`.
+3. **Push branch and add branch/PR to bean frontmatter** as soon as they exist. Commit the bean update.
 4. **Maintain a `## Todo` checklist** in the bean body. Update it after every completed step and commit the updated bean (alone or together with related code changes).
 5. **On completion**, add `## Summary of Changes`, set status to `completed`, and commit the final bean state.
 6. **On scrap**, add `## Reasons for Scrapping`, set status to `scrapped`, and commit.
