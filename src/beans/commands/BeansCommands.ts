@@ -1546,22 +1546,17 @@ export class BeansCommands {
    * Open user guide documentation
    */
   private async openUserGuide(): Promise<void> {
-    // Try to find user-guide.md in the extension's docs folder
-    const extensionPath = this.context.extensionUri;
-    const docPath = vscode.Uri.joinPath(extensionPath, 'docs', 'user-guide.md');
-
+    const url = 'https://beans.self.agency/';
     try {
-      // Open in markdown preview
-      await vscode.commands.executeCommand('markdown.showPreview', docPath);
-    } catch (error) {
-      // Fallback: open as text document
+      await this.openUrlInWebview('Beans — User Guide', url);
+    } catch (err) {
+      logger.diagnostics?.('Opening user guide webview failed, falling back to external', err as Error);
       try {
-        await vscode.window.showTextDocument(docPath);
+        await vscode.env.openExternal(vscode.Uri.parse(url));
+        vscode.window.showInformationMessage('Opened user guide in external browser.');
       } catch (openError) {
-        logger.error('Failed to open user guide', openError as Error);
-        vscode.window.showErrorMessage(
-          'Failed to open user guide. The documentation may be missing from the extension.'
-        );
+        logger.error('Failed to open user guide URL', openError as Error);
+        vscode.window.showErrorMessage('Failed to open user guide.');
       }
     }
   }
@@ -1570,20 +1565,56 @@ export class BeansCommands {
    * Open AI features documentation
    */
   private async openAiFeaturesGuide(): Promise<void> {
-    const extensionPath = this.context.extensionUri;
-    const docPath = vscode.Uri.joinPath(extensionPath, 'docs', 'ai-features.md');
-
+    const url = 'https://beans.self.agency/user-guide/ai.html';
     try {
-      await vscode.commands.executeCommand('markdown.showPreview', docPath);
-    } catch {
+      await this.openUrlInWebview('Beans — AI Features', url);
+    } catch (err) {
+      logger.diagnostics?.('Opening AI guide webview failed, falling back to external', err as Error);
       try {
-        await vscode.window.showTextDocument(docPath);
+        await vscode.env.openExternal(vscode.Uri.parse(url));
+        vscode.window.showInformationMessage('Opened AI features guide in external browser.');
       } catch (openError) {
-        logger.error('Failed to open AI features guide', openError as Error);
-        vscode.window.showErrorMessage(
-          'Failed to open AI features guide. The documentation may be missing from the extension.'
-        );
+        logger.error('Failed to open AI features guide URL', openError as Error);
+        vscode.window.showErrorMessage('Failed to open AI features guide.');
       }
+    }
+  }
+
+  /**
+   * Open a titled webview panel that embeds the given URL in an iframe.
+   * Falls back to throwing an error which callers can catch and handle.
+   */
+  private async openUrlInWebview(title: string, url: string): Promise<void> {
+    try {
+      const panel = vscode.window.createWebviewPanel('beans.docs', title, vscode.ViewColumn.One, {
+        enableScripts: false,
+        retainContextWhenHidden: true,
+      });
+
+      const origin = new URL(url).origin;
+
+      // Content Security Policy: allow framing from the docs origin and allow inline styles
+      const csp = `default-src 'none'; frame-src ${origin}; style-src 'unsafe-inline'`;
+
+      panel.webview.html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="${csp}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${title}</title>
+    <style>
+      html,body { height:100%; margin:0; }
+      iframe { border:0; width:100%; height:100vh; }
+    </style>
+  </head>
+  <body>
+    <iframe src="${url}"></iframe>
+  </body>
+</html>`;
+    } catch (error) {
+      logger.error(`Failed to open webview for ${url}`, error as Error);
+      throw error;
     }
   }
 }
