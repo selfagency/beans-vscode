@@ -49,6 +49,22 @@ jobs:
           path: docs/.vitepress/dist
           include-hidden-files: true
 
+      - name: Debug build output (fail if missing or odd files)
+        run: |
+          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+          echo "Build dir listing:"
+          ls -la docs/.vitepress/dist || true
+          echo "Size:"
+          du -sh docs/.vitepress/dist || true
+          echo "Find symlinks:"
+          find docs/.vitepress/dist -type l -ls || echo "no symlinks found"
+          echo "Find anything not file/dir:"
+          find docs/.vitepress/dist -not -type f -and -not -type d -ls || echo "no special file types"
+          if [ ! -f docs/.vitepress/dist/index.html ]; then
+            echo "index.html missing — failing so you can fix publish_dir"
+            exit 1
+          fi
+
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
         with:
