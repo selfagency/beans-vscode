@@ -23,6 +23,7 @@ title: Beans Documentation
 - **🧪 Extensively Tested**: Comprehensive automated unit and integration test suite
 - **♿ Accessible**: Built following WCAG 2.2 Level AA guidelines
 - **🤫 Privacy Respecting**: No telemetry or data collection of any kind
+- **🐶 Completely Dogfooded**: The extension was used by the developer to project manage developing the extension
 
 ## About Beans
 

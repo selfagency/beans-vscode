@@ -1,4 +1,6 @@
-# Beans VS Code Extension - AI Features
+---
+title: AI Features
+---
 
 Comprehensive guide to using Beans with AI assistants and Copilot.
 
@@ -10,7 +12,7 @@ Comprehensive guide to using Beans with AI assistants and Copilot.
 - [Copilot Start Work](#copilot-start-work)
 - [Copilot Skills and Instructions](#copilot-skills-and-instructions)
 - [Configuration](#configuration)
-- [Troubleshooting](../user-guide/troubleshooting.md)
+- [Troubleshooting](../users/troubleshooting.md)
 
 ## Overview
 

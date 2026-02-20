@@ -49,13 +49,15 @@ Learn more about Beans: [github.com/hmans/beans](https://github.com/hmans/beans)
 
 ### Install the [`beans`](https://github.com/hmans/beans#installation) CLI
 
+#### macOS (Requires Homebrew)
+
 ```bash
-# macOS (Requires Homebrew)
 brew install hmans/beans/beans
 ```
 
+#### Linux, MacOs, Windows (Requires Go)
+
 ```bash
-# Linux, MacOs, Windows (Requires Go)
 go install github.com/hmans/beans@latest
 ```
 

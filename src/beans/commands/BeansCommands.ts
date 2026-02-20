@@ -1565,7 +1565,7 @@ export class BeansCommands {
    * Open AI features documentation
    */
   private async openAiFeaturesGuide(): Promise<void> {
-    const url = 'https://beans.self.agency/user-guide/ai.html';
+    const url = 'https://beans.self.agency/users/ai.html';
     try {
       await this.openUrlInWebview('Beans — AI Features', url);
     } catch (err) {
