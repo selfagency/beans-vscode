@@ -40,7 +40,7 @@ export class BeansHelpViewProvider implements vscode.WebviewViewProvider {
       color: var(--vscode-foreground);
       font-family: var(--vscode-font-family);
       font-size: var(--vscode-font-size);
-      line-height: 1.4;
+      line-height: 1.55;
     }
 
     h2 {

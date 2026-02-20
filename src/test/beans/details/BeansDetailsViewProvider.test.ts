@@ -252,6 +252,183 @@ describe('BeansDetailsViewProvider', () => {
     });
   });
 
+  it('registers a details file watcher and disposes the previous watcher on bean switch', async () => {
+    const beanOne = makeBean({ id: 'beans-vscode-watch-1', code: 'watch-1', path: 'beans-vscode-watch-1.md' });
+    const beanTwo = makeBean({ id: 'beans-vscode-watch-2', code: 'watch-2', path: 'beans-vscode-watch-2.md' });
+
+    service.showBean.mockResolvedValueOnce(beanOne).mockResolvedValueOnce(beanTwo);
+
+    const firstWatcherDispose = vi.fn();
+    const secondWatcherDispose = vi.fn();
+    const createFileSystemWatcherSpy = vi
+      .spyOn(vscode.workspace, 'createFileSystemWatcher')
+      .mockReturnValueOnce({
+        onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+        dispose: firstWatcherDispose,
+      } as any)
+      .mockReturnValueOnce({
+        onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+        dispose: secondWatcherDispose,
+      } as any);
+
+    (
+      vscode.workspace as unknown as { workspaceFolders?: Array<{ uri: vscode.Uri; name: string; index: number }> }
+    ).workspaceFolders = [{ uri: vscode.Uri.file('/workspace') as unknown as vscode.Uri, name: 'workspace', index: 0 }];
+
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
+    await provider.showBean(beanOne);
+    await provider.showBean(beanTwo);
+
+    expect(createFileSystemWatcherSpy).toHaveBeenCalledTimes(2);
+    expect(firstWatcherDispose).toHaveBeenCalledTimes(1);
+    expect(secondWatcherDispose).not.toHaveBeenCalled();
+  });
+
+  it('refreshes details after watched file changes for the active bean', async () => {
+    vi.useFakeTimers();
+    try {
+      const initialBean = makeBean({
+        id: 'beans-vscode-watch-refresh',
+        code: 'watch-refresh',
+        path: 'beans-vscode-watch-refresh.md',
+        title: 'Before watch refresh',
+      });
+      const refreshedBean = makeBean({
+        id: 'beans-vscode-watch-refresh',
+        code: 'watch-refresh',
+        path: 'beans-vscode-watch-refresh.md',
+        title: 'After watch refresh',
+      });
+
+      service.showBean.mockResolvedValueOnce(initialBean).mockResolvedValueOnce(refreshedBean);
+
+      let onDidChangeHandler: (() => void) | undefined;
+      vi.spyOn(vscode.workspace, 'createFileSystemWatcher').mockReturnValue({
+        onDidChange: vi.fn((handler: () => void) => {
+          onDidChangeHandler = handler;
+          return { dispose: vi.fn() };
+        }),
+        onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+        dispose: vi.fn(),
+      } as any);
+
+      (
+        vscode.workspace as unknown as { workspaceFolders?: Array<{ uri: vscode.Uri; name: string; index: number }> }
+      ).workspaceFolders = [
+        { uri: vscode.Uri.file('/workspace') as unknown as vscode.Uri, name: 'workspace', index: 0 },
+      ];
+
+      provider.resolveWebviewView(view, resolveContext, cancellationToken);
+      await provider.showBean(initialBean);
+
+      expect(onDidChangeHandler).toBeTypeOf('function');
+      onDidChangeHandler?.();
+
+      vi.advanceTimersByTime(250);
+      await vi.waitFor(() => {
+        expect(service.showBean).toHaveBeenCalledTimes(2);
+        expect(webview.html).toContain('After watch refresh');
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not create a details watcher when no workspace folder is available', async () => {
+    const bean = makeBean({ id: 'beans-vscode-no-watch', path: 'beans-vscode-no-watch.md' });
+    service.showBean.mockResolvedValueOnce(bean);
+
+    const createFileSystemWatcherSpy = vi.spyOn(vscode.workspace, 'createFileSystemWatcher');
+    (
+      vscode.workspace as unknown as { workspaceFolders?: Array<{ uri: vscode.Uri; name: string; index: number }> }
+    ).workspaceFolders = undefined;
+
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
+    await provider.showBean(bean);
+
+    expect(createFileSystemWatcherSpy).not.toHaveBeenCalled();
+  });
+
+  it('logs watcher refresh failures and does not replace the current view state', async () => {
+    vi.useFakeTimers();
+    try {
+      const bean = makeBean({
+        id: 'beans-vscode-watch-error',
+        code: 'watch-error',
+        path: 'beans-vscode-watch-error.md',
+        title: 'Before failed watch refresh',
+      });
+
+      service.showBean.mockResolvedValueOnce(bean).mockRejectedValueOnce(new Error('watch refresh failed'));
+
+      let onDidChangeHandler: (() => void) | undefined;
+      vi.spyOn(vscode.workspace, 'createFileSystemWatcher').mockReturnValue({
+        onDidChange: vi.fn((handler: () => void) => {
+          onDidChangeHandler = handler;
+          return { dispose: vi.fn() };
+        }),
+        onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+        dispose: vi.fn(),
+      } as any);
+
+      (
+        vscode.workspace as unknown as { workspaceFolders?: Array<{ uri: vscode.Uri; name: string; index: number }> }
+      ).workspaceFolders = [
+        { uri: vscode.Uri.file('/workspace') as unknown as vscode.Uri, name: 'workspace', index: 0 },
+      ];
+
+      provider.resolveWebviewView(view, resolveContext, cancellationToken);
+      await provider.showBean(bean);
+
+      onDidChangeHandler?.();
+      vi.advanceTimersByTime(250);
+      await vi.runAllTimersAsync();
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Details watcher refresh failed for beans-vscode-watch-error: watch refresh failed'
+      );
+      expect(provider.currentBean?.title).toBe('Before failed watch refresh');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('disposes active watcher listeners when details view is cleared', async () => {
+    const bean = makeBean({ id: 'beans-vscode-dispose-watch', path: 'beans-vscode-dispose-watch.md' });
+    service.showBean.mockResolvedValueOnce(bean);
+
+    const onDidChangeDispose = vi.fn();
+    const onDidCreateDispose = vi.fn();
+    const onDidDeleteDispose = vi.fn();
+    const watcherDispose = vi.fn();
+
+    vi.spyOn(vscode.workspace, 'createFileSystemWatcher').mockReturnValue({
+      onDidChange: vi.fn(() => ({ dispose: onDidChangeDispose })),
+      onDidCreate: vi.fn(() => ({ dispose: onDidCreateDispose })),
+      onDidDelete: vi.fn(() => ({ dispose: onDidDeleteDispose })),
+      dispose: watcherDispose,
+    } as any);
+
+    (
+      vscode.workspace as unknown as { workspaceFolders?: Array<{ uri: vscode.Uri; name: string; index: number }> }
+    ).workspaceFolders = [{ uri: vscode.Uri.file('/workspace') as unknown as vscode.Uri, name: 'workspace', index: 0 }];
+
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
+    await provider.showBean(bean);
+    provider.clear();
+
+    expect(onDidChangeDispose).toHaveBeenCalledTimes(1);
+    expect(onDidCreateDispose).toHaveBeenCalledTimes(1);
+    expect(onDidDeleteDispose).toHaveBeenCalledTimes(1);
+    expect(watcherDispose).toHaveBeenCalledTimes(1);
+  });
+
   it('updates bean via message handler and refreshes tree', async () => {
     const bean = makeBean({ id: 'beans-vscode-1', code: '1', title: 'Before' });
     const updated = makeBean({ id: 'beans-vscode-1', code: '1', title: 'After', status: 'in-progress', type: 'bug' });
@@ -270,6 +447,124 @@ describe('BeansDetailsViewProvider', () => {
     expect(infoSpy).toHaveBeenCalledWith('Bean updated successfully');
     expect(webview.html).toContain('After');
     expect(webview.html).toContain('codicon codicon-play-circle');
+  });
+
+  it('toggles checklist item via webview message and refreshes bean details', async () => {
+    const bean = makeBean({
+      id: 'beans-vscode-checklist',
+      code: 'checklist',
+      path: 'beans-vscode-checklist.md',
+      body: '- [ ] first task\n- [x] second task',
+    });
+    (provider as unknown as ProviderPrivate)._currentBean = bean;
+    service.showBean.mockResolvedValueOnce({
+      ...bean,
+      body: '- [x] first task\n- [x] second task',
+    });
+
+    const lineTexts = ['---', 'id: beans-vscode-checklist', '---', '- [ ] first task', '- [x] second task'];
+    const saveSpy = vi.fn().mockResolvedValue(true);
+    const openTextDocumentSpy = vi.spyOn(vscode.workspace, 'openTextDocument').mockResolvedValue({
+      lineCount: lineTexts.length,
+      getText: () => lineTexts.join('\n'),
+      lineAt: (index: number) => ({
+        text: lineTexts[index],
+        range: {
+          start: { line: index, character: 0 },
+          end: { line: index, character: lineTexts[index].length },
+        },
+      }),
+      save: saveSpy,
+    } as any);
+    const applyEditSpy = vi.spyOn(vscode.workspace, 'applyEdit').mockResolvedValue(true);
+    const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand');
+
+    (vscode.workspace as unknown as { workspaceFolders?: Array<{ uri: vscode.Uri }> }).workspaceFolders = [
+      { uri: vscode.Uri.file('/workspace') as unknown as vscode.Uri },
+    ];
+
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
+    await receivedHandler?.({ command: 'toggleChecklist', lineIndex: 0, checked: true });
+
+    expect(openTextDocumentSpy).toHaveBeenCalledTimes(1);
+    expect(applyEditSpy).toHaveBeenCalledTimes(1);
+    const workspaceEdit = applyEditSpy.mock.calls[0][0] as unknown as { edits?: Array<{ newText: string }> };
+    expect(workspaceEdit.edits?.[0]?.newText).toBe('- [x] first task');
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+    expect(service.showBean).toHaveBeenCalledWith('beans-vscode-checklist');
+    expect(executeCommandSpy).toHaveBeenCalledWith('beans.refreshAll');
+    expect(webview.html).toContain('data-line-index="0"');
+    expect(webview.html).toContain('checked><span class="checklist-label">first task</span>');
+  });
+
+  it('does not apply edits when checklist is already in the requested state', async () => {
+    const bean = makeBean({
+      id: 'beans-vscode-checklist-idempotent',
+      code: 'checklist-idempotent',
+      path: 'beans-vscode-checklist-idempotent.md',
+      body: '- [x] already checked',
+    });
+    (provider as unknown as ProviderPrivate)._currentBean = bean;
+
+    const lineTexts = ['---', 'id: beans-vscode-checklist-idempotent', '---', '- [x] already checked'];
+    const saveSpy = vi.fn().mockResolvedValue(true);
+    vi.spyOn(vscode.workspace, 'openTextDocument').mockResolvedValue({
+      lineCount: lineTexts.length,
+      getText: () => lineTexts.join('\n'),
+      lineAt: (index: number) => ({
+        text: lineTexts[index],
+        range: {
+          start: { line: index, character: 0 },
+          end: { line: index, character: lineTexts[index].length },
+        },
+      }),
+      save: saveSpy,
+    } as any);
+    const applyEditSpy = vi.spyOn(vscode.workspace, 'applyEdit').mockResolvedValue(true);
+    const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand');
+
+    (vscode.workspace as unknown as { workspaceFolders?: Array<{ uri: vscode.Uri }> }).workspaceFolders = [
+      { uri: vscode.Uri.file('/workspace') as unknown as vscode.Uri },
+    ];
+
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
+    await receivedHandler?.({ command: 'toggleChecklist', lineIndex: 0, checked: true });
+
+    expect(applyEditSpy).not.toHaveBeenCalled();
+    expect(saveSpy).not.toHaveBeenCalled();
+    expect(service.showBean).not.toHaveBeenCalled();
+    expect(executeCommandSpy).not.toHaveBeenCalledWith('beans.refreshAll');
+  });
+
+  it('orders details select options for status/type and adds spacing on priority labels', async () => {
+    const bean = makeBean({
+      id: 'beans-vscode-ordering',
+      code: 'ordering',
+      path: 'beans-vscode-ordering.md',
+    });
+    service.showBean.mockResolvedValueOnce(bean);
+
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
+    await provider.showBean(bean);
+
+    const statusDraft = webview.html.indexOf('&quot;value&quot;:&quot;draft&quot;');
+    const statusTodo = webview.html.indexOf('&quot;value&quot;:&quot;todo&quot;');
+    expect(statusDraft).toBeGreaterThan(-1);
+    expect(statusTodo).toBeGreaterThan(-1);
+    expect(statusDraft).toBeLessThan(statusTodo);
+
+    const typeMilestone = webview.html.indexOf('&quot;value&quot;:&quot;milestone&quot;');
+    const typeTask = webview.html.indexOf('&quot;value&quot;:&quot;task&quot;');
+    const typeBug = webview.html.indexOf('&quot;value&quot;:&quot;bug&quot;');
+    expect(typeMilestone).toBeGreaterThan(-1);
+    expect(typeTask).toBeGreaterThan(-1);
+    expect(typeBug).toBeGreaterThan(-1);
+    expect(typeMilestone).toBeLessThan(typeTask);
+    expect(typeTask).toBeLessThan(typeBug);
+
+    expect(webview.html).toContain('&quot;label&quot;:&quot;&amp;nbsp;① Critical&quot;');
+    expect(webview.html).toContain('&quot;label&quot;:&quot;&amp;nbsp;③ Normal&quot;');
+    expect(webview.html).toContain('&quot;label&quot;:&quot;&amp;nbsp;⑤ Deferred&quot;');
   });
 
   it('handles update errors from message handler', async () => {
@@ -291,6 +586,32 @@ describe('BeansDetailsViewProvider', () => {
     visibilityHandler?.();
 
     expect(webview.html).toContain('Visible bean');
+  });
+
+  it('renders checklist markdown items as checkbox controls', () => {
+    const markdown = ['- [ ] unchecked task', '- [x] checked task', '- plain bullet'].join('\n');
+
+    const html = (provider as unknown as ProviderPrivate).renderMarkdown(markdown);
+
+    expect(html).toContain('class="checklist-item"');
+    expect(html).toContain('type="checkbox"');
+    expect(html).toContain('data-line-index="0"');
+    expect(html).toContain('data-line-index="1"');
+    expect(html).toContain('unchecked task');
+    expect(html).toContain('checked task');
+    expect(html).toContain('<li>plain bullet</li>');
+  });
+
+  it('renders indented and empty-label checklist items as checkbox controls', () => {
+    const markdown = ['  - [ ] indented task', '- [x] ', '- [ ]'].join('\n');
+
+    const html = (provider as unknown as ProviderPrivate).renderMarkdown(markdown);
+
+    expect(html).toContain('data-line-index="0"');
+    expect(html).toContain('data-line-index="1"');
+    expect(html).toContain('indented task');
+    expect(html).toContain('checked><span class="checklist-label"></span>');
+    expect(html).not.toContain('data-line-index="2"');
   });
 
   it('renders markdown features and html escaping', () => {

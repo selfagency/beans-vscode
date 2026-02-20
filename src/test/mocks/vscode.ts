@@ -68,6 +68,14 @@ export class Uri {
   }
 }
 
+export class WorkspaceEdit {
+  public readonly edits: Array<{ uri: Uri; range: unknown; newText: string }> = [];
+
+  replace(uri: Uri, range: unknown, newText: string): void {
+    this.edits.push({ uri, range, newText });
+  }
+}
+
 class OutputChannel {
   name: string;
 
@@ -142,13 +150,29 @@ export const workspace = {
   onDidChangeConfiguration: (): { dispose: () => void } => {
     return { dispose: () => {} };
   },
+  openTextDocument: (_uri: Uri | string): Promise<any> => Promise.resolve(undefined),
+  applyEdit: (_edit: WorkspaceEdit): Promise<boolean> => Promise.resolve(true),
 };
 
+const commandRegistry = new Map<string, (...args: unknown[]) => unknown>();
+
 export const commands = {
-  registerCommand: (): { dispose: () => void } => {
-    return { dispose: () => {} };
+  registerCommand: (command: string, callback: (...args: unknown[]) => unknown): { dispose: () => void } => {
+    commandRegistry.set(command, callback);
+    return {
+      dispose: () => {
+        commandRegistry.delete(command);
+      },
+    };
   },
-  executeCommand: <T = unknown>(): Thenable<T | undefined> => Promise.resolve(undefined),
+  executeCommand: <T = unknown>(command: string, ...args: unknown[]): Thenable<T | undefined> => {
+    const callback = commandRegistry.get(command);
+    if (!callback) {
+      return Promise.resolve(undefined);
+    }
+
+    return Promise.resolve(callback(...args) as T | undefined);
+  },
 };
 
 export const env = {
