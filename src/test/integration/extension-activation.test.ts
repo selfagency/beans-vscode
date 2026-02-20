@@ -65,7 +65,7 @@ describe('Extension Activation', () => {
           return false;
         }
         if (key === 'ai.enabled') {
-          return true;
+          return false;
         }
         if (key === 'cliPath') {
           return 'beans';

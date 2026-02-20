@@ -154,11 +154,25 @@ export const workspace = {
   applyEdit: (_edit: WorkspaceEdit): Promise<boolean> => Promise.resolve(true),
 };
 
+const commandRegistry = new Map<string, (...args: unknown[]) => unknown>();
+
 export const commands = {
-  registerCommand: (): { dispose: () => void } => {
-    return { dispose: () => {} };
+  registerCommand: (command: string, callback: (...args: unknown[]) => unknown): { dispose: () => void } => {
+    commandRegistry.set(command, callback);
+    return {
+      dispose: () => {
+        commandRegistry.delete(command);
+      },
+    };
   },
-  executeCommand: <T = unknown>(): Thenable<T | undefined> => Promise.resolve(undefined),
+  executeCommand: <T = unknown>(command: string, ...args: unknown[]): Thenable<T | undefined> => {
+    const callback = commandRegistry.get(command);
+    if (!callback) {
+      return Promise.resolve(undefined);
+    }
+
+    return Promise.resolve(callback(...args) as T | undefined);
+  },
 };
 
 export const env = {

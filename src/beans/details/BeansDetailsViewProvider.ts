@@ -177,15 +177,6 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     await this.goBack();
   }
 
-  /** Refresh the currently displayed bean from disk/CLI and rerender details view. */
-  public async refreshCurrentBean(): Promise<void> {
-    if (!this._currentBean) {
-      return;
-    }
-
-    await this.showBeanById(this._currentBean.id);
-  }
-
   /**
    * Update the webview content with bean details
    */

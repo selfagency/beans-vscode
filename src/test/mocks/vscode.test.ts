@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Uri, window, workspace, env, RelativePattern, EventEmitter } from './vscode.js';
+import { Uri, window, workspace, env, RelativePattern, EventEmitter, WorkspaceEdit, commands } from './vscode.js';
 
 describe('test/mocks/vscode', () => {
   it('parses URIs and exposes fsPath', () => {
@@ -35,6 +35,40 @@ describe('test/mocks/vscode', () => {
     expect(watcher.onDidDelete().dispose).toBeTypeOf('function');
     expect(watcher.dispose).toBeTypeOf('function');
     expect(workspace.onDidChangeConfiguration().dispose).toBeTypeOf('function');
+  });
+
+  it('captures replacement edits in WorkspaceEdit', () => {
+    const edit = new WorkspaceEdit();
+    const uri = Uri.file('/tmp/file.md');
+    const range = { start: { line: 3, character: 0 }, end: { line: 3, character: 10 } };
+
+    edit.replace(uri, range, '- [x] completed task');
+
+    expect(edit.edits).toEqual([
+      {
+        uri,
+        range,
+        newText: '- [x] completed task',
+      },
+    ]);
+  });
+
+  it('provides default openTextDocument/applyEdit helpers', async () => {
+    await expect(workspace.openTextDocument(Uri.file('/tmp/file.md'))).resolves.toBeUndefined();
+    await expect(workspace.applyEdit(new WorkspaceEdit())).resolves.toBe(true);
+  });
+
+  it('registers, executes, and disposes command callbacks', async () => {
+    const disposable = commands.registerCommand('test.command', (...args: unknown[]) => {
+      const [name] = args;
+      return `hello ${String(name)}`;
+    });
+
+    await expect(commands.executeCommand('test.command', 'beans')).resolves.toBe('hello beans');
+
+    disposable.dispose();
+
+    await expect(commands.executeCommand('test.command', 'beans')).resolves.toBeUndefined();
   });
 
   it('returns success for openExternal', async () => {

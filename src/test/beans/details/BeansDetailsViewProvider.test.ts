@@ -339,6 +339,96 @@ describe('BeansDetailsViewProvider', () => {
     }
   });
 
+  it('does not create a details watcher when no workspace folder is available', async () => {
+    const bean = makeBean({ id: 'beans-vscode-no-watch', path: 'beans-vscode-no-watch.md' });
+    service.showBean.mockResolvedValueOnce(bean);
+
+    const createFileSystemWatcherSpy = vi.spyOn(vscode.workspace, 'createFileSystemWatcher');
+    (
+      vscode.workspace as unknown as { workspaceFolders?: Array<{ uri: vscode.Uri; name: string; index: number }> }
+    ).workspaceFolders = undefined;
+
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
+    await provider.showBean(bean);
+
+    expect(createFileSystemWatcherSpy).not.toHaveBeenCalled();
+  });
+
+  it('logs watcher refresh failures and does not replace the current view state', async () => {
+    vi.useFakeTimers();
+    try {
+      const bean = makeBean({
+        id: 'beans-vscode-watch-error',
+        code: 'watch-error',
+        path: 'beans-vscode-watch-error.md',
+        title: 'Before failed watch refresh',
+      });
+
+      service.showBean.mockResolvedValueOnce(bean).mockRejectedValueOnce(new Error('watch refresh failed'));
+
+      let onDidChangeHandler: (() => void) | undefined;
+      vi.spyOn(vscode.workspace, 'createFileSystemWatcher').mockReturnValue({
+        onDidChange: vi.fn((handler: () => void) => {
+          onDidChangeHandler = handler;
+          return { dispose: vi.fn() };
+        }),
+        onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+        dispose: vi.fn(),
+      } as any);
+
+      (
+        vscode.workspace as unknown as { workspaceFolders?: Array<{ uri: vscode.Uri; name: string; index: number }> }
+      ).workspaceFolders = [
+        { uri: vscode.Uri.file('/workspace') as unknown as vscode.Uri, name: 'workspace', index: 0 },
+      ];
+
+      provider.resolveWebviewView(view, resolveContext, cancellationToken);
+      await provider.showBean(bean);
+
+      onDidChangeHandler?.();
+      vi.advanceTimersByTime(250);
+      await vi.runAllTimersAsync();
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Details watcher refresh failed for beans-vscode-watch-error: watch refresh failed'
+      );
+      expect(provider.currentBean?.title).toBe('Before failed watch refresh');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('disposes active watcher listeners when details view is cleared', async () => {
+    const bean = makeBean({ id: 'beans-vscode-dispose-watch', path: 'beans-vscode-dispose-watch.md' });
+    service.showBean.mockResolvedValueOnce(bean);
+
+    const onDidChangeDispose = vi.fn();
+    const onDidCreateDispose = vi.fn();
+    const onDidDeleteDispose = vi.fn();
+    const watcherDispose = vi.fn();
+
+    vi.spyOn(vscode.workspace, 'createFileSystemWatcher').mockReturnValue({
+      onDidChange: vi.fn(() => ({ dispose: onDidChangeDispose })),
+      onDidCreate: vi.fn(() => ({ dispose: onDidCreateDispose })),
+      onDidDelete: vi.fn(() => ({ dispose: onDidDeleteDispose })),
+      dispose: watcherDispose,
+    } as any);
+
+    (
+      vscode.workspace as unknown as { workspaceFolders?: Array<{ uri: vscode.Uri; name: string; index: number }> }
+    ).workspaceFolders = [{ uri: vscode.Uri.file('/workspace') as unknown as vscode.Uri, name: 'workspace', index: 0 }];
+
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
+    await provider.showBean(bean);
+    provider.clear();
+
+    expect(onDidChangeDispose).toHaveBeenCalledTimes(1);
+    expect(onDidCreateDispose).toHaveBeenCalledTimes(1);
+    expect(onDidDeleteDispose).toHaveBeenCalledTimes(1);
+    expect(watcherDispose).toHaveBeenCalledTimes(1);
+  });
+
   it('updates bean via message handler and refreshes tree', async () => {
     const bean = makeBean({ id: 'beans-vscode-1', code: '1', title: 'Before' });
     const updated = makeBean({ id: 'beans-vscode-1', code: '1', title: 'After', status: 'in-progress', type: 'bug' });

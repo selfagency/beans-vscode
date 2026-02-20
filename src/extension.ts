@@ -228,14 +228,6 @@ export async function activate(context: vscode.ExtensionContext) {
         await detailsProvider.goBackFromHistory();
       })
     );
-    context.subscriptions.push(
-      vscode.commands.registerCommand('beans.details.refresh', async () => {
-        if (!detailsProvider) {
-          return;
-        }
-        await detailsProvider.refreshCurrentBean();
-      })
-    );
     // Register beans.init command (special case - needed before initialization)
     context.subscriptions.push(
       vscode.commands.registerCommand('beans.init', async () => {
