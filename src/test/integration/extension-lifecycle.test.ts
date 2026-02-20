@@ -485,11 +485,51 @@ describe('Extension lifecycle coverage', () => {
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith('workbench.action.openSettings', 'beans.cliPath');
   });
 
+  it('falls back to default install option ordering on unsupported platform', async () => {
+    const originalPlatform = process.platform;
+    Object.defineProperty(process, 'platform', { value: 'aix' });
+
+    try {
+      state.cliAvailable = false;
+      state.showErrorQueue.push(undefined);
+
+      await activate(makeContext());
+
+      const showErrorCalls = (vscode.window.showErrorMessage as ReturnType<typeof vi.fn>).mock.calls;
+      const actions = showErrorCalls[0].slice(1).filter(arg => typeof arg === 'string') as string[];
+      expect(actions[0]).toBe('Install macOS (brew install hmans/beans/beans)');
+    } finally {
+      Object.defineProperty(process, 'platform', { value: originalPlatform });
+    }
+  });
+
   it('handles BeansCLINotFoundError in activation catch and opens install URL', async () => {
     state.checkCliThrows = new BeansCLINotFoundError('missing');
-    state.showErrorQueue.push('Install Instructions');
+    state.showErrorQueue.push('Install Linux (go install github.com/hmans/beans@latest)');
 
     await activate(makeContext());
+
+    expect(vscode.env.openExternal).toHaveBeenCalled();
+  });
+
+  it('offers install flow when initialize prompt hits BeansCLINotFoundError', async () => {
+    state.initialized = false;
+    state.initThrows = new BeansCLINotFoundError('missing');
+    state.showInfoQueue.push('Initialize');
+    state.showErrorQueue.push('Install Linux (go install github.com/hmans/beans@latest)');
+
+    await activate(makeContext());
+
+    expect(vscode.env.openExternal).toHaveBeenCalled();
+  });
+
+  it('offers install flow when beans.init command hits BeansCLINotFoundError', async () => {
+    await activate(makeContext());
+
+    state.initThrows = new BeansCLINotFoundError('missing');
+    state.showErrorQueue.push('Install Linux (go install github.com/hmans/beans@latest)');
+
+    await state.registeredCommands.get('beans.init')?.();
 
     expect(vscode.env.openExternal).toHaveBeenCalled();
   });

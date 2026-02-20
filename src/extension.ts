@@ -56,6 +56,42 @@ let firstMalformedBeanFilePath: string | undefined;
 const ARTIFACT_GENERATION_PREF_KEY = 'beans.ai.artifactsGenerationPreference';
 const AI_ENABLEMENT_PREF_KEY = 'beans.ai.enablementPreference';
 
+interface CliInstallOption {
+  label: string;
+  url: string;
+  platform: 'darwin' | 'linux' | 'win32';
+}
+
+const CLI_INSTALL_OPTIONS: CliInstallOption[] = [
+  {
+    platform: 'darwin',
+    label: 'Install macOS (brew install hmans/beans/beans)',
+    url: 'https://github.com/hmans/beans#installation',
+  },
+  {
+    platform: 'linux',
+    label: 'Install Linux (go install github.com/hmans/beans@latest)',
+    url: 'https://github.com/hmans/beans#installation',
+  },
+  {
+    platform: 'win32',
+    label: 'Install Windows (go install github.com/hmans/beans@latest)',
+    url: 'https://github.com/hmans/beans#installation',
+  },
+];
+
+function getOrderedCliInstallOptions(platform: NodeJS.Platform = process.platform): CliInstallOption[] {
+  const preferredPlatform = platform === 'darwin' || platform === 'linux' || platform === 'win32' ? platform : null;
+  if (!preferredPlatform) {
+    return CLI_INSTALL_OPTIONS;
+  }
+
+  return [
+    ...CLI_INSTALL_OPTIONS.filter(option => option.platform === preferredPlatform),
+    ...CLI_INSTALL_OPTIONS.filter(option => option.platform !== preferredPlatform),
+  ];
+}
+
 /**
  * Extension activation entry point
  */
@@ -209,6 +245,11 @@ export async function activate(context: vscode.ExtensionContext) {
           vscode.window.showInformationMessage('Beans initialized successfully!');
           logger.info('Beans initialized via command');
         } catch (error) {
+          if (error instanceof BeansCLINotFoundError) {
+            await promptForCLIInstallation();
+            return;
+          }
+
           const message = `Failed to initialize Beans: ${(error as Error).message}`;
           logger.error(message, error as Error);
           vscode.window.showErrorMessage(message);
@@ -330,15 +371,19 @@ export async function activate(context: vscode.ExtensionContext) {
  * Prompt user to install Beans CLI
  */
 async function promptForCLIInstallation(): Promise<void> {
+  const installOptions = getOrderedCliInstallOptions();
+  const installOptionLabels = installOptions.map(option => option.label);
+
   const result = await vscode.window.showErrorMessage(
     'Beans CLI is not installed or not found in PATH. Please install it to use this extension.',
-    'Install Instructions',
+    ...installOptionLabels,
     'Configure Path',
     'Dismiss'
   );
 
-  if (result === 'Install Instructions') {
-    vscode.env.openExternal(vscode.Uri.parse('https://github.com/hmans/beans#installation'));
+  const selectedInstallOption = installOptions.find(option => option.label === result);
+  if (selectedInstallOption) {
+    vscode.env.openExternal(vscode.Uri.parse(selectedInstallOption.url));
   } else if (result === 'Configure Path') {
     await vscode.commands.executeCommand('workbench.action.openSettings', 'beans.cliPath');
   }
@@ -384,6 +429,11 @@ async function promptForInitialization(
       vscode.window.showInformationMessage('Beans initialized successfully!');
       logger.info('Beans initialized in workspace');
     } catch (error) {
+      if (error instanceof BeansCLINotFoundError) {
+        await promptForCLIInstallation();
+        return;
+      }
+
       if (error instanceof Error) {
         const message = `Failed to initialize Beans: ${error.message}`;
         logger.error(message, error);
