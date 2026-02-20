@@ -560,7 +560,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       font-size: 11px;
     }
     .content {
-      padding: 0 16px 8px;
+      padding: 8px 16px 12px;
     }
     .section {
       margin-bottom: 12px;
@@ -609,7 +609,8 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       display: flex;
       align-items: flex-start;
       gap: 8px;
-      padding: 2px 0;
+      padding: 6px 8px;
+      border-radius: 4px;
     }
     .body-content .checklist-checkbox {
       margin-top: 1px;
