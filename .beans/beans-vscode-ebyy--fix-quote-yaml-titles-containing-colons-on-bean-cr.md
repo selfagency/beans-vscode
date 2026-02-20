@@ -3,6 +3,7 @@
 title: 'Fix: quote YAML titles containing colons on bean creation'
 status: in-progress
 type: task
+branch: fix/ebyy-quote-yaml-titles-containing-colons
 created_at: 2026-02-20T14:37:45Z
 updated_at: 2026-02-20T14:37:45Z
 ---
@@ -19,8 +20,8 @@ After the CLI writes the bean file (in `createBeanWithConfig` and `batchCreateBe
 
 ## Todo
 
-- [ ] Add `repairBeanFrontmatter` helper that reads the file and re-writes any unquoted title containing special chars
-- [ ] Call it from `createBeanWithConfig` after normalizeBean
-- [ ] Call it from `batchCreateBeans` after normalizeBean for each result
-- [ ] Write failing tests
-- [ ] Verify compile passes
+- [x] Add `repairBeanFrontmatter` helper that reads the file and re-writes any unquoted title containing special chars
+- [x] Call it from `createBeanWithConfig` after normalizeBean
+- [x] Call it from `batchCreateBeans` after normalizeBean for each result
+- [x] Write failing tests
+- [x] Verify compile passes
