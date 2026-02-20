@@ -1,6 +1,6 @@
 ---
 # beans-vscode-p7rq
-title: Command palette: Reinitialize Copilot instructions & skills
+title: 'Command palette: Reinitialize Copilot instructions & skills'
 status: todo
 type: task
 priority: normal

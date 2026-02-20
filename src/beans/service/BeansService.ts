@@ -698,6 +698,93 @@ export class BeansService {
   }
 
   /**
+   * Returns true when a YAML bare scalar value requires quoting.
+   *
+   * YAML requires quoting when a plain scalar starts with or contains characters
+   * that have special meaning: `:`, `#`, `[`, `]`, `{`, `}`, `&`, `*`, `!`,
+   * `|`, `>`, `'`, `"`, `%`, `@`, `` ` ``.  A colon followed by a space (`: `)
+   * anywhere in the string is the most common real-world trigger.
+   */
+  private static titleNeedsYamlQuoting(title: string): boolean {
+    // Colon followed by space is the canonical YAML key-value separator
+    if (/: /.test(title)) {
+      return true;
+    }
+    // Colon at end of string also triggers the parser
+    if (title.endsWith(':')) {
+      return true;
+    }
+    // Other characters that cause YAML parse errors in bare scalars
+    if (/^[{[\]|>&*!%@`'"]/.test(title)) {
+      return true;
+    }
+    // '#' preceded by a space is a YAML comment
+    if (/ #/.test(title)) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * After the CLI writes a bean file, check whether the `title:` frontmatter
+   * line needs YAML quoting and, if so, rewrite it in place.
+   *
+   * The beans CLI does not quote title values, so any title that contains a
+   * colon (e.g. "Command palette: Reinitialize") results in a malformed
+   * frontmatter block that breaks every subsequent `beans graphql` call.
+   *
+   * This method is deliberately lenient: if the file cannot be read or written
+   * (e.g. the CLI did not return a path) it logs a warning and returns without
+   * throwing, so that the caller still returns the created bean to the user.
+   */
+  private async repairBeanFrontmatter(beanPath: string): Promise<void> {
+    let absPath: string;
+    try {
+      absPath = this.resolveBeanFilePath(beanPath);
+    } catch {
+      return;
+    }
+
+    let content: string;
+    try {
+      content = await readFile(absPath, 'utf8');
+    } catch (error) {
+      this.logger.warn(`repairBeanFrontmatter: could not read ${absPath}: ${(error as Error).message}`);
+      return;
+    }
+
+    // Match the `title:` line inside the YAML frontmatter block.
+    // The frontmatter is bounded by leading `---` and a closing `---` or `...`.
+    const titleLineRe = /^(title:\s*)(.+)$/m;
+    const match = titleLineRe.exec(content);
+    if (!match) {
+      return;
+    }
+
+    const rawValue = match[2].trim();
+
+    // Already quoted — nothing to do.
+    if ((rawValue.startsWith('"') && rawValue.endsWith('"')) || (rawValue.startsWith("'") && rawValue.endsWith("'"))) {
+      return;
+    }
+
+    if (!BeansService.titleNeedsYamlQuoting(rawValue)) {
+      return;
+    }
+
+    // Escape any double quotes inside the value, then wrap in double quotes.
+    const escaped = rawValue.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const repairedContent = content.replace(titleLineRe, `${match[1]}"${escaped}"`);
+
+    try {
+      await writeFile(absPath, repairedContent, 'utf8');
+      this.logger.debug(`repairBeanFrontmatter: quoted title in ${absPath}`);
+    } catch (error) {
+      this.logger.warn(`repairBeanFrontmatter: could not write ${absPath}: ${(error as Error).message}`);
+    }
+  }
+
+  /**
    * Resolve a bean path (relative workspace path preferred) to absolute path.
    */
   private resolveBeanFilePath(beanPath: string): string {
@@ -1431,7 +1518,16 @@ export class BeansService {
       throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
     }
 
-    return this.normalizeBean(resp.createBean);
+    const bean = this.normalizeBean(resp.createBean);
+
+    // The beans CLI does not quote YAML frontmatter values, so a title containing
+    // a colon (e.g. "Command palette: Foo") will produce invalid frontmatter that
+    // breaks every subsequent `beans graphql` call. Repair the file proactively.
+    if (bean.path) {
+      await this.repairBeanFrontmatter(bean.path);
+    }
+
+    return bean;
   }
 
   /**
@@ -1618,7 +1714,9 @@ export class BeansService {
     try {
       const { data: resp, errors } = await this.executeGraphQL<Record<string, RawBeanFromCLI>>(mutation, variables);
 
-      return batchData.map((data, i) => {
+      const results: Array<
+        { success: true; bean: Bean } | { success: false; error: Error; data: (typeof batchData)[0] }
+      > = batchData.map((data, i) => {
         const alias = aliases[i];
         const error = errors?.find(e => e.path?.includes(alias));
 
@@ -1633,6 +1731,17 @@ export class BeansService {
 
         return { success: true, bean: this.normalizeBean(beanData) };
       });
+
+      // Repair frontmatter for all successfully created beans. The beans CLI does
+      // not quote YAML title values, so titles containing colons produce invalid
+      // frontmatter that breaks subsequent `beans graphql` calls.
+      await Promise.all(
+        results.map(result =>
+          result.success && result.bean.path ? this.repairBeanFrontmatter(result.bean.path) : Promise.resolve()
+        )
+      );
+
+      return results;
     } catch (error) {
       // Entire batch failed
       return batchData.map(data => ({ success: false, error: error as Error, data }));
