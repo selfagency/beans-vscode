@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-02-20
+
+## What's Changed
+* docs/update documentation for v1.3 by @selfagency in https://github.com/selfagency/beans-vscode/pull/64
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.3.0...v1.3.1
+
+_Source: changes from v1.3.0 to v1.3.1._
+
+
 ## [1.3.0] - 2026-02-20
 
 ## What's Changed
