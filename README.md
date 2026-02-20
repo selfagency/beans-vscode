@@ -28,6 +28,7 @@
 - **🧪 Extensively Tested**: Comprehensive automated unit and integration test suite
 - **♿ Accessible**: Built following WCAG 2.2 Level AA guidelines
 - **🤫 Privacy Respecting**: No telemetry or data collection of any kind
+- **🐶 Completely Dogfooded**: The extension was used by the developer to project manage developing the extension
 
 ## About Beans
 
@@ -77,7 +78,7 @@ code --install-extension selfagency.beans-vscode
 #### Option 2: Terminal
 
 ```bash
-cd \<project-folder\>
+cd <project-folder>
 beans init
 ```
 
