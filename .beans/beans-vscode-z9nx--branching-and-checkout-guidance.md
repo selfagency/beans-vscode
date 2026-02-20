@@ -1,3 +1,13 @@
+---
+# beans-vscode-z9nx
+title: ""
+status: todo
+type: task
+priority: "3"
+created_at: 2026-02-19T22:32:02Z
+updated_at: 2026-02-19T23:43:24Z
+---
+
 ```markdown
 ---
 # beans-vscode-z9nx

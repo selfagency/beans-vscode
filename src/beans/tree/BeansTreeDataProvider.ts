@@ -115,6 +115,9 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
     }
   }
 
+  private static lastFetchErrorMessage = '';
+  private static lastFetchErrorTime = 0;
+
   /**
    * Fetch beans from service
    */
@@ -141,8 +144,14 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
 
       this.beans = await this.service.listBeans(options);
 
-      // Allow subclasses to augment the bean set (e.g., add children from other statuses)
-      this.beans = await this.augmentBeans(this.beans);
+      // Allow subclasses to augment the bean set (e.g., add children from other statuses).
+      // If augmentation fails, continue with the beans we already have rather than
+      // discarding everything — a flat view is better than an empty view.
+      try {
+        this.beans = await this.augmentBeans(this.beans);
+      } catch (augmentError) {
+        this.logger.warn('Bean augmentation failed, showing un-augmented list', augmentError as Error);
+      }
 
       // Apply subclass post-fetch filter (e.g., archived beans path filtering)
       this.beans = this.postFetchFilter(this.beans);
@@ -155,7 +164,20 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
       this.logger.debug(`Fetched ${this.beans.length} beans`);
     } catch (error) {
       this.logger.error('Failed to fetch beans', error as Error);
-      vscode.window.showErrorMessage(`Failed to fetch beans: ${(error as Error).message}`);
+
+      // Deduplicate error toasts: multiple providers may fail on the same
+      // underlying CLI issue within the same refresh cycle.
+      const msg = (error as Error).message;
+      const now = Date.now();
+      if (
+        msg !== BeansTreeDataProvider.lastFetchErrorMessage ||
+        now - BeansTreeDataProvider.lastFetchErrorTime > 5000
+      ) {
+        BeansTreeDataProvider.lastFetchErrorMessage = msg;
+        BeansTreeDataProvider.lastFetchErrorTime = now;
+        vscode.window.showErrorMessage(`Failed to fetch beans: ${msg}`);
+      }
+
       this.beans = [];
     }
   }

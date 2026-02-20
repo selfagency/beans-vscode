@@ -482,6 +482,9 @@ describe('BeansTreeDataProvider', () => {
   describe('Error Handling', () => {
     beforeEach(() => {
       provider = new BeansTreeDataProvider(service);
+      // Reset static deduplication state between tests
+      (BeansTreeDataProvider as unknown as { lastFetchErrorMessage: string }).lastFetchErrorMessage = '';
+      (BeansTreeDataProvider as unknown as { lastFetchErrorTime: number }).lastFetchErrorTime = 0;
     });
 
     it('should handle fetch errors gracefully', async () => {
@@ -495,6 +498,59 @@ describe('BeansTreeDataProvider', () => {
 
       expect(children).toEqual([]);
       expect(showErrorSpy).toHaveBeenCalledWith('Failed to fetch beans: Network error');
+    });
+
+    it('should deduplicate identical error toasts within the same refresh cycle', async () => {
+      const showErrorSpy = vi.fn();
+      (vscode.window.showErrorMessage as ReturnType<typeof vi.fn>) = showErrorSpy;
+      (service.listBeans as ReturnType<typeof vi.fn>) = vi.fn(async () => {
+        throw new Error('CLI not found');
+      });
+
+      const provider1 = new BeansTreeDataProvider(service, ['todo']);
+      const provider2 = new BeansTreeDataProvider(service, ['draft']);
+
+      await provider1.getChildren();
+      await provider2.getChildren();
+
+      // Same error message for both — only one toast shown
+      expect(showErrorSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should show error toast for distinct error messages', async () => {
+      const showErrorSpy = vi.fn();
+      (vscode.window.showErrorMessage as ReturnType<typeof vi.fn>) = showErrorSpy;
+
+      let callCount = 0;
+      (service.listBeans as ReturnType<typeof vi.fn>) = vi.fn(async () => {
+        callCount++;
+        throw new Error(callCount === 1 ? 'Error A' : 'Error B');
+      });
+
+      const provider1 = new BeansTreeDataProvider(service, ['todo']);
+      const provider2 = new BeansTreeDataProvider(service, ['draft']);
+
+      await provider1.getChildren();
+      await provider2.getChildren();
+
+      expect(showErrorSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should fall back to un-augmented beans when augmentBeans fails', async () => {
+      class FailingAugmentProvider extends BeansTreeDataProvider {
+        protected override async augmentBeans(_beans: Bean[]): Promise<Bean[]> {
+          throw new Error('Augmentation network failure');
+        }
+      }
+
+      const failProvider = new FailingAugmentProvider(service, ['todo']);
+      mockBeans = [createBean('bean-1', 'Still visible', 'todo')];
+
+      const children = await failProvider.getChildren();
+
+      // Bean is still returned despite augmentation failure
+      expect(children).toHaveLength(1);
+      expect(children[0].bean.id).toBe('bean-1');
     });
 
     it('should return empty array when service returns no beans', async () => {

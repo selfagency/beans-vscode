@@ -1,76 +1,43 @@
-# Session Handoff — 2026-02-19
+1. Find/create tracking bean
 
-## Repository and branch context
+Search for an existing bean covering this simplification work
+If none exists, create one and set it in-progress
+Create a branch feature/<id>-simplify-quarantine-orphan if needed (already on feature/92i0-priority-icons which relates to something else) 2. Remove placeholder methods from BeansService.ts (lines 911–1051)
 
-- Workspace: `/Users/daniel/Developer/beans-vscode`
-- User-referenced commit: `9f1bed94a5206305258527b20e3ae5339cfb2851`
-- Verified active branch during work: `feature/92i0-priority-icons`
-- Additional commit created and pushed in this session: `72b76f2`
+Delete inferPlaceholderType (~911–927)
+Delete buildRecoveredBeanBody (~928–947)
+Delete createPlaceholdersForQuarantinedBeans (~950–1051) — the entire method including its fallback orphan-clear block 3. Add orphanChildrenOfQuarantinedBeans to BeansService.ts
 
-> Note: Session attachment metadata showed `main`, but terminal verification showed work occurring on `feature/92i0-priority-icons`.
+New private method: for each quarantined ID, find children where child.parent === quarantinedId, call UPDATE_BEAN_MUTATION with { id: child.id, input: { parent: '' } }, replace in normalizedBeans
+Notify once with a warning listing which children were orphaned (code list) and which file was quarantined (link)
+This should be strictly simpler than the placeholder method (~30 lines vs ~100) 4. Update the listBeans call site (lines 544–549)
 
-## What was completed
+Replace: await this.createPlaceholdersForQuarantinedBeans(normalizedBeans, quarantinedPaths)
+With: await this.orphanChildrenOfQuarantinedBeans(normalizedBeans, quarantinedPaths)
+Remove the if (quarantinedPaths.size > 0) guard (the new method can handle empty internally, or keep guard — consistent with existing style) 5. Update deleteBean in BeansCommands.ts (line 1173)
 
-1. Verified pending local edits and pushed them.
-2. Updated log mirroring to use VS Code extension log directory (`context.logUri`) instead of workspace `.vscode/logs`.
-3. Added malformed-bean list-level recovery path for cases where CLI fails before returning bean JSON.
-4. Confirmed tree provider configuration remains hierarchical for Active and Draft panes in code.
+After resolving the bean and checking scrapped/draft status, call service.listBeans() and filter for bean.parent === bean.id to find children
+If children exist, show a modal with three buttons: Delete All / Delete Parent Only / Cancel
+Delete All: delete each child first, then delete parent
+Delete Parent Only: orphan children (updateBean(child.id, { clearParent: true }) for each), then delete parent
+Cancel: abort
+If no children, existing behaviour (single confirm dialog) is fine as-is — keep it unchanged 6. Update BeansService.test.ts (around line 566)
 
-## Key code changes
+Remove the it('creates placeholder parent for children of a quarantined bean', ...) test (~566–649)
+Add replacement test: it('orphans children of a quarantined bean by clearing their parent field', ...)
+Mock: CLI returns [childBean] where childBean.parent = 'bad-parent-id'; normalizeBean on bad-parent bean throws; quarantine succeeds
+Assert: UPDATE_BEAN_MUTATION called with { id: childBean.id, input: { parent: '' } } (no CREATE_BEAN_MUTATION)
+Assert: returned beans contain child with parent cleared
+Assert: showWarningMessage called mentioning the child code and quarantined file
+Keep all other existing tests untouched (quarantine, repair, git history, etc.) 7. Investigate runtime tree hierarchy issue (open concern from last session)
 
-### MCP / output log path
+Check ActiveBeansProvider.augmentBeans and DraftBeansProvider.augmentBeans
+Confirm BeansTreeDataProvider.buildTree is receiving parent links — this is observational/diagnostic only; changes only if a concrete bug is found 8. Compile and run full test suite
 
-- `src/extension.ts`
-  - Mirror output path now uses:
-  - `path.join(context.logUri.fsPath, 'beans-output.log')`
+pnpm run compile
+pnpm run test
+Fix any type errors or broken test assertions introduced by the refactor 9. Commit changes and close/update bean
 
-- `src/beans/mcp/BeansMcpIntegration.ts`
-  - MCP env now sets:
-    - `BEANS_VSCODE_OUTPUT_LOG = path.join(this.context.logUri.fsPath, 'beans-output.log')`
-    - `BEANS_VSCODE_LOG_DIR = this.context.logUri.fsPath`
-
-- `src/beans/mcp/BeansMcpServer.ts`
-  - `readOutputLog` path validation now allows logs inside either:
-    - workspace root, or
-    - VS Code log directory (`BEANS_VSCODE_LOG_DIR`)
-
-### Malformed bean repair / quarantine
-
-- `src/beans/service/BeansService.ts`
-  - In `listBeans`, added one-time recovery retry path when CLI fails at list-level.
-  - Added `tryRecoverFromMalformedListError(error)`.
-  - Added `extractMalformedBeanPathFromCliError(error)`.
-  - Added `quarantineMalformedBeanAbsolutePath(sourcePath)`.
-  - Existing `orphanChildrenOfQuarantinedBeans` path uses direct GraphQL mutation to avoid recursive `listBeans` loop.
-
-## Tests updated
-
-- `src/test/beans/service/BeansService.test.ts`
-- `src/test/beans/mcp/BeansMcpServer.security.test.ts`
-- `src/test/integration/ai/mcp-integration.test.ts`
-- `src/test/integration/extension-lifecycle.test.ts`
-
-## Open runtime concerns reported by user
-
-User still reported in UI runtime:
-
-- 3 persistent error messages
-- no visible repair/quarantine attempt
-- after removing malformed bean, still 2 errors
-- Open and Draft panes appearing flat/non-hierarchical
-
-These need Extension Host runtime verification even though code changes and tests are present.
-
-## Recommended next-session steps
-
-1. Reproduce in Extension Host with a controlled malformed bean fixture.
-2. Verify output from both:
-   - Beans output channel
-   - mirrored log file under `context.logUri`
-3. Instrument/check provider augment paths:
-   - `ActiveBeansProvider.augmentBeans`
-   - `DraftBeansProvider.augmentBeans`
-4. Confirm `BeansTreeDataProvider.buildTree` is receiving expected parent links and not entering flat-list mode for active/draft.
-5. Verify malformed file rename (`.md -> .fixme`) on disk for both:
-   - per-bean normalization failure path
-   - list-level CLI-abort recovery path
+Stage and commit with message refactor(service): replace placeholder creation with orphan-children on quarantine
+Add any secondary commit for the deleteBean children check
+Update bean body with Summary of Changes, set status completed
