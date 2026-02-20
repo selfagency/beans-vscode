@@ -1,11 +1,11 @@
 ---
 # beans-vscode-ebyy
 title: 'Fix: quote YAML titles containing colons on bean creation'
-status: in-progress
+status: completed
 type: task
-branch: fix/ebyy-quote-yaml-titles-containing-colons
+priority: normal
 created_at: 2026-02-20T14:37:45Z
-updated_at: 2026-02-20T14:37:45Z
+updated_at: 2026-02-20T14:52:03Z
 ---
 
 ## Problem

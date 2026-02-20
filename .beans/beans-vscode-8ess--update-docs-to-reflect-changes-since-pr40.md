@@ -1,11 +1,11 @@
 ---
 # beans-vscode-8ess
 title: 'update docs to reflect changes since pr #40'
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-02-20T06:38:54Z
-updated_at: 2026-02-20T07:05:23Z
+updated_at: 2026-02-20T14:52:10Z
 ---
 
 Create the work branch (before edits)
