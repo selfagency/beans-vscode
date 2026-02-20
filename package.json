@@ -386,6 +386,11 @@
           "minimum": 1024,
           "maximum": 65535,
           "markdownDescription": "Port value propagated to the Beans MCP server process for host/tooling compatibility. Current transport is stdio; this setting is reserved for integrations that also read port metadata."
+        },
+        "beans.mcp.showStartupNotification": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a startup notification when the Beans MCP server starts, including its configured port and quick actions."
         }
       }
     },
