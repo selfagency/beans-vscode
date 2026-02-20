@@ -46,6 +46,6 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/.vitepress/dist
-          publish_branch: gh-pages
+          publish_branch: main
           allow_empty_commit: true
-          cname: beans.selfagency.dev
+          cname: beans.self.agency
