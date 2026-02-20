@@ -262,6 +262,7 @@ export class BeansCommands {
 
     // Configuration
     this.registerCommand('beans.openConfig', this.openConfig.bind(this));
+    this.registerCommand('beans.openExtensionSettings', this.openExtensionSettings.bind(this));
 
     // Documentation
     this.registerCommand('beans.openUserGuide', this.openUserGuide.bind(this));
@@ -1523,6 +1524,19 @@ export class BeansCommands {
       await this.configManager.open();
     } catch (error) {
       const message = `Failed to open config: ${(error as Error).message}`;
+      logger.error(message, error as Error);
+      vscode.window.showErrorMessage(message);
+    }
+  }
+
+  /**
+   * Open VS Code settings filtered to this extension.
+   */
+  private async openExtensionSettings(): Promise<void> {
+    try {
+      await vscode.commands.executeCommand('workbench.action.openSettings', '@ext:selfagency.beans-vscode');
+    } catch (error) {
+      const message = `Failed to open extension settings: ${(error as Error).message}`;
       logger.error(message, error as Error);
       vscode.window.showErrorMessage(message);
     }

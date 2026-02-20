@@ -113,6 +113,12 @@
         "category": "Beans"
       },
       {
+        "command": "beans.openExtensionSettings",
+        "title": "Open Extension Settings",
+        "category": "Beans",
+        "icon": "$(gear)"
+      },
+      {
         "command": "beans.openUserGuide",
         "title": "Open User Guide",
         "category": "Beans",
@@ -443,6 +449,11 @@
           "command": "beans.showOutput",
           "when": "view == beans.help && beans.initialized",
           "group": "navigation@1"
+        },
+        {
+          "command": "beans.openExtensionSettings",
+          "when": "view == beans.help && beans.initialized",
+          "group": "navigation@2"
         },
         {
           "command": "beans.details.back",
