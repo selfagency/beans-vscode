@@ -75,18 +75,11 @@ export function registerBeansTreeViews(
     searchTreeView.title = formatTitle(baseTitles.search, searchProvider.getVisibleCount());
   };
 
-  const refreshCountTitles = async (): Promise<void> => {
+  const refreshCountTitles = (): void => {
     try {
-      await Promise.all([
-        draftProvider.getChildren(),
-        activeProvider.getChildren(),
-        completedProvider.getChildren(),
-        searchProvider.getChildren(),
-      ]);
+      applyCountTitles();
     } catch (error) {
       logger.warn('Failed to refresh bean counts for side panel headers', error as Error);
-    } finally {
-      applyCountTitles();
     }
   };
 
@@ -213,7 +206,10 @@ export function registerBeansTreeViews(
   context.subscriptions.push(activeTreeView, completedTreeView, draftTreeView, searchTreeView);
 
   applyCountTitles();
-  void refreshCountTitles();
+  if (activeTreeView.visible || completedTreeView.visible || draftTreeView.visible || searchTreeView.visible) {
+    // Only trigger the potentially expensive count refresh if any view is visible
+    void refreshCountTitles();
+  }
 
   logger.info('Tree views registered with drag-and-drop support and details view integration');
 

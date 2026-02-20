@@ -277,8 +277,24 @@ export async function activate(context: vscode.ExtensionContext) {
         }
 
         if (e.affectsConfiguration('beans.view.showCounts')) {
-          void vscode.commands.executeCommand('beans.refreshAll');
-          logger.info('Updated side panel headers after beans.view.showCounts change');
+          // Attempt to reapply header titles in-place without forcing a full provider refresh.
+          // Providers may expose a lightweight reapplyHeaderTitles() method to update titles
+          // using cached counts. Fall back to a no-op and allow headers to update on next refresh.
+          const tryReapply = (provider: any | undefined) => {
+            try {
+              provider?.reapplyHeaderTitles?.();
+            } catch (err) {
+              // ignore and continue
+            }
+          };
+
+          tryReapply(activeProvider);
+          tryReapply(completedProvider);
+          tryReapply(draftProvider);
+
+          // If providers do not implement the lightweight update, avoid triggering expensive
+          // data refresh here; the header formatting will update on the next tree refresh.
+          logger.info('beans.view.showCounts changed; header formatting will update on next tree refresh');
         }
       })
     );

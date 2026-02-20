@@ -7,6 +7,7 @@ import { activate, deactivate } from '../../extension';
 interface MockBeansTreeProvider {
   refresh: () => void;
   setFilter: (filter: unknown) => void;
+  getVisibleCount: () => number;
 }
 
 // TODO(beans-vscode-y4k2): Add lower-mock integration tests that exercise
@@ -22,6 +23,9 @@ const state = vi.hoisted(() => ({
   primeOutput: 'prime output',
   detailsShouldReject: false,
   showHeaderCounts: true,
+  throwOnSearchGetFilter: false,
+  throwOnSearchClearFilter: false,
+  setFilterCalls: [] as Array<{ viewId: string; filter: unknown }>,
   filters: new Map<string, any>(),
   filterListener: undefined as ((viewId: string) => void) | undefined,
   showInfoQueue: [] as Array<string | undefined>,
@@ -56,6 +60,10 @@ const configFns = vi.hoisted(() => ({
   buildBeansCopilotSkill: vi.fn((graphqlSchema: string) => `skill:${graphqlSchema}`),
   writeBeansCopilotSkill: vi.fn(async () => '/ws/.github/skills/beans/SKILL.md'),
   removeBeansCopilotSkill: vi.fn(async () => undefined),
+}));
+
+const searchFilterFns = vi.hoisted(() => ({
+  showSearchFilterUI: vi.fn(async (current: unknown) => current),
 }));
 
 const fsReaddirMock = vi.hoisted(() => vi.fn(async () => [] as any[]));
@@ -124,6 +132,10 @@ vi.mock('../../beans/search', () => ({
   },
 }));
 
+vi.mock('../../beans/search/SearchFilterUI', () => ({
+  showSearchFilterUI: searchFilterFns.showSearchFilterUI,
+}));
+
 vi.mock('../../beans/details', () => ({
   BeansDetailsViewProvider: class BeansDetailsViewProvider {
     static viewType = 'beans.details';
@@ -145,9 +157,19 @@ vi.mock('../../beans/tree', () => ({
   BeansDragAndDropController: class BeansDragAndDropController {},
   BeansFilterManager: class BeansFilterManager {
     getFilter(viewId: string): any {
+      if (viewId === 'beans.search' && state.throwOnSearchGetFilter) {
+        throw new Error('search getFilter failed');
+      }
       return state.filters.get(viewId);
     }
-    setFilter = vi.fn();
+    setFilter = vi.fn((viewId: string, filter: unknown) => {
+      state.setFilterCalls.push({ viewId, filter });
+    });
+    clearFilter = vi.fn((_viewId: string) => {
+      if (state.throwOnSearchClearFilter) {
+        throw new Error('search clear failed');
+      }
+    });
     showFilterUI = vi.fn(async (f: any) => f);
     onDidChangeFilter = (listener: (viewId: string) => void) => {
       state.filterListener = listener;
@@ -213,6 +235,9 @@ describe('Extension lifecycle coverage', () => {
     state.primeOutput = 'prime output';
     state.detailsShouldReject = false;
     state.showHeaderCounts = true;
+    state.throwOnSearchGetFilter = false;
+    state.throwOnSearchClearFilter = false;
+    state.setFilterCalls = [];
     state.filters = new Map();
     state.filterListener = undefined;
     state.showInfoQueue = [];
@@ -367,8 +392,53 @@ describe('Extension lifecycle coverage', () => {
     state.configChangeHandler?.({ affectsConfiguration: (key: string) => key === 'beans.ai.enabled' });
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith('setContext', 'beans.aiEnabled', true);
 
+    state.configChangeHandler?.({ affectsConfiguration: (key: string) => key === 'beans.view.showCounts' });
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('beans.refreshAll');
+    expect(logger.info).toHaveBeenCalledWith(
+      'beans.view.showCounts changed; header formatting will update on next tree refresh'
+    );
+
     deactivate();
     expect(logger.dispose).toHaveBeenCalled();
+  });
+
+  it('logs a warning when refreshing side-panel count titles throws', async () => {
+    await activate(makeContext());
+
+    state.providerInstances.active!.getVisibleCount = vi.fn(() => {
+      throw new Error('count failed');
+    });
+
+    state.filterListener?.('beans.active');
+
+    expect(logger.warn).toHaveBeenCalledWith('Failed to refresh bean counts for side panel headers', expect.any(Error));
+  });
+
+  it('logs errors when search filter commands fail', async () => {
+    await activate(makeContext());
+
+    state.throwOnSearchGetFilter = true;
+    await state.registeredCommands.get('beans.searchView.filter')?.();
+
+    state.throwOnSearchGetFilter = false;
+    state.throwOnSearchClearFilter = true;
+    await state.registeredCommands.get('beans.searchView.clear')?.();
+
+    expect(logger.error).toHaveBeenCalledWith('Failed to apply search filter', expect.any(Error));
+    expect(logger.error).toHaveBeenCalledWith('Failed to clear search filters', expect.any(Error));
+  });
+
+  it('applies search filter when filter UI returns a value', async () => {
+    await activate(makeContext());
+
+    searchFilterFns.showSearchFilterUI.mockResolvedValueOnce({ text: 'needle', statuses: ['todo'] });
+
+    await state.registeredCommands.get('beans.searchView.filter')?.();
+
+    expect(state.setFilterCalls).toContainEqual({
+      viewId: 'beans.search',
+      filter: { text: 'needle', statuses: ['todo'] },
+    });
   });
 
   it('shows and keeps side-panel header counts in sync with refresh and filters', async () => {
