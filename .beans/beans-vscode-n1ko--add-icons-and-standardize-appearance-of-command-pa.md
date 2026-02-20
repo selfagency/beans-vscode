@@ -1,10 +1,11 @@
 ---
 # beans-vscode-n1ko
-title: Add icons and standardize appearance of command pallette selects
-status: todo
+title: Add icons and standardize appearance and text of command pallette selects
+status: in-progress
 type: task
 priority: normal
+branch: feature/beans-vscode-n1ko-command-palette-selects
 created_at: 2026-02-20T04:42:21Z
-updated_at: 2026-02-20T04:42:31Z
+updated_at: 2026-02-20T05:29:48Z
 ---
 
