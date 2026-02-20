@@ -7,6 +7,7 @@ priority: normal
 created_at: 2026-02-18T05:17:09Z
 updated_at: 2026-02-20T06:20:59Z
 branch: feature/beans-vscode-v4tm-interactive-checklists-in-details-view
+pr: 62
 ---
 
 ## Goal
