@@ -23,6 +23,7 @@
 - **⚡ Keyboard-First**: Configurable shortcuts for all operations
 - **🧪 Extensively Tested**: Comprehensive automated unit and integration test suite
 - **♿ Accessible**: Built following WCAG 2.2 Level AA guidelines
+- **🤫 Privacy Respecting**: No telemetry or data collection of any kind
 
 ## About Beans
 
