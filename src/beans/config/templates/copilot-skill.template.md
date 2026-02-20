@@ -4,7 +4,7 @@ title: Beans Skill
 description: 'Use for Beans issue tracker workflows in this workspace: planning and decomposing epics, listing issues, finding top-priority or stale work, starting work on a bean, creating/updating issues via extension commands or MCP tools, managing status/type/priority/parent/blocking relationships, and suggesting issue-related branch, commit, and PR workflows. Triggers on: "create a bean", "what should I work on", "plan this epic", "decompose this feature", "find stale issues", "set priority", "start work", "what beans are in progress", "commit this work".'
 ---
 
-## Beans Skill
+# Beans Skill
 
 This skill drives all Beans issue tracker operations in this workspace using the VS Code extension and MCP server as the primary interfaces. The CLI is a last-resort fallback only.
 
