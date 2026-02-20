@@ -4,6 +4,7 @@ title: Offer Beans installation during initialization by OS
 status: completed
 type: feature
 priority: normal
+pr: 58
 created_at: 2026-02-19T19:12:44Z
 updated_at: 2026-02-20T05:13:47Z
 ---
