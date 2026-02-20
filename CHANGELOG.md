@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-02-20
+
+## What's Changed
+* Feature/beans-vscode-jy1e-malformed-warning-icon by @selfagency in https://github.com/selfagency/beans-vscode/pull/49
+* docs(readme): normalize badge labels — Version capitalization, CI→Tests, Remote Compatibility→Remote Tests (an5a) by @selfagency in https://github.com/selfagency/beans-vscode/pull/50
+* fix: priority icons, quarantine orphaning, tree resilience by @selfagency in https://github.com/selfagency/beans-vscode/pull/51
+* docs(z9nx): add branch start/resume naming guidance by @selfagency in https://github.com/selfagency/beans-vscode/pull/53
+* fix: remove template header explanation comments and use frontmatter by @selfagency in https://github.com/selfagency/beans-vscode/pull/54
+* feat: add diagnostics debug mode for CLI and GraphQL logging by @selfagency in https://github.com/selfagency/beans-vscode/pull/55
+* feat(mcp): notify when Beans MCP server starts (disable setting) by @selfagency in https://github.com/selfagency/beans-vscode/pull/56
+* feat: show toggleable side-panel header counts by @selfagency in https://github.com/selfagency/beans-vscode/pull/57
+* feat(init): offer OS-specific Beans CLI install flow by @selfagency in https://github.com/selfagency/beans-vscode/pull/58
+* chore(beans): start beans-vscode-n1ko for command palette select standardization by @selfagency in https://github.com/selfagency/beans-vscode/pull/59
+* feat(help): add settings gear title action (beans-vscode-ia9x) by @selfagency in https://github.com/selfagency/beans-vscode/pull/60
+* feat(tree): restore scrapped pane ordering (beans-vscode-saan) by @selfagency in https://github.com/selfagency/beans-vscode/pull/61
+* feat: interactive checklists in details view by @selfagency in https://github.com/selfagency/beans-vscode/pull/62
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.2.1...v1.3.0
+
+_Source: changes from v1.2.1 to v1.3.0._
+
+
 ## [1.2.1] - 2026-02-19
 
 ## What's Changed
