@@ -223,6 +223,30 @@ describe('BeansOutput', () => {
       );
       expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(expect.stringContaining('ListBeans'));
     });
+
+    it('falls back to string conversion when diagnostics payload is not JSON-serializable', () => {
+      const config = vscode.workspace.getConfiguration('beans');
+      (config.get as any).mockImplementation((key: string, defaultValue?: any) => {
+        if (key === 'logging.level') {
+          return 'debug';
+        }
+        if (key === 'logging.diagnostics.enabled') {
+          return true;
+        }
+        return defaultValue;
+      });
+      logger.refreshConfig();
+
+      const circularPayload: { self?: unknown } = {};
+      circularPayload.self = circularPayload;
+
+      logger.diagnostics('Circular payload', circularPayload);
+
+      expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('[DIAGNOSTICS] Circular payload')
+      );
+      expect(mockOutputChannel.appendLine).toHaveBeenCalledWith('[object Object]');
+    });
   });
 
   describe('timestamp formatting', () => {

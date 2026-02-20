@@ -224,6 +224,41 @@ describe('BeansService', () => {
       );
     });
 
+    it('logs GraphQL stderr diagnostics when CLI writes to stderr', async () => {
+      const config = vscode.workspace.getConfiguration('beans');
+      (config.get as ReturnType<typeof vi.fn>).mockImplementation((key: string, defaultValue?: unknown) => {
+        if (key === 'cliPath') {
+          return 'beans';
+        }
+        if (key === 'workspaceRoot') {
+          return '';
+        }
+        if (key === 'logging.level') {
+          return 'debug';
+        }
+        if (key === 'logging.diagnostics.enabled') {
+          return true;
+        }
+        return defaultValue;
+      });
+      BeansOutput.getInstance().refreshConfig();
+
+      const outputChannel = vscode.window.createOutputChannel('Beans', { log: true });
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(null, {
+          stdout: JSON.stringify({ beans: mockBeanData }),
+          stderr: 'graphql warning: test stderr output',
+        });
+      });
+
+      await service.listBeans({ status: ['todo'] });
+
+      expect(outputChannel.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('[DIAGNOSTICS] GraphQL CLI stderr')
+      );
+    });
+
     it('applies status filters', async () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('graphql');

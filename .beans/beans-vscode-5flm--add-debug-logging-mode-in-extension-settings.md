@@ -18,3 +18,4 @@ Add an extension setting to enable debug logging that includes fuller diagnostic
 - [x] Wire debug mode into logger/service execution paths for GraphQL and CLI diagnostics
 - [x] Add/update unit tests for config + logging behavior
 - [x] Compile and run focused tests, then full test suite checkpoints
+- [x] Address patch-coverage review feedback for diagnostics-mode changes
