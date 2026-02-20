@@ -1,7 +1,7 @@
 ---
 # beans-vscode-cpro
 title: Add GitHub issue syncing
-status: todo
+status: draft
 type: feature
 priority: high
 created_at: 2026-02-19T19:12:38Z

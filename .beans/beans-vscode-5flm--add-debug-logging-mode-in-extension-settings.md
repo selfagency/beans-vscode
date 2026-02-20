@@ -1,7 +1,7 @@
 ---
 # beans-vscode-5flm
 title: Add debug logging mode in extension settings
-status: in-progress
+status: completed
 type: feature
 priority: normal
 branch: feature/beans-vscode-5flm-add-debug-logging-mode
