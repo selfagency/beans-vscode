@@ -537,15 +537,27 @@ export class BeansService {
         }
       }
 
-      // Detect bean files on disk that the CLI silently dropped (e.g. corrupted
-      // frontmatter that causes the CLI to skip the file without an error).
-      await this.detectOrphanedBeanFiles(normalizedBeans, quarantinedPaths);
+      // Disk-level orphan detection and cache updates must only run on unfiltered
+      // (full) fetches. Filtered calls (e.g. by status from augmentBeans) only
+      // return a subset of beans, which would cause every bean not matching the
+      // filter to be misidentified as an orphaned file.
+      const isFiltered =
+        (options?.status && options.status.length > 0) ||
+        (options?.type && options.type.length > 0) ||
+        !!options?.search ||
+        !!options?.parent;
 
-      // Orphan children of every quarantined bean by clearing their parent field.
-      await this.orphanChildrenOfQuarantinedBeans(normalizedBeans, quarantinedPaths);
+      if (!isFiltered) {
+        // Detect bean files on disk that the CLI silently dropped (e.g. corrupted
+        // frontmatter that causes the CLI to skip the file without an error).
+        await this.detectOrphanedBeanFiles(normalizedBeans, quarantinedPaths);
 
-      // Update cache on successful fetch
-      this.updateCache(normalizedBeans);
+        // Orphan children of every quarantined bean by clearing their parent field.
+        await this.clearDanglingParentReferences(normalizedBeans);
+
+        // Update cache on successful fetch
+        this.updateCache(normalizedBeans);
+      }
       this.offlineMode = false;
 
       return normalizedBeans;
@@ -899,54 +911,46 @@ export class BeansService {
   }
 
   /**
-   * Clear the parent field on any beans whose parent was quarantined.
-   * Keeps orphaned children visible as root-level items without creating
-   * synthetic placeholder parents.
+   * For every bean in the list whose parent ID is not present in the list,
+   * clear the parent reference. A bean is only "orphaned" if it has a parent
+   * field set to an ID that does not exist anywhere in the current bean set
+   * (because the parent was deleted, quarantined, or otherwise removed).
    */
-  private async orphanChildrenOfQuarantinedBeans(
-    normalizedBeans: Bean[],
-    quarantinedPaths: Map<string, string | undefined>
-  ): Promise<void> {
-    if (quarantinedPaths.size === 0) {
-      return;
-    }
+  private async clearDanglingParentReferences(normalizedBeans: Bean[]): Promise<void> {
+    const knownIds = new Set(normalizedBeans.map(b => b.id));
 
-    for (const [quarantinedId, quarantinedPath] of quarantinedPaths) {
-      const children = normalizedBeans.filter(b => b.parent === quarantinedId);
-      if (children.length === 0) {
+    for (const bean of normalizedBeans) {
+      if (!bean.parent || knownIds.has(bean.parent)) {
         continue;
       }
 
-      const fileRef = quarantinedPath ? path.relative(this.workspaceRoot, quarantinedPath) : quarantinedId;
+      const missingParentId = bean.parent;
 
-      for (const child of children) {
-        try {
-          const { data: resp, errors } = await this.executeGraphQL<{ updateBean: RawBeanFromCLI }>(
-            graphql.UPDATE_BEAN_MUTATION,
-            { id: child.id, input: { parent: '' } }
-          );
+      try {
+        const { data: resp, errors } = await this.executeGraphQL<{ updateBean: RawBeanFromCLI }>(
+          graphql.UPDATE_BEAN_MUTATION,
+          { id: bean.id, input: { parent: '' } }
+        );
 
-          if (errors && errors.length > 0) {
-            throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
-          }
-
-          const updated = this.normalizeBean(resp.updateBean, { allowPartial: true });
-          const idx = normalizedBeans.indexOf(child);
-          if (idx !== -1) {
-            normalizedBeans[idx] = updated;
-          }
-        } catch (error) {
-          this.logger.warn(`Failed to clear parent for child bean ${child.id}: ${(error as Error).message}`);
+        if (errors && errors.length > 0) {
+          throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
         }
-      }
 
-      const codes = children.map(c => c.code || c.id).join(', ');
-      this.logger.info(
-        `Orphaned ${children.length} child bean${children.length === 1 ? '' : 's'} (${codes}) whose parent ${quarantinedId} was quarantined`
-      );
-      void vscode.window.showWarningMessage(
-        `Bean${children.length === 1 ? '' : 's'} ${codes} ${children.length === 1 ? 'has' : 'have'} been orphaned because their parent was malformed and quarantined (${fileRef}).`
-      );
+        const updated = this.normalizeBean(resp.updateBean, { allowPartial: true });
+        const idx = normalizedBeans.indexOf(bean);
+        if (idx !== -1) {
+          normalizedBeans[idx] = updated;
+        }
+
+        this.logger.info(
+          `Cleared dangling parent reference on ${bean.code || bean.id} (parent ${missingParentId} not found)`
+        );
+        void vscode.window.showWarningMessage(
+          `Bean ${bean.code || bean.id} has been orphaned because its parent (${missingParentId}) no longer exists.`
+        );
+      } catch (error) {
+        this.logger.warn(`Failed to clear dangling parent for bean ${bean.id}: ${(error as Error).message}`);
+      }
     }
   }
 

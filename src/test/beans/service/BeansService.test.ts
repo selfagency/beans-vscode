@@ -563,8 +563,9 @@ describe('BeansService', () => {
       );
     });
 
-    it('orphans children of a quarantined bean by clearing their parent field', async () => {
-      // Parent is malformed (no title, no path — title cannot be inferred), child is well-formed.
+    it('clears dangling parent references for beans whose parent is not in the list', async () => {
+      // Parent is malformed (no title, no path) so it ends up quarantined and absent from normalizedBeans.
+      // The child references its id; since the parent is not in the list, the parent field must be cleared.
       const malformedParent = {
         id: 'test-bad3',
         title: '',
