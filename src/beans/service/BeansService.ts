@@ -14,7 +14,7 @@
  */
 import { execFile } from 'child_process';
 import { createHash } from 'crypto';
-import { readFile, rename, writeFile } from 'fs/promises';
+import { mkdir, readdir, readFile, rename, writeFile } from 'fs/promises';
 import * as path from 'path';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
@@ -509,7 +509,7 @@ export class BeansService {
       // If an individual bean is malformed, try to repair it and continue
       // instead of failing the entire fetch.
       const normalizedBeans: Bean[] = [];
-      const quarantinedIds = new Set<string>();
+      const quarantinedPaths = new Map<string, string | undefined>();
       for (const bean of beans) {
         try {
           normalizedBeans.push(this.normalizeBean(bean, { allowPartial: true }));
@@ -532,15 +532,17 @@ export class BeansService {
           const quarantinedPath = await this.quarantineMalformedBeanFile(bean);
           this.notifyMalformedBeanQuarantined(bean, quarantinedPath);
           if (bean.id) {
-            quarantinedIds.add(bean.id);
+            quarantinedPaths.set(bean.id, quarantinedPath);
           }
         }
       }
 
-      // Move well-formed children of quarantined parents to draft so they stay visible.
-      if (quarantinedIds.size > 0) {
-        await this.orphanChildrenOfQuarantinedBeans(normalizedBeans, quarantinedIds);
-      }
+      // Detect bean files on disk that the CLI silently dropped (e.g. corrupted
+      // frontmatter that causes the CLI to skip the file without an error).
+      await this.detectOrphanedBeanFiles(normalizedBeans, quarantinedPaths);
+
+      // Orphan children of every quarantined bean by clearing their parent field.
+      await this.orphanChildrenOfQuarantinedBeans(normalizedBeans, quarantinedPaths);
 
       // Update cache on successful fetch
       this.updateCache(normalizedBeans);
@@ -649,11 +651,16 @@ export class BeansService {
     return resolved;
   }
 
+  private get quarantineDir(): string {
+    return path.join(this.workspaceRoot, '.beans', '.quarantine');
+  }
+
   private async quarantineMalformedBeanAbsolutePath(sourcePath: string): Promise<string | undefined> {
-    const ext = path.extname(sourcePath);
-    const targetPath = ext ? sourcePath.slice(0, -ext.length) + '.fixme' : `${sourcePath}.fixme`;
+    const filename = path.basename(sourcePath);
+    const targetPath = path.join(this.quarantineDir, filename);
 
     try {
+      await mkdir(this.quarantineDir, { recursive: true });
       await rename(sourcePath, targetPath);
       return targetPath;
     } catch (error) {
@@ -673,57 +680,89 @@ export class BeansService {
     return path.resolve(this.workspaceRoot, beanPath);
   }
 
+  private static readonly MAX_GIT_HISTORY_COMMITS = 20;
+
   /**
    * Attempt to recover missing required bean fields from the file's git history.
+   * Walks backwards through up to MAX_GIT_HISTORY_COMMITS commits to find the most
+   * recent version that has all four required fields (id, title, status, type).
+   * Falls back to the best partial recovery if no single commit has all fields.
    * Runs `git log` then `git show` via execFile argument arrays (no shell interpolation).
    * Resolves with an empty object when git is unavailable, the file has no history, or parsing fails.
    */
   private async recoverFieldsFromGitHistory(
     filePath: string
   ): Promise<Partial<Pick<RawBeanFromCLI, 'id' | 'title' | 'status' | 'type' | 'priority'>>> {
+    const requiredFields = ['id', 'title', 'status', 'type'] as const;
+    const allFields = ['id', 'title', 'status', 'type', 'priority'] as const;
+
     try {
       const relPath = path.relative(this.workspaceRoot, filePath);
 
       const { stdout: shaOut } = await execFileAsync(
         'git',
-        ['log', '--follow', '-n', '1', '--format=%H', '--', relPath],
+        ['log', '--follow', '-n', String(BeansService.MAX_GIT_HISTORY_COMMITS), '--format=%H', '--', relPath],
         { cwd: this.workspaceRoot }
       );
-      const sha = shaOut.trim();
-      if (!sha) {
+
+      const shas = shaOut.trim().split('\n').filter(Boolean);
+      if (shas.length === 0) {
         return {};
       }
 
-      const { stdout: historicalContent } = await execFileAsync('git', ['show', `${sha}:${relPath}`], {
-        cwd: this.workspaceRoot,
-      });
+      let bestRecovered: Partial<Pick<RawBeanFromCLI, 'id' | 'title' | 'status' | 'type' | 'priority'>> = {};
+      let bestFieldCount = 0;
 
-      const frontmatterMatch = /^(?:\uFEFF)?[ \t]*---\r?\n([\s\S]*?)\r?\n---/.exec(historicalContent);
-      if (!frontmatterMatch) {
-        return {};
-      }
+      for (const sha of shas) {
+        try {
+          const { stdout: historicalContent } = await execFileAsync('git', ['show', `${sha}:${relPath}`], {
+            cwd: this.workspaceRoot,
+          });
 
-      const yamlText = frontmatterMatch[1];
-      const recovered: Partial<Pick<RawBeanFromCLI, 'id' | 'title' | 'status' | 'type' | 'priority'>> = {};
-      const fields = ['id', 'title', 'status', 'type', 'priority'] as const;
-
-      for (const field of fields) {
-        const match = new RegExp(`^\\s*${field}\\s*:[ \\t]*(.+)$`, 'm').exec(yamlText);
-        if (match) {
-          const value = match[1].trim().replace(/^["']|["']$/g, '');
-          if (value) {
-            recovered[field] = value;
+          const frontmatterMatch = /^(?:\uFEFF)?[ \t]*---\r?\n([\s\S]*?)\r?\n---/.exec(historicalContent);
+          if (!frontmatterMatch) {
+            continue;
           }
+
+          const yamlText = frontmatterMatch[1];
+          const candidate: Partial<Pick<RawBeanFromCLI, 'id' | 'title' | 'status' | 'type' | 'priority'>> = {};
+
+          for (const field of allFields) {
+            const match = new RegExp(`^\\s*${field}\\s*:[ \\t]*(.+)$`, 'm').exec(yamlText);
+            if (match) {
+              const value = match[1].trim().replace(/^["']|["']$/g, '');
+              if (value) {
+                candidate[field] = value;
+              }
+            }
+          }
+
+          const requiredCount = requiredFields.filter(f => candidate[f]).length;
+
+          if (requiredCount === requiredFields.length) {
+            this.logger.info(
+              `Recovered ${Object.keys(candidate).join(', ')} from git history (commit ${sha.slice(0, 8)}) for ${path.basename(filePath)}`
+            );
+            return candidate;
+          }
+
+          if (requiredCount > bestFieldCount) {
+            bestRecovered = candidate;
+            bestFieldCount = requiredCount;
+          }
+        } catch {
+          // Individual commit may have been deleted or file didn't exist — skip it
+          continue;
         }
       }
 
-      if (Object.keys(recovered).length > 0) {
+      if (bestFieldCount > 0) {
         this.logger.info(
-          `Recovered ${Object.keys(recovered).join(', ')} from git history for ${path.basename(filePath)}`
+          `Partially recovered ${Object.keys(bestRecovered).join(', ')} from git history for ${path.basename(filePath)}`
         );
       }
 
-      return recovered;
+      return bestRecovered;
     } catch {
       // git unavailable, not a git repo, or file has no history — all expected
       return {};
@@ -775,8 +814,12 @@ export class BeansService {
       try {
         await this.repairBeanMarkdownFrontmatter(filePath, repaired);
       } catch (error) {
-        void error;
-        return null;
+        // File I/O failed but we still have a complete bean payload.
+        // Return the repaired bean so the caller can normalize it rather than
+        // quarantining with missing fields, which would cause recurring errors.
+        this.logger.warn(
+          `Failed to persist repaired frontmatter for ${path.basename(filePath)}: ${(error as Error).message}; returning in-memory repair`
+        );
       }
     }
 
@@ -856,52 +899,149 @@ export class BeansService {
   }
 
   /**
-   * Move well-formed children of quarantined parent beans to draft status and clear
-   * their parent reference so they remain independently visible and editable.
-   * Updates the in-place normalizedBeans array so the cache reflects the new state.
+   * Clear the parent field on any beans whose parent was quarantined.
+   * Keeps orphaned children visible as root-level items without creating
+   * synthetic placeholder parents.
    */
-  private async orphanChildrenOfQuarantinedBeans(beans: Bean[], quarantinedIds: Set<string>): Promise<void> {
-    const children = beans.filter(b => b.parent && quarantinedIds.has(b.parent));
-    if (children.length === 0) {
+  private async orphanChildrenOfQuarantinedBeans(
+    normalizedBeans: Bean[],
+    quarantinedPaths: Map<string, string | undefined>
+  ): Promise<void> {
+    if (quarantinedPaths.size === 0) {
       return;
     }
 
-    for (const child of children) {
-      try {
-        // Bypass the full updateBean pipeline (which calls listBeans for recursive child
-        // propagation) to avoid re-entering listBeans while we are already inside it.
-        // A direct GraphQL mutation is safe here: we only move to draft, and draft is a
-        // neutral status that does not need to cascade to grandchildren.
-        const { data: resp, errors } = await this.executeGraphQL<{ updateBean: RawBeanFromCLI }>(
-          graphql.UPDATE_BEAN_MUTATION,
-          { id: child.id, input: { status: 'draft', parent: '' } }
-        );
-
-        if (errors && errors.length > 0) {
-          throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
-        }
-
-        const updated = this.normalizeBean(resp.updateBean, { allowPartial: true });
-        // Update in-place so the caller and cache see the promoted bean immediately.
-        const idx = beans.indexOf(child);
-        if (idx !== -1) {
-          beans[idx] = updated;
-        }
-        this.logger.info(`Moved child bean ${child.id} to draft after parent was quarantined`);
-      } catch (error) {
-        this.logger.warn(`Failed to move child bean ${child.id} to draft: ${(error as Error).message}`);
+    for (const [quarantinedId, quarantinedPath] of quarantinedPaths) {
+      const children = normalizedBeans.filter(b => b.parent === quarantinedId);
+      if (children.length === 0) {
+        continue;
       }
-    }
 
-    const count = children.length;
-    const labels = children.map(c => c.code || c.id).join(', ');
-    void vscode.window.showWarningMessage(
-      `${count} child bean${count === 1 ? '' : 's'} (${labels}) moved to Draft because their parent was malformed and quarantined.`
-    );
+      const fileRef = quarantinedPath ? path.relative(this.workspaceRoot, quarantinedPath) : quarantinedId;
+
+      for (const child of children) {
+        try {
+          const { data: resp, errors } = await this.executeGraphQL<{ updateBean: RawBeanFromCLI }>(
+            graphql.UPDATE_BEAN_MUTATION,
+            { id: child.id, input: { parent: '' } }
+          );
+
+          if (errors && errors.length > 0) {
+            throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
+          }
+
+          const updated = this.normalizeBean(resp.updateBean, { allowPartial: true });
+          const idx = normalizedBeans.indexOf(child);
+          if (idx !== -1) {
+            normalizedBeans[idx] = updated;
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to clear parent for child bean ${child.id}: ${(error as Error).message}`);
+        }
+      }
+
+      const codes = children.map(c => c.code || c.id).join(', ');
+      this.logger.info(
+        `Orphaned ${children.length} child bean${children.length === 1 ? '' : 's'} (${codes}) whose parent ${quarantinedId} was quarantined`
+      );
+      void vscode.window.showWarningMessage(
+        `Bean${children.length === 1 ? '' : 's'} ${codes} ${children.length === 1 ? 'has' : 'have'} been orphaned because their parent was malformed and quarantined (${fileRef}).`
+      );
+    }
   }
 
   /**
-   * Rename malformed bean file to .fixme extension so it is visibly quarantined.
+   * Detect `.md` files in the beans directory that the CLI silently excluded
+   * from its response (e.g. corrupted frontmatter that causes the CLI to skip
+   * the file without an error). For each orphaned file, attempt repair and
+   * quarantine using the same pipeline as explicitly malformed beans.
+   */
+  private async detectOrphanedBeanFiles(
+    normalizedBeans: Bean[],
+    quarantinedPaths: Map<string, string | undefined>
+  ): Promise<void> {
+    let beansDir: string;
+    try {
+      const config = await this.getConfig();
+      beansDir = path.resolve(this.workspaceRoot, config.path || '.beans');
+    } catch {
+      beansDir = path.resolve(this.workspaceRoot, '.beans');
+    }
+
+    let entries: string[];
+    try {
+      entries = await readdir(beansDir);
+    } catch {
+      return;
+    }
+
+    const mdFiles = entries.filter(e => e.endsWith('.md'));
+    if (mdFiles.length === 0) {
+      return;
+    }
+
+    // Build a set of absolute paths that the CLI returned or that were already quarantined.
+    const knownPaths = new Set<string>();
+    for (const bean of normalizedBeans) {
+      if (bean.path) {
+        knownPaths.add(path.resolve(this.workspaceRoot, bean.path));
+      }
+    }
+    for (const qPath of quarantinedPaths.values()) {
+      if (qPath) {
+        knownPaths.add(qPath);
+      }
+    }
+
+    for (const filename of mdFiles) {
+      const absolutePath = path.join(beansDir, filename);
+      if (knownPaths.has(absolutePath)) {
+        continue;
+      }
+
+      this.logger.warn(`Detected orphaned bean file not returned by CLI: ${filename}`);
+
+      // Try to read and repair the file the same way tryRepairMalformedBean works.
+      const orphanHint: RawBeanFromCLI = {
+        id: '',
+        title: '',
+        slug: '',
+        path: path.relative(this.workspaceRoot, absolutePath),
+        body: '',
+        status: '',
+        type: '',
+        tags: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        etag: '',
+        parentId: '',
+        blockingIds: [],
+        blockedByIds: [],
+      };
+
+      const repaired = await this.tryRepairMalformedBean(orphanHint);
+      if (repaired) {
+        try {
+          normalizedBeans.push(this.normalizeBean(repaired, { allowPartial: true }));
+          this.logger.info(`Recovered orphaned bean file ${filename} via repair`);
+          continue;
+        } catch {
+          // Repair produced incomplete data — fall through to quarantine
+        }
+      }
+
+      const quarantinedPath = await this.quarantineMalformedBeanAbsolutePath(absolutePath);
+      this.notifyMalformedBeanQuarantined(orphanHint, quarantinedPath);
+
+      const derivedId = this.deriveIdFromPath(absolutePath);
+      if (derivedId && quarantinedPath) {
+        quarantinedPaths.set(derivedId, quarantinedPath);
+      }
+    }
+  }
+
+  /**
+   * Move malformed bean file to `.beans/.quarantine/` so it is visibly quarantined.
    */
   private async quarantineMalformedBeanFile(rawBean: RawBeanFromCLI): Promise<string | undefined> {
     if (!rawBean.path) {
@@ -926,7 +1066,7 @@ export class BeansService {
     this.malformedWarningPaths.add(warningKey);
 
     const fileLabel = quarantinedPath ? path.basename(quarantinedPath) : rawBean.path || rawBean.id;
-    const message = `Malformed bean could not be auto-fixed and was quarantined as ${fileLabel}.`;
+    const message = `Malformed bean could not be auto-fixed and was quarantined.\n\n${fileLabel}`;
 
     if (!quarantinedPath) {
       void vscode.window.showWarningMessage(message);

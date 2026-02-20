@@ -1188,15 +1188,54 @@ export class BeansCommands {
         return;
       }
 
-      const result = await vscode.window.showWarningMessage(
-        `Delete bean ${bean.code}: ${bean.title}?`,
-        { modal: true },
-        'Delete',
-        'Cancel'
-      );
+      // Check whether this bean has children
+      const allBeans = await this.service.listBeans();
+      const children = allBeans.filter(b => b.parent === bean!.id);
 
-      if (result !== 'Delete') {
-        return;
+      let deleteChildren = false;
+      if (children.length > 0) {
+        const result = await vscode.window.showWarningMessage(
+          `${bean.code} has ${children.length} child bean${children.length === 1 ? '' : 's'}. What should happen to them?`,
+          { modal: true },
+          'Delete All',
+          'Delete Parent Only',
+          'Cancel'
+        );
+        if (!result || result === 'Cancel') {
+          return;
+        }
+        deleteChildren = result === 'Delete All';
+      } else {
+        const result = await vscode.window.showWarningMessage(
+          `Delete bean ${bean.code}: ${bean.title}?`,
+          { modal: true },
+          'Delete',
+          'Cancel'
+        );
+        if (result !== 'Delete') {
+          return;
+        }
+      }
+
+      if (deleteChildren) {
+        for (const child of children) {
+          try {
+            await this.service.deleteBean(child.id);
+            logger.info(`Deleted child bean ${child.code}`);
+          } catch (error) {
+            logger.warn(`Failed to delete child bean ${child.code}: ${(error as Error).message}`);
+          }
+        }
+      } else if (children.length > 0) {
+        // Orphan children by clearing their parent
+        for (const child of children) {
+          try {
+            await this.service.updateBean(child.id, { clearParent: true });
+            logger.info(`Orphaned child bean ${child.code}`);
+          } catch (error) {
+            logger.warn(`Failed to orphan child bean ${child.code}: ${(error as Error).message}`);
+          }
+        }
       }
 
       await this.service.deleteBean(bean.id);

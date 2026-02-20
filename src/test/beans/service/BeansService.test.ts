@@ -1,5 +1,5 @@
 import { execFile } from 'child_process';
-import { readFile, rename, writeFile } from 'fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'fs/promises';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { BeansCLINotFoundError, BeansJSONParseError, BeansTimeoutError } from '../../../beans/model';
@@ -11,6 +11,7 @@ vi.mock('child_process', () => ({
 }));
 
 vi.mock('fs/promises', () => ({
+  mkdir: vi.fn(),
   readFile: vi.fn(),
   writeFile: vi.fn(),
   rename: vi.fn(),
@@ -64,6 +65,7 @@ describe('BeansService', () => {
   let mockReadFile: ReturnType<typeof vi.fn>;
   let mockWriteFile: ReturnType<typeof vi.fn>;
   let mockRename: ReturnType<typeof vi.fn>;
+  let mockMkdir: ReturnType<typeof vi.fn>;
 
   function createErrnoError(message: string, code: string): NodeJS.ErrnoException {
     const error = new Error(message) as NodeJS.ErrnoException;
@@ -84,10 +86,12 @@ describe('BeansService', () => {
     mockReadFile = readFile as unknown as ReturnType<typeof vi.fn>;
     mockWriteFile = writeFile as unknown as ReturnType<typeof vi.fn>;
     mockRename = rename as unknown as ReturnType<typeof vi.fn>;
+    mockMkdir = mkdir as unknown as ReturnType<typeof vi.fn>;
 
     mockReadFile.mockResolvedValue('---\nstatus: "todo"\ntype: "task"\n---\nbody');
     mockWriteFile.mockResolvedValue(undefined);
     mockRename.mockResolvedValue(undefined);
+    mockMkdir.mockResolvedValue(undefined);
 
     service = new BeansService('/test/workspace');
   });
@@ -475,7 +479,7 @@ describe('BeansService', () => {
       expect(writtenContent).toContain('\nBody intro\n---\nnot frontmatter\n---\nrest of body');
     });
 
-    it('quarantines malformed bean with .fixme when auto-repair fails', async () => {
+    it('still returns bean with inferred fields when frontmatter write fails', async () => {
       const malformedBean = {
         id: 'test-bad2',
         title: '',
@@ -498,15 +502,14 @@ describe('BeansService', () => {
 
       const beans = await service.listBeans();
 
-      expect(beans).toHaveLength(0);
-      expect(mockRename).toHaveBeenCalledTimes(1);
-      const [renameSource, renameTarget] = mockRename.mock.calls[0] as [string, string];
-      expect(renameSource).toContain('test-bad2--broken-bean.md');
-      expect(renameTarget).toContain('test-bad2--broken-bean.fixme');
-      expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
-        expect.stringContaining('could not be auto-fixed and was quarantined'),
-        'Open File'
-      );
+      // Bean is recovered via in-memory inference even though file write failed
+      expect(beans).toHaveLength(1);
+      expect(beans[0].id).toBe('test-bad2');
+      expect(beans[0].title).toBe('broken bean');
+      expect(beans[0].status).toBe('todo');
+      expect(beans[0].type).toBe('task');
+      // File is NOT quarantined because the bean was successfully repaired in-memory
+      expect(mockRename).not.toHaveBeenCalled();
     });
 
     it('recovers when list command fails with malformed bean path in CLI error', async () => {
@@ -547,23 +550,26 @@ describe('BeansService', () => {
 
       expect(beans).toHaveLength(1);
       expect(beans[0].id).toBe('test-good-recovered');
+      expect(mockMkdir).toHaveBeenCalledWith(expect.stringContaining('/test/workspace/.beans/.quarantine'), {
+        recursive: true,
+      });
       expect(mockRename).toHaveBeenCalledTimes(1);
       const [renameSource, renameTarget] = mockRename.mock.calls[0] as [string, string];
       expect(renameSource).toContain('/test/workspace/.beans/test-bad4--broken.md');
-      expect(renameTarget).toContain('/test/workspace/.beans/test-bad4--broken.fixme');
+      expect(renameTarget).toContain('/test/workspace/.beans/.quarantine/test-bad4--broken.md');
       expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
         expect.stringContaining('could not be auto-fixed and was quarantined'),
         'Open File'
       );
     });
 
-    it('moves well-formed children of a quarantined parent to draft and clears their parent', async () => {
-      // Parent is malformed (no title), child is well-formed but references the parent's ID.
+    it('orphans children of a quarantined bean by clearing their parent field', async () => {
+      // Parent is malformed (no title, no path — title cannot be inferred), child is well-formed.
       const malformedParent = {
         id: 'test-bad3',
         title: '',
         slug: 'broken-parent',
-        path: '.beans/test-bad3--broken-parent.md',
+        path: '',
         body: '',
         status: 'todo',
         type: 'epic',
@@ -593,32 +599,33 @@ describe('BeansService', () => {
         blockingIds: [],
         blockedByIds: [],
       };
-      const updatedChild = { ...childBean, status: 'draft', parentId: '', parent: '' };
-
-      // git is unavailable (so repair falls through to quarantine)
-      mockReadFile.mockRejectedValue(new Error('no file'));
+      const orphanedChild = { ...childBean, parentId: '', parent: '' };
 
       mockExecFile.mockImplementation((_cmd, args: string[], _opts, callback) => {
         const query: string = args[2] ?? '';
         if (query.includes('UpdateBean')) {
-          // Simulate updateBean returning the child promoted to draft
-          callback(null, { stdout: JSON.stringify({ updateBean: updatedChild }), stderr: '' });
+          callback(null, { stdout: JSON.stringify({ updateBean: orphanedChild }), stderr: '' });
         } else {
-          // listBeans returns the malformed parent and well-formed child
           callback(null, { stdout: JSON.stringify({ beans: [malformedParent, childBean] }), stderr: '' });
         }
       });
 
       const beans = await service.listBeans();
 
-      // Malformed parent is excluded; child is present with draft status
+      // No placeholder created — CreateBean must not have been called
+      const updateCall = mockExecFile.mock.calls.find(c => (c[1] as string[])[2]?.includes('UpdateBean'));
+      expect(updateCall).toBeDefined();
+      const createCall = mockExecFile.mock.calls.find(c => (c[1] as string[])[2]?.includes('CreateBean'));
+      expect(createCall).toBeUndefined();
+
+      // Child's parent cleared — it appears as a root-level bean
       const child = beans.find(b => b.id === 'test-child1');
       expect(child).toBeDefined();
-      expect(child!.status).toBe('draft');
+      expect(child!.status).toBe('todo');
       expect(child!.parent).toBeFalsy();
 
-      // Warning includes the child bean label
-      expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('moved to Draft'));
+      // Warning mentions the orphaned child
+      expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('ch1'));
     });
 
     it('uses git history to recover missing fields when a previous commit exists', async () => {
@@ -753,6 +760,147 @@ describe('BeansService', () => {
       expect(beans).toHaveLength(1);
       expect(beans[0].id).toBe('test-crpt1');
       expect(beans[0].title).toBe('corrupt hist');
+    });
+
+    it('walks back through multiple git commits to find a valid historical version', async () => {
+      const corruptedContent = '---\nid: test-walk1\ntitle: ""\nstatus: ""\ntype: ""\n---\ncorrupted';
+      const validContent =
+        '---\nid: test-walk1\ntitle: "Originally Good"\nstatus: in-progress\ntype: feature\n---\n## Body';
+
+      const malformedBean = {
+        id: '',
+        title: '',
+        slug: 'walk-bean',
+        path: '.beans/test-walk1--walk-bean.md',
+        body: '',
+        status: '',
+        type: '',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+        etag: 'etag-walk1',
+      };
+
+      mockExecFile.mockImplementation((cmd: string, args: string[], _opts: unknown, callback: Function) => {
+        if (cmd === 'git' && args.includes('log')) {
+          // Return 3 commit SHAs — first two are corrupted, third is good
+          callback(null, { stdout: 'aaaa1111\nbbbb2222\ncccc3333', stderr: '' });
+        } else if (cmd === 'git' && args.includes('show')) {
+          const ref = args[1];
+          if (ref.startsWith('cccc3333:')) {
+            callback(null, { stdout: validContent, stderr: '' });
+          } else {
+            callback(null, { stdout: corruptedContent, stderr: '' });
+          }
+        } else {
+          callback(null, { stdout: JSON.stringify({ beans: [malformedBean] }), stderr: '' });
+        }
+      });
+
+      const beans = await service.listBeans();
+
+      expect(beans).toHaveLength(1);
+      expect(beans[0].id).toBe('test-walk1');
+      expect(beans[0].title).toBe('Originally Good');
+      expect(beans[0].status).toBe('in-progress');
+      expect(beans[0].type).toBe('feature');
+    });
+
+    it('uses best partial recovery when no single commit has all required fields', async () => {
+      // Commit 1: has id and title but empty status and type
+      const partialContent1 = '---\nid: test-part1\ntitle: "Partial Title"\nstatus: ""\ntype: ""\n---\nbody';
+      // Commit 2: has only id
+      const partialContent2 = '---\nid: test-part1\ntitle: ""\nstatus: ""\ntype: ""\n---\nbody';
+
+      const malformedBean = {
+        id: '',
+        title: '',
+        slug: 'partial-bean',
+        path: '.beans/test-part1--partial-bean.md',
+        body: '',
+        status: '',
+        type: '',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+        etag: 'etag-part1',
+      };
+
+      mockExecFile.mockImplementation((cmd: string, args: string[], _opts: unknown, callback: Function) => {
+        if (cmd === 'git' && args.includes('log')) {
+          callback(null, { stdout: 'sha11111\nsha22222', stderr: '' });
+        } else if (cmd === 'git' && args.includes('show')) {
+          const ref = args[1];
+          if (ref.startsWith('sha11111:')) {
+            callback(null, { stdout: partialContent1, stderr: '' });
+          } else {
+            callback(null, { stdout: partialContent2, stderr: '' });
+          }
+        } else {
+          callback(null, { stdout: JSON.stringify({ beans: [malformedBean] }), stderr: '' });
+        }
+      });
+
+      const beans = await service.listBeans();
+
+      expect(beans).toHaveLength(1);
+      // id and title recovered from best partial (commit 1), status/type from defaults
+      expect(beans[0].id).toBe('test-part1');
+      expect(beans[0].title).toBe('Partial Title');
+    });
+
+    it('quarantines bean when no fields can be inferred at all', async () => {
+      const malformedBean = {
+        id: '',
+        title: '',
+        slug: '',
+        path: '',
+        body: '',
+        status: '',
+        type: '',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+        etag: '',
+      };
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(null, { stdout: JSON.stringify({ beans: [malformedBean] }), stderr: '' });
+      });
+
+      const beans = await service.listBeans();
+
+      // No path, no id, no title — cannot infer anything, bean is dropped
+      expect(beans).toHaveLength(0);
+      expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+        expect.stringContaining('could not be auto-fixed and was quarantined')
+      );
+    });
+
+    it('notification message includes filename on its own line', async () => {
+      const malformedBean = {
+        id: '',
+        title: '',
+        slug: '',
+        path: '',
+        body: '',
+        status: '',
+        type: '',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+        etag: '',
+      };
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(null, { stdout: JSON.stringify({ beans: [malformedBean] }), stderr: '' });
+      });
+
+      await service.listBeans();
+
+      const warningCall = (vscode.window.showWarningMessage as ReturnType<typeof vi.fn>).mock.calls[0];
+      const message = warningCall[0] as string;
+      expect(message).toContain('\n\n');
     });
   });
 
