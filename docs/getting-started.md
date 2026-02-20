@@ -7,11 +7,13 @@ title: Getting started
 ### Install the `beans` CLI
 
 ```bash
-  # macOS (Homebrew)
-  brew install hmans/beans/beans
+# macOS (Requires Homebrew)
+brew install hmans/beans/beans
+```
 
-  # Go
-  go install github.com/hmans/beans@latest
+```bash
+# Linux, MacOs, Windows (Requires Go)
+go install github.com/hmans/beans@latest
 ```
 
 ### Install the Beans extension
@@ -19,7 +21,7 @@ title: Getting started
 Use the IDE's Extension sidebar to search for `beans` or execute the following command:
 
 ```bash
-  code --install-extension selfagency.beans-vscode
+code --install-extension selfagency.beans-vscode
 ```
 
 ### Initialize Beans in your project
@@ -33,7 +35,7 @@ Use the IDE's Extension sidebar to search for `beans` or execute the following c
 #### Option 2: Terminal
 
 ```bash
-cd your-project
+cd \<project-folder\>
 beans init
 ```
 
