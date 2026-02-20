@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "docs/**"
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -16,14 +17,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Node
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: "22"
           cache: "pnpm"
-
-      - name: Setup pnpm
-        run: npm install -g pnpm@latest
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
