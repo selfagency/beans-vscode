@@ -8,8 +8,9 @@ export default {
       { text: 'Home', link: '/' },
       { text: 'Getting started', link: '/getting-started' },
       { text: 'User Guide', link: '/user-guide' },
-      { text: 'Commands', link: '/user-guide/commands' },
       { text: 'Developers', link: '/developers/' },
+      { text: 'VS Marketplace', link: 'https://marketplace.visualstudio.com/items?itemName=selfagency.beans' },
+      { text: 'Open VSX', link: 'https://open-vsx.org/extension/selfagency/beans' },
       { text: 'GitHub', link: 'https://github.com/selfagency/beans-vscode' },
     ],
     sidebar: {
