@@ -439,7 +439,7 @@ describe('BeansService', () => {
       expect(beans[0].title).toBe('repair me');
       expect(beans[0].status).toBe('todo');
       expect(beans[0].type).toBe('bug');
-      expect(service.getConfig).toHaveBeenCalledTimes(1);
+      expect(service.getConfig).toHaveBeenCalledTimes(2);
       expect(mockWriteFile).toHaveBeenCalledTimes(1);
       const writtenContent = mockWriteFile.mock.calls[0][1] as string;
       expect(writtenContent).toContain('status: "todo"');
