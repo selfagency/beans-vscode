@@ -2,7 +2,7 @@
 title: Developers
 ---
 
-We welcome contributions and follow a strict **TDD-first** (Test-Driven Development) workflow. For detailed onboarding, branch naming conventions, and the Beans workflow, please refer to the **[Contributing Guide](./contributing)**.
+We welcome contributions and follow a strict **TDD-first** (Test-Driven Development) workflow. For detailed onboarding, branch naming conventions, and the Beans workflow, please refer to the **[Contributing Guide](./contributing.md)**.
 
 ## Quick Setup
 
@@ -32,12 +32,12 @@ pnpm run check-types   # Type-check everything
 
 Please see our test documentation for full details on our testing procedures.
 
-- [Testing](./testing)
-- [Remote compatibility testing](./remote-testing)
+- [Testing](./testing.md)
+- [Remote compatibility testing](./remote-testing.md)
 
 ## Contributing
 
-Please see our **[Contributing Guide](./contributing)** for full details on our developer principles, branch naming, and pull request process.
+Please see our **[Contributing Guide](./contributing.md)** for full details on our developer principles, branch naming, and pull request process.
 
 1. **Find or create a Bean** in `.beans/` (this project uses Beans for self-tracking!)
 2. **Implement changes** using the TDD-first workflow.
