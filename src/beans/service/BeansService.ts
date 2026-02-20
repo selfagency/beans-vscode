@@ -1039,7 +1039,13 @@ export class BeansService {
       return;
     }
 
-    // Build a set of absolute paths that the CLI returned or that were already quarantined.
+    // Primary: match by bean ID (reliable — always present on normalized beans).
+    // bean.path can be empty when allowPartial normalization is used, so path-based
+    // matching alone would incorrectly flag known beans as orphaned.
+    const knownIds = new Set(normalizedBeans.map(b => b.id));
+
+    // Secondary fallback: match by resolved absolute path for files whose ID
+    // can't be derived from the filename pattern.
     const knownPaths = new Set<string>();
     for (const bean of normalizedBeans) {
       if (bean.path) {
@@ -1054,7 +1060,20 @@ export class BeansService {
 
     for (const filename of mdFiles) {
       const absolutePath = path.join(beansDir, filename);
+
+      // Check by ID first (handles empty bean.path from partial normalization).
+      const derivedId = this.deriveIdFromPath(absolutePath);
+      if (derivedId && knownIds.has(derivedId)) {
+        continue;
+      }
+
+      // Fallback: check by resolved path.
       if (knownPaths.has(absolutePath)) {
+        continue;
+      }
+
+      // Also skip quarantined paths by ID.
+      if (derivedId && quarantinedPaths.has(derivedId)) {
         continue;
       }
 
@@ -1092,7 +1111,6 @@ export class BeansService {
       const quarantinedPath = await this.quarantineMalformedBeanAbsolutePath(absolutePath);
       this.notifyMalformedBeanQuarantined(orphanHint, quarantinedPath);
 
-      const derivedId = this.deriveIdFromPath(absolutePath);
       if (derivedId && quarantinedPath) {
         quarantinedPaths.set(derivedId, quarantinedPath);
       }

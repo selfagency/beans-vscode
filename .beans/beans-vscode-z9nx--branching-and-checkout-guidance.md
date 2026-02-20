@@ -1,9 +1,9 @@
 ---
 # beans-vscode-z9nx
-title: ""
+title: Start branch + branch naming & checkout guidance
 status: todo
 type: task
-priority: "3"
+priority: normal
 created_at: 2026-02-19T22:32:02Z
 updated_at: 2026-02-19T23:43:24Z
 ---
