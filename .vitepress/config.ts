@@ -9,20 +9,20 @@ export default {
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Getting started', link: '/getting-started' },
-      { text: 'User Guide', link: '/user-guide/' },
+      { text: 'User Guide', link: '/users/' },
       { text: 'Developers', link: '/developers/' },
       { text: 'VS Marketplace', link: 'https://marketplace.visualstudio.com/items?itemName=selfagency.beans-vscode' },
       { text: 'Open VSX', link: 'https://open-vsx.org/extension/selfagency/beans' },
       { text: 'GitHub', link: 'https://github.com/selfagency/beans-vscode' },
     ],
     sidebar: {
-      '/user-guide/': [
-        { text: 'Core features', link: '/user-guide/' },
-        { text: 'AI features', link: '/user-guide/ai' },
-        { text: 'Commands reference', link: '/user-guide/commands' },
-        { text: 'Keyboard shortcuts', link: '/user-guide/keyboard' },
-        { text: 'Settings', link: '/user-guide/settings' },
-        { text: 'Troubleshooting', link: '/user-guide/troubleshooting' },
+      '/users/': [
+        { text: 'Core features', link: '/users/' },
+        { text: 'AI features', link: '/users/ai' },
+        { text: 'Commands reference', link: '/users/commands' },
+        { text: 'Keyboard shortcuts', link: '/users/keyboard' },
+        { text: 'Settings', link: '/users/settings' },
+        { text: 'Troubleshooting', link: '/users/troubleshooting' },
       ],
       '/developers/': [
         { text: 'Getting started', link: '/developers/' },
