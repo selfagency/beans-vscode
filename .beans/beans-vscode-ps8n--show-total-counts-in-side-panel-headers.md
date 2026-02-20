@@ -5,6 +5,7 @@ status: in-progress
 type: feature
 priority: normal
 branch: feature/beans-vscode-ps8n-show-total-counts-side-panel-headers
+pr: 57
 created_at: 2026-02-19T19:12:35Z
 updated_at: 2026-02-20T04:43:17Z
 ---
