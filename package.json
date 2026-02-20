@@ -358,6 +358,11 @@
           "default": "info",
           "description": "Logging verbosity for Beans extension output channel."
         },
+        "beans.logging.diagnostics.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable verbose diagnostics in debug logs, including GraphQL queries, variables, and CLI responses."
+        },
         "beans.ai.enabled": {
           "type": "boolean",
           "default": true,

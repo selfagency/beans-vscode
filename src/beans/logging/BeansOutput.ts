@@ -15,6 +15,7 @@ export class BeansOutput {
   private static instance: BeansOutput;
   private outputChannel: vscode.OutputChannel;
   private level: LogLevel = 'info';
+  private diagnosticsEnabled = false;
   private mirrorFilePath: string | undefined;
   private mirrorWriteQueue: Promise<void> = Promise.resolve();
   private mirrorDirReady = false;
@@ -40,6 +41,7 @@ export class BeansOutput {
   private updateLevel(): void {
     const config = vscode.workspace.getConfiguration('beans');
     this.level = config.get<LogLevel>('logging.level', 'info');
+    this.diagnosticsEnabled = config.get<boolean>('logging.diagnostics.enabled', false);
   }
 
   /**
@@ -57,6 +59,18 @@ export class BeansOutput {
    */
   private getTimestamp(): string {
     return new Date().toISOString();
+  }
+
+  private formatDiagnosticsPayload(payload: unknown): string {
+    if (typeof payload === 'string') {
+      return payload;
+    }
+
+    try {
+      return JSON.stringify(payload, null, 2);
+    } catch {
+      return String(payload);
+    }
   }
 
   private writeMirror(line: string): void {
@@ -87,6 +101,22 @@ export class BeansOutput {
       const line = `[${this.getTimestamp()}] [DEBUG] ${message}${argsStr}`;
       this.outputChannel.appendLine(line);
       this.writeMirror(line);
+    }
+  }
+
+  diagnostics(message: string, payload?: unknown): void {
+    if (!this.diagnosticsEnabled || !this.shouldLog('debug')) {
+      return;
+    }
+
+    const line = `[${this.getTimestamp()}] [DEBUG] [DIAGNOSTICS] ${message}`;
+    this.outputChannel.appendLine(line);
+    this.writeMirror(line);
+
+    if (payload !== undefined) {
+      const payloadLine = this.formatDiagnosticsPayload(payload);
+      this.outputChannel.appendLine(payloadLine);
+      this.writeMirror(payloadLine);
     }
   }
 
