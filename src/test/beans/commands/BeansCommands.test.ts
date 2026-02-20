@@ -227,7 +227,7 @@ describe('BeansCommands', () => {
 
   it('creates bean and refreshes trees', async () => {
     showInputBox.mockResolvedValueOnce('My bean').mockResolvedValueOnce('desc');
-    showQuickPick.mockResolvedValueOnce('task');
+    showQuickPick.mockResolvedValueOnce({ description: 'task' });
 
     await (commands as any).createBean();
 
@@ -247,6 +247,60 @@ describe('BeansCommands', () => {
     await (commands as any).setStatus(bean);
 
     expect(service.updateBean).toHaveBeenCalledWith(bean.id, { status: 'in-progress' });
+  });
+
+  it('shows iconized status labels in status picker', async () => {
+    const bean = makeBean({ status: 'todo' });
+    showQuickPick.mockResolvedValueOnce(undefined);
+
+    await (commands as any).setStatus(bean);
+
+    const items = showQuickPick.mock.calls[0][0] as Array<{ label: string; description?: string }>;
+    expect(items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: '$(issues) Todo', description: 'todo' }),
+        expect.objectContaining({ label: '$(play-circle) In Progress', description: 'in-progress' }),
+        expect.objectContaining({ label: '$(issue-closed) Completed', description: 'completed' }),
+        expect.objectContaining({ label: '$(issue-draft) Draft', description: 'draft' }),
+        expect.objectContaining({ label: '$(stop) Scrapped', description: 'scrapped' }),
+      ])
+    );
+  });
+
+  it('shows iconized type labels in type picker', async () => {
+    const bean = makeBean({ type: 'task' });
+    showQuickPick.mockResolvedValueOnce(undefined);
+
+    await (commands as any).setType(bean);
+
+    const items = showQuickPick.mock.calls[0][0] as Array<{ label: string; description?: string }>;
+    expect(items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: '$(milestone) Milestone', description: 'milestone' }),
+        expect.objectContaining({ label: '$(zap) Epic', description: 'epic' }),
+        expect.objectContaining({ label: '$(lightbulb) Feature', description: 'feature' }),
+        expect.objectContaining({ label: '$(bug) Bug', description: 'bug' }),
+        expect.objectContaining({ label: '$(list-unordered) Task', description: 'task' }),
+      ])
+    );
+  });
+
+  it('shows standardized priority labels in priority picker', async () => {
+    const bean = makeBean({ priority: 'normal' });
+    showQuickPick.mockResolvedValueOnce(undefined);
+
+    await (commands as any).setPriority(bean);
+
+    const items = showQuickPick.mock.calls[0][0] as Array<{ label: string; description?: string }>;
+    expect(items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: '① Critical', description: 'critical' }),
+        expect.objectContaining({ label: '② High', description: 'high' }),
+        expect.objectContaining({ label: '③ Normal', description: 'normal' }),
+        expect.objectContaining({ label: '④ Low', description: 'low' }),
+        expect.objectContaining({ label: '⑤ Deferred', description: 'deferred' }),
+      ])
+    );
   });
 
   it('shows no-parent message when removing parent from root bean', async () => {
@@ -439,6 +493,39 @@ describe('BeansCommands', () => {
     expect(selected?.id).toBe('a');
     const items = showQuickPick.mock.calls[0][0] as Array<{ bean: Bean }>;
     expect(items.map(i => i.bean.id)).toEqual(['a']);
+  });
+
+  it('renders issue picker with type icon (or in-progress icon) and code description', async () => {
+    const todoTask = makeBean({ id: 'task-1', code: 'T1', title: 'Todo task', type: 'task', status: 'todo' });
+    const inProgressBug = makeBean({
+      id: 'bug-1',
+      code: 'B1',
+      title: 'In-progress bug',
+      type: 'bug',
+      status: 'in-progress',
+    });
+
+    service.listBeans.mockResolvedValueOnce([todoTask, inProgressBug]);
+    showQuickPick.mockResolvedValueOnce({ bean: todoTask });
+
+    await (commands as any).pickBean('Pick issue', undefined, true);
+
+    const items = showQuickPick.mock.calls[0][0] as Array<{ label: string; description?: string; bean: Bean }>;
+
+    expect(items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          bean: expect.objectContaining({ id: 'task-1' }),
+          label: '$(list-unordered) Todo task',
+          description: 'T1',
+        }),
+        expect.objectContaining({
+          bean: expect.objectContaining({ id: 'bug-1' }),
+          label: '$(play-circle) In-progress bug',
+          description: 'B1',
+        }),
+      ])
+    );
   });
 
   it('opens user guide via preview and falls back to text editor', async () => {
