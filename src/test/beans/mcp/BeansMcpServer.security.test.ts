@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { isPathWithinRoot } from '../../../beans/mcp/BeansMcpServer.js';
 
 const toolHandlers = vi.hoisted(() => new Map<string, (...args: any[]) => any>());
 const connectSpy = vi.hoisted(() => vi.fn(async () => {}));
@@ -152,5 +153,26 @@ describe('BeansMcpServer security review', () => {
 
       delete process.env.SECRET_TOKEN;
     });
+  });
+});
+
+describe('isPathWithinRoot', () => {
+  it('should accept a path inside the root', () => {
+    expect(isPathWithinRoot('/workspace', '/workspace/sub/file.txt')).toBe(true);
+  });
+
+  it('should reject a path that traverses above the root', () => {
+    expect(isPathWithinRoot('/workspace', '/workspace/../etc/passwd')).toBe(false);
+  });
+
+  it('should reject an absolute target on a different root', () => {
+    // Simulates the Windows cross-drive case: relative('C:\\root', 'D:\\evil')
+    // returns an absolute path that doesn't start with '..'
+    expect(isPathWithinRoot('/workspace', '/etc/passwd')).toBe(false);
+  });
+
+  it('should reject when root and target are the same path', () => {
+    // A path equal to the root is not *within* it
+    expect(isPathWithinRoot('/workspace', '/workspace')).toBe(false);
   });
 });

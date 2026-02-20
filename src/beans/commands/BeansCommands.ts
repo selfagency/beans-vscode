@@ -1218,23 +1218,64 @@ export class BeansCommands {
       }
 
       if (deleteChildren) {
+        const failed: { id: string; code: string; message: string }[] = [];
         for (const child of children) {
           try {
             await this.service.deleteBean(child.id);
             logger.info(`Deleted child bean ${child.code}`);
           } catch (error) {
-            logger.warn(`Failed to delete child bean ${child.code}: ${(error as Error).message}`);
+            const msg = (error as Error).message || String(error);
+            logger.warn(`Failed to delete child bean ${child.code}: ${msg}`);
+            failed.push({ id: child.id, code: child.code, message: msg });
           }
         }
+
+        if (failed.length > 0) {
+          // Abort parent delete if any child deletions failed to avoid leaving an inconsistent state.
+          const codes = failed.map(f => f.code).join(', ');
+          const detail = failed.map(f => `${f.code}: ${f.message}`).join('; ');
+          logger.error(`Aborting parent delete because ${failed.length} child deletions failed: ${detail}`);
+          vscode.window
+            .showErrorMessage(
+              `Failed to delete child beans (${codes}). Parent delete aborted. See output for details.`,
+              'Show Output'
+            )
+            ?.then(selection => {
+              if (selection === 'Show Output') {
+                logger.show();
+              }
+            });
+          return;
+        }
       } else if (children.length > 0) {
-        // Orphan children by clearing their parent
+        // Orphan children by clearing their parent. Abort if any orphaning fails.
+        const failed: { id: string; code: string; message: string }[] = [];
         for (const child of children) {
           try {
             await this.service.updateBean(child.id, { clearParent: true });
             logger.info(`Orphaned child bean ${child.code}`);
           } catch (error) {
-            logger.warn(`Failed to orphan child bean ${child.code}: ${(error as Error).message}`);
+            const msg = (error as Error).message || String(error);
+            logger.warn(`Failed to orphan child bean ${child.code}: ${msg}`);
+            failed.push({ id: child.id, code: child.code, message: msg });
           }
+        }
+
+        if (failed.length > 0) {
+          const codes = failed.map(f => f.code).join(', ');
+          const detail = failed.map(f => `${f.code}: ${f.message}`).join('; ');
+          logger.error(`Aborting parent delete because ${failed.length} child orphaning operations failed: ${detail}`);
+          vscode.window
+            .showErrorMessage(
+              `Failed to orphan child beans (${codes}). Parent delete aborted. See output for details.`,
+              'Show Output'
+            )
+            ?.then(selection => {
+              if (selection === 'Show Output') {
+                logger.show();
+              }
+            });
+          return;
         }
       }
 

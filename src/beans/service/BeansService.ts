@@ -641,7 +641,7 @@ export class BeansService {
     // Typical CLI diagnostics include either absolute paths or workspace-relative
     // paths under .beans. Extract and resolve whichever variant appears.
     const pathMatch =
-      /((?:[A-Za-z]:\\[^\s:'"\n]+\.md)|(?:\/?[^\s:'"\n]*\.beans\/[^\s:'"\n]+\.md)|(?:\.beans\/[^\s:'"\n]+\.md))/.exec(
+      /((?:[A-Za-z]:\\[^\s:'"\n]+\.md)|(?:\/?[^\s:'"\n]*\.beans[/\\][^\s:'"\n]+\.md)|(?:\.beans[/\\][^\s:'"\n]+\.md))/.exec(
         combined
       );
 
@@ -652,11 +652,13 @@ export class BeansService {
     const rawPath = pathMatch[1];
     const resolved = path.isAbsolute(rawPath) ? rawPath : path.resolve(this.workspaceRoot, rawPath);
     const relativeToWorkspace = path.relative(this.workspaceRoot, resolved);
-    if (relativeToWorkspace.startsWith('..')) {
+    if (!relativeToWorkspace || relativeToWorkspace.startsWith('..') || path.isAbsolute(relativeToWorkspace)) {
       return undefined;
     }
 
-    if (!relativeToWorkspace.includes(`${path.sep}.beans${path.sep}`) && !relativeToWorkspace.startsWith('.beans/')) {
+    const beansDirPrefix = `.beans${path.sep}`;
+    const beansDirInfix = `${path.sep}.beans${path.sep}`;
+    if (!relativeToWorkspace.startsWith(beansDirPrefix) && !relativeToWorkspace.includes(beansDirInfix)) {
       return undefined;
     }
 
@@ -939,6 +941,11 @@ export class BeansService {
    */
   private async clearDanglingParentReferences(normalizedBeans: Bean[]): Promise<void> {
     const knownIds = new Set(normalizedBeans.map(b => b.id));
+    // Track per-missing-parent results so we can report accurately to the user.
+    const resultsByMissingParent = new Map<
+      string,
+      { successes: Array<{ id: string; code: string }>; failures: Array<{ id: string; error: Error }> }
+    >();
 
     for (const bean of normalizedBeans) {
       if (!bean.parent || knownIds.has(bean.parent)) {
@@ -946,6 +953,9 @@ export class BeansService {
       }
 
       const missingParentId = bean.parent;
+      if (!resultsByMissingParent.has(missingParentId)) {
+        resultsByMissingParent.set(missingParentId, { successes: [], failures: [] });
+      }
 
       try {
         const { data: resp, errors } = await this.executeGraphQL<{ updateBean: RawBeanFromCLI }>(
@@ -966,11 +976,35 @@ export class BeansService {
         this.logger.info(
           `Cleared dangling parent reference on ${bean.code || bean.id} (parent ${missingParentId} not found)`
         );
-        void vscode.window.showWarningMessage(
-          `Bean ${bean.code || bean.id} has been orphaned because its parent (${missingParentId}) no longer exists.`
-        );
+        resultsByMissingParent.get(missingParentId)!.successes.push({ id: bean.id, code: bean.code || bean.id });
       } catch (error) {
-        this.logger.warn(`Failed to clear dangling parent for bean ${bean.id}: ${(error as Error).message}`);
+        const err = error as Error;
+        this.logger.warn(`Failed to clear dangling parent for bean ${bean.id}: ${err.message}`);
+        resultsByMissingParent.get(missingParentId)!.failures.push({ id: bean.id, error: err });
+      }
+    }
+
+    // Aggregate user-facing notifications per missing parent. If any failures
+    // occurred for a given parent, downgrade the message to indicate we only
+    // attempted to orphan children and list succeeded/failed counts.
+    for (const [missingParentId, { successes, failures }] of resultsByMissingParent.entries()) {
+      if (successes.length === 0 && failures.length === 0) {
+        continue;
+      }
+
+      if (failures.length === 0) {
+        // All child updates succeeded: report as orphaned
+        const list = successes.map(s => s.code).join(', ');
+        void vscode.window.showWarningMessage(
+          `Bean(s) ${list} have been orphaned because their parent (${missingParentId}) no longer exists.`
+        );
+      } else {
+        // Partial or complete failure: inform the user we attempted to orphan
+        const succeededCount = successes.length;
+        const failedCount = failures.length;
+        void vscode.window.showWarningMessage(
+          `Attempted to orphan ${succeededCount + failedCount} child(ren) of ${missingParentId}: ${succeededCount} succeeded, ${failedCount} failed. See output for details.`
+        );
       }
     }
   }

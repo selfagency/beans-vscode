@@ -483,8 +483,8 @@ describe('BeansTreeDataProvider', () => {
     beforeEach(() => {
       provider = new BeansTreeDataProvider(service);
       // Reset static deduplication state between tests
-      (BeansTreeDataProvider as unknown as { lastFetchErrorMessage: string }).lastFetchErrorMessage = '';
-      (BeansTreeDataProvider as unknown as { lastFetchErrorTime: number }).lastFetchErrorTime = 0;
+      Reflect.set(BeansTreeDataProvider, 'lastFetchErrorMessage', '');
+      Reflect.set(BeansTreeDataProvider, 'lastFetchErrorTime', 0);
     });
 
     it('should handle fetch errors gracefully', async () => {

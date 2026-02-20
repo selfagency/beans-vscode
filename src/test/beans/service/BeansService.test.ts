@@ -563,6 +563,26 @@ describe('BeansService', () => {
       );
     });
 
+    it('malformed bean path regex matches both forward-slash and backslash .beans separators', () => {
+      // The regex used by extractMalformedBeanPathFromCliError must match .beans paths
+      // with either separator so Windows CLI errors are handled. On POSIX the method
+      // would still reject the resolved path (backslash is literal, not a separator),
+      // but the regex must extract the candidate in both cases.
+      const pattern =
+        /((?:[A-Za-z]:\\[^\s:'"\n]+\.md)|(?:\/?[^\s:'"\n]*\.beans[/\\][^\s:'"\n]+\.md)|(?:\.beans[/\\][^\s:'"\n]+\.md))/;
+
+      // Forward-slash (POSIX / universal)
+      expect(pattern.exec('failed to parse .beans/broken.md: yaml error')?.[1]).toBe('.beans/broken.md');
+      expect(pattern.exec('error in /workspace/.beans/sub/file.md')?.[1]).toBe('/workspace/.beans/sub/file.md');
+
+      // Backslash (Windows)
+      expect(pattern.exec('failed to parse .beans\\broken.md: yaml error')?.[1]).toBe('.beans\\broken.md');
+      expect(pattern.exec('error in C:\\workspace\\.beans\\file.md')?.[1]).toBe('C:\\workspace\\.beans\\file.md');
+
+      // No match for paths without .beans dir
+      expect(pattern.exec('error in /workspace/other/file.md')).toBeNull();
+    });
+
     it('clears dangling parent references for beans whose parent is not in the list', async () => {
       // Parent is malformed (no title, no path) so it ends up quarantined and absent from normalizedBeans.
       // The child references its id; since the parent is not in the list, the parent field must be cleared.

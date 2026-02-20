@@ -13,7 +13,7 @@
  *
  * Notes for contributors:
  * - Keep activation fast; avoid long-running work on startup
- * - Use `BeansOutput` for logging (mirrored to .vscode/logs/beans-output.log)
+ * - Use `BeansOutput` for logging (mirrored to context.logUri/beans-output.log)
  */
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
