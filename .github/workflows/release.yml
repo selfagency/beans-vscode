@@ -96,7 +96,7 @@ jobs:
               return;
             }
 
-            const requiredWorkflows = ['CI', 'Remote Compatibility Tests'];
+            const requiredWorkflows = ['Tests', 'Remote Tests'];
 
             for (const workflowName of requiredWorkflows) {
               const workflowsResp = await github.rest.actions.listRepoWorkflows({
