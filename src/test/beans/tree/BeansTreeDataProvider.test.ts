@@ -91,6 +91,22 @@ describe('BeansTreeDataProvider', () => {
       expect(provider.getVisibleCount()).toBe(2);
     });
 
+    it('should fetch count via refreshCount without requiring getChildren', async () => {
+      mockBeans = [
+        createBean('bean-1', 'A', 'todo'),
+        createBean('bean-2', 'B', 'todo'),
+        createBean('bean-3', 'C', 'in-progress'),
+      ];
+
+      // Count starts at 0 before any fetch
+      expect(provider.getVisibleCount()).toBe(0);
+
+      // refreshCount fetches beans and returns the count
+      const count = await provider.refreshCount();
+      expect(count).toBe(3);
+      expect(provider.getVisibleCount()).toBe(3);
+    });
+
     it('should return tree item unchanged', () => {
       const bean: Bean = {
         id: 'bean-1',

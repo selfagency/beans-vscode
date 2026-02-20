@@ -46,6 +46,15 @@ export class BeansSearchTreeProvider implements vscode.TreeDataProvider<BeanTree
     return this.beans.length;
   }
 
+  /**
+   * Fetch beans and return the count without triggering a tree rebuild.
+   * Keeps the search pane header count accurate even when collapsed.
+   */
+  async refreshCount(): Promise<number> {
+    await this.fetchBeans();
+    return this.beans.length;
+  }
+
   setFilter(filter: BeansFilterState | undefined): void {
     this.currentFilter = filter;
     this.refresh();

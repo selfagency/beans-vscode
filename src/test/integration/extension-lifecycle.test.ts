@@ -10,6 +10,7 @@ interface MockBeansTreeProvider {
   refresh: () => void;
   setFilter: (filter: unknown) => void;
   getVisibleCount: () => number;
+  refreshCount?: () => Promise<number>;
 }
 
 // TODO(beans-vscode-y4k2): Add lower-mock integration tests that exercise
@@ -142,6 +143,7 @@ vi.mock('../../beans/search/BeansSearchTreeProvider', () => {
     setFilter = vi.fn();
     getChildren = vi.fn(async () => []);
     getVisibleCount = vi.fn(() => 0);
+    refreshCount = vi.fn(async () => 0);
     onDidChangeTreeData = vi.fn(() => ({ dispose: vi.fn() }));
 
     constructor() {
@@ -204,6 +206,7 @@ vi.mock('../../beans/tree/providers', () => {
     setFilter = vi.fn();
     getChildren = vi.fn(async () => []);
     getVisibleCount = vi.fn(() => 0);
+    refreshCount = vi.fn(async () => 0);
     onDidChangeTreeData = vi.fn(() => ({ dispose: vi.fn() }));
   }
   class ActiveBeansProvider extends BaseProvider {
@@ -435,7 +438,7 @@ describe('Extension lifecycle coverage', () => {
   it('logs a warning when refreshing side-panel count titles throws', async () => {
     await activate(makeContext());
 
-    state.providerInstances.active!.getVisibleCount = vi.fn(() => {
+    (state.providerInstances.active as any).refreshCount = vi.fn(async () => {
       throw new Error('count failed');
     });
 
@@ -444,25 +447,13 @@ describe('Extension lifecycle coverage', () => {
       | undefined;
     onDidChangeHandler?.();
 
-    const completedOnDidChangeHandler = (state.providerInstances.completed as any).onDidChangeTreeData.mock
-      .calls[0]?.[0] as (() => void) | undefined;
-    completedOnDidChangeHandler?.();
-
-    const scrappedOnDidChangeHandler = (state.providerInstances.scrapped as any).onDidChangeTreeData.mock
-      .calls[0]?.[0] as (() => void) | undefined;
-    scrappedOnDidChangeHandler?.();
-
-    const draftOnDidChangeHandler = (state.providerInstances.draft as any).onDidChangeTreeData.mock.calls[0]?.[0] as
-      | (() => void)
-      | undefined;
-    draftOnDidChangeHandler?.();
-
-    const searchOnDidChangeHandler = (state.searchProvider as any)?.onDidChangeTreeData?.mock?.calls?.[0]?.[0] as
-      | (() => void)
-      | undefined;
-    searchOnDidChangeHandler?.();
-
-    expect(logger.warn).toHaveBeenCalledWith('Failed to refresh bean counts for side panel headers', expect.any(Error));
+    // refreshCountTitles is async — let the promise settle
+    await vi.waitFor(() => {
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Failed to refresh bean counts for side panel headers',
+        expect.any(Error)
+      );
+    });
   });
 
   it('logs errors when search filter commands fail', async () => {
@@ -495,24 +486,31 @@ describe('Extension lifecycle coverage', () => {
   it('shows and keeps side-panel header counts in sync with refresh and filters', async () => {
     await activate(makeContext());
 
-    expect(state.treeViews.get('beans.draft')?.title).toBe('Drafts (0)');
-    expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans (0)');
-    expect(state.treeViews.get('beans.completed')?.title).toBe('Completed (0)');
-    expect(state.treeViews.get('beans.scrapped')?.title).toBe('Scrapped (0)');
-    expect(state.treeViews.get('beans.search')?.title).toBe('Search (0)');
+    // refreshCountTitles is async — wait for the startup fetch to settle
+    await vi.waitFor(() => {
+      expect(state.treeViews.get('beans.draft')?.title).toBe('Drafts (0)');
+      expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans (0)');
+      expect(state.treeViews.get('beans.completed')?.title).toBe('Completed (0)');
+      expect(state.treeViews.get('beans.scrapped')?.title).toBe('Scrapped (0)');
+      expect(state.treeViews.get('beans.search')?.title).toBe('Search (0)');
+    });
 
     await state.registeredCommands.get('beans.refreshAll')?.();
 
-    expect(state.treeViews.get('beans.draft')?.title).toBe('Drafts (0)');
-    expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans (0)');
-    expect(state.treeViews.get('beans.completed')?.title).toBe('Completed (0)');
-    expect(state.treeViews.get('beans.scrapped')?.title).toBe('Scrapped (0)');
-    expect(state.treeViews.get('beans.search')?.title).toBe('Search (0)');
+    await vi.waitFor(() => {
+      expect(state.treeViews.get('beans.draft')?.title).toBe('Drafts (0)');
+      expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans (0)');
+      expect(state.treeViews.get('beans.completed')?.title).toBe('Completed (0)');
+      expect(state.treeViews.get('beans.scrapped')?.title).toBe('Scrapped (0)');
+      expect(state.treeViews.get('beans.search')?.title).toBe('Search (0)');
+    });
 
     state.filters.set('beans.search', { text: 'query' });
     state.filterListener?.('beans.search');
 
-    expect(state.treeViews.get('beans.search')?.title).toBe('Search (0)');
+    await vi.waitFor(() => {
+      expect(state.treeViews.get('beans.search')?.title).toBe('Search (0)');
+    });
   });
 
   it('hides side-panel header counts when beans.view.showCounts is disabled', async () => {
@@ -520,39 +518,23 @@ describe('Extension lifecycle coverage', () => {
 
     await activate(makeContext());
 
-    expect(state.treeViews.get('beans.draft')?.title).toBe('Drafts');
-    expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans');
-    expect(state.treeViews.get('beans.completed')?.title).toBe('Completed');
-    expect(state.treeViews.get('beans.scrapped')?.title).toBe('Scrapped');
-    expect(state.treeViews.get('beans.search')?.title).toBe('Search');
+    await vi.waitFor(() => {
+      expect(state.treeViews.get('beans.draft')?.title).toBe('Drafts');
+      expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans');
+      expect(state.treeViews.get('beans.completed')?.title).toBe('Completed');
+      expect(state.treeViews.get('beans.scrapped')?.title).toBe('Scrapped');
+      expect(state.treeViews.get('beans.search')?.title).toBe('Search');
+    });
   });
 
-  it('refreshes side-panel count titles on activation when at least one view is visible', async () => {
-    (vscode.window.createTreeView as ReturnType<typeof vi.fn>).mockImplementation((id: string) => {
-      const treeView = {
-        title: undefined as string | undefined,
-        visible: id === 'beans.scrapped',
-        onDidChangeSelection: (cb: (e: any) => void) => {
-          state.selectionHandlers.set(id, cb);
-          return { dispose: vi.fn() };
-        },
-        dispose: vi.fn(),
-      } as any;
-
-      state.treeViews.set(id, treeView);
-      return treeView;
-    });
-
-    state.providerInstances.active = {
-      refresh: vi.fn(),
-      setFilter: vi.fn(),
-      getVisibleCount: vi.fn(() => 0),
-    } as unknown as MockBeansTreeProvider;
-
+  it('refreshes side-panel count titles on activation regardless of pane visibility', async () => {
     await activate(makeContext());
 
-    // If the visibility guard runs, the title formatter is reapplied and scrapped title remains populated.
-    expect(state.treeViews.get('beans.scrapped')?.title).toBe('Scrapped (0)');
+    // Counts are fetched for all panes on startup, even collapsed ones
+    await vi.waitFor(() => {
+      expect(state.treeViews.get('beans.scrapped')?.title).toBe('Scrapped (0)');
+      expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans (0)');
+    });
   });
 
   it('contributes Scrapped pane ordered below Completed and above Search by default', () => {
