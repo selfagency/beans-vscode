@@ -252,6 +252,93 @@ describe('BeansDetailsViewProvider', () => {
     });
   });
 
+  it('registers a details file watcher and disposes the previous watcher on bean switch', async () => {
+    const beanOne = makeBean({ id: 'beans-vscode-watch-1', code: 'watch-1', path: 'beans-vscode-watch-1.md' });
+    const beanTwo = makeBean({ id: 'beans-vscode-watch-2', code: 'watch-2', path: 'beans-vscode-watch-2.md' });
+
+    service.showBean.mockResolvedValueOnce(beanOne).mockResolvedValueOnce(beanTwo);
+
+    const firstWatcherDispose = vi.fn();
+    const secondWatcherDispose = vi.fn();
+    const createFileSystemWatcherSpy = vi
+      .spyOn(vscode.workspace, 'createFileSystemWatcher')
+      .mockReturnValueOnce({
+        onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+        dispose: firstWatcherDispose,
+      } as any)
+      .mockReturnValueOnce({
+        onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+        dispose: secondWatcherDispose,
+      } as any);
+
+    (
+      vscode.workspace as unknown as { workspaceFolders?: Array<{ uri: vscode.Uri; name: string; index: number }> }
+    ).workspaceFolders = [{ uri: vscode.Uri.file('/workspace') as unknown as vscode.Uri, name: 'workspace', index: 0 }];
+
+    provider.resolveWebviewView(view, resolveContext, cancellationToken);
+    await provider.showBean(beanOne);
+    await provider.showBean(beanTwo);
+
+    expect(createFileSystemWatcherSpy).toHaveBeenCalledTimes(2);
+    expect(firstWatcherDispose).toHaveBeenCalledTimes(1);
+    expect(secondWatcherDispose).not.toHaveBeenCalled();
+  });
+
+  it('refreshes details after watched file changes for the active bean', async () => {
+    vi.useFakeTimers();
+    try {
+      const initialBean = makeBean({
+        id: 'beans-vscode-watch-refresh',
+        code: 'watch-refresh',
+        path: 'beans-vscode-watch-refresh.md',
+        title: 'Before watch refresh',
+      });
+      const refreshedBean = makeBean({
+        id: 'beans-vscode-watch-refresh',
+        code: 'watch-refresh',
+        path: 'beans-vscode-watch-refresh.md',
+        title: 'After watch refresh',
+      });
+
+      service.showBean.mockResolvedValueOnce(initialBean).mockResolvedValueOnce(refreshedBean);
+
+      let onDidChangeHandler: (() => void) | undefined;
+      vi.spyOn(vscode.workspace, 'createFileSystemWatcher').mockReturnValue({
+        onDidChange: vi.fn((handler: () => void) => {
+          onDidChangeHandler = handler;
+          return { dispose: vi.fn() };
+        }),
+        onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+        dispose: vi.fn(),
+      } as any);
+
+      (
+        vscode.workspace as unknown as { workspaceFolders?: Array<{ uri: vscode.Uri; name: string; index: number }> }
+      ).workspaceFolders = [
+        { uri: vscode.Uri.file('/workspace') as unknown as vscode.Uri, name: 'workspace', index: 0 },
+      ];
+
+      provider.resolveWebviewView(view, resolveContext, cancellationToken);
+      await provider.showBean(initialBean);
+
+      expect(onDidChangeHandler).toBeTypeOf('function');
+      onDidChangeHandler?.();
+
+      vi.advanceTimersByTime(250);
+      await vi.waitFor(() => {
+        expect(service.showBean).toHaveBeenCalledTimes(2);
+        expect(webview.html).toContain('After watch refresh');
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('updates bean via message handler and refreshes tree', async () => {
     const bean = makeBean({ id: 'beans-vscode-1', code: '1', title: 'Before' });
     const updated = makeBean({ id: 'beans-vscode-1', code: '1', title: 'After', status: 'in-progress', type: 'bug' });

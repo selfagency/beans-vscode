@@ -16,10 +16,14 @@ type DetailsWebviewMessage = {
  */
 export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'beans.details';
+  private static readonly DETAILS_FILE_WATCH_DEBOUNCE_MS = 200;
   private _view?: vscode.WebviewView;
   private _currentBean?: Bean;
   private _parentBean?: Bean;
   private readonly _navigationHistory: string[] = [];
+  private _detailsFileWatcher?: vscode.FileSystemWatcher;
+  private _detailsFileWatcherListeners: vscode.Disposable[] = [];
+  private _detailsWatchTimer?: ReturnType<typeof setTimeout>;
   private readonly logger = BeansOutput.getInstance();
 
   /** The currently displayed bean (used by view/title edit command). */
@@ -138,6 +142,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       if (this._view) {
         this.updateView(fullBean);
       }
+      this.setupDetailsFileWatcherForCurrentBean();
     } catch (error) {
       this.logger.error('Failed to fetch bean details', error as Error);
       // Fall back to using the provided bean (without body)
@@ -147,6 +152,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       if (this._view) {
         this.updateView(bean);
       }
+      this.setupDetailsFileWatcherForCurrentBean();
     }
   }
 
@@ -154,6 +160,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
    * Clear the view
    */
   public clear(): void {
+    this.disposeDetailsFileWatcher();
     this._currentBean = undefined;
     this._parentBean = undefined;
     this._navigationHistory.length = 0;
@@ -1240,6 +1247,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       if (this._view) {
         this.updateView(fullBean);
       }
+      this.setupDetailsFileWatcherForCurrentBean();
       return true;
     } catch (error) {
       this.logger.error(`Failed to fetch bean details for ${beanId}`, error as Error);
@@ -1255,6 +1263,80 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 
   private getNonce(): string {
     return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+  }
+
+  private setupDetailsFileWatcherForCurrentBean(): void {
+    this.disposeDetailsFileWatcher();
+
+    if (!this._currentBean) {
+      return;
+    }
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      return;
+    }
+
+    const normalizedPath = this._currentBean.path.replace(/\\/g, '/').replace(/^\.\//, '');
+    const relativePath = normalizedPath.startsWith('.beans/') ? normalizedPath : `.beans/${normalizedPath}`;
+    const watchedBeanId = this._currentBean.id;
+
+    const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(workspaceFolder, relativePath));
+    const onFileChanged = (): void => {
+      this.scheduleDetailsRefreshFromWatcher(watchedBeanId);
+    };
+
+    this._detailsFileWatcher = watcher;
+    this._detailsFileWatcherListeners = [
+      watcher.onDidChange(onFileChanged),
+      watcher.onDidCreate(onFileChanged),
+      watcher.onDidDelete(onFileChanged),
+    ];
+  }
+
+  private scheduleDetailsRefreshFromWatcher(beanId: string): void {
+    if (this._detailsWatchTimer) {
+      clearTimeout(this._detailsWatchTimer);
+    }
+
+    this._detailsWatchTimer = setTimeout(() => {
+      void this.refreshFromDetailsWatcher(beanId);
+    }, BeansDetailsViewProvider.DETAILS_FILE_WATCH_DEBOUNCE_MS);
+  }
+
+  private async refreshFromDetailsWatcher(beanId: string): Promise<void> {
+    if (!this._currentBean || this._currentBean.id !== beanId) {
+      return;
+    }
+
+    const refreshedBean = await this.service.showBean(beanId).catch(error => {
+      this.logger.warn(`Details watcher refresh failed for ${beanId}: ${(error as Error).message}`);
+      return undefined;
+    });
+
+    if (!refreshedBean || !this._currentBean || this._currentBean.id !== beanId) {
+      return;
+    }
+
+    this._currentBean = refreshedBean;
+    if (this._view) {
+      this.updateView(refreshedBean);
+    }
+  }
+
+  private disposeDetailsFileWatcher(): void {
+    if (this._detailsWatchTimer) {
+      clearTimeout(this._detailsWatchTimer);
+      this._detailsWatchTimer = undefined;
+    }
+
+    for (const listener of this._detailsFileWatcherListeners) {
+      listener.dispose();
+    }
+    this._detailsFileWatcherListeners = [];
+
+    this._detailsFileWatcher?.dispose();
+    this._detailsFileWatcher = undefined;
   }
 
   /**
