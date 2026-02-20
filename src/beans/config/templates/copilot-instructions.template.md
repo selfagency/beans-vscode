@@ -1,16 +1,7 @@
-<!--
-   Template: copilot-instructions.template.md
-
-   Purpose: Generated Copilot instruction file describing workspace Beans
-   policies and workflows. This template is consumed by the extension at
-   runtime and written to `.github/instructions/tasks.instructions.md`.
-
-   Important:
-   - Tests import this markdown file directly using the vitest .md loader.
-      Keep the top-level placeholder and formatting stable.
-   - The `{{PRIME_OUTPUT}}` placeholder is replaced at build/runtime by the
-      Copilot instruction generation helpers in `src/beans/config`.
--->
+---
+title: Beans Task Management Rules
+description: Generated Copilot instructions for Beans workflows in this workspace.
+---
 
 # Beans Task Management Rules
 

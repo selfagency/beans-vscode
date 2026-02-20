@@ -26,8 +26,12 @@ describe('CopilotSkill', () => {
     it('creates compact skill content with required frontmatter fields and planning guidance', () => {
       const content = buildBeansCopilotSkill('');
 
+      expect(content.startsWith('---\n')).toBe(true);
       expect(content).toContain('name: beans');
       expect(content).toContain('Use for Beans issue tracker workflows');
+      expect(content).toContain('title: Beans Skill');
+      expect(content).toContain('description:');
+      expect(content).not.toContain('Template: copilot-skill.template.md');
       expect(content).toContain('# Beans Skill');
       expect(content).toContain('## Planning mode: epic decomposition');
       expect(content).toContain('### Step 3 — Propose the issue map');
