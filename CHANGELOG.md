@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-02-20
+
+## What's Changed
+* Add VitePress documentation site (beans-vscode-bmx0) by @selfagency in https://github.com/selfagency/beans-vscode/pull/68
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.3.2...v1.3.3
+
+_Source: changes from v1.3.2 to v1.3.3._
+
+
 ## [1.3.2] - 2026-02-20
 
 ## What's Changed
