@@ -691,7 +691,17 @@ export class BeansService {
       return beanPath;
     }
 
-    return path.resolve(this.workspaceRoot, beanPath);
+    const normalized = beanPath.replace(/\\/g, path.sep).replace(/^\.([/\\])/, '');
+    const hasBeansSegment =
+      normalized.startsWith(`.beans${path.sep}`) || normalized.includes(`${path.sep}.beans${path.sep}`);
+
+    if (hasBeansSegment) {
+      return path.resolve(this.workspaceRoot, normalized);
+    }
+
+    // Malformed/partial payloads can include filename-only paths. Those files
+    // still live under the beans directory, so default to `.beans/<filename>`.
+    return path.resolve(this.workspaceRoot, '.beans', path.basename(normalized));
   }
 
   private static readonly MAX_GIT_HISTORY_COMMITS = 20;
@@ -792,11 +802,15 @@ export class BeansService {
     const filePath = rawBean.path ? this.resolveBeanFilePath(rawBean.path) : undefined;
     let defaultStatus = 'draft';
     let defaultType = 'task';
+    let defaultPrefix = 'bean';
+    let defaultIdLength = 4;
 
     try {
       const config = await this.getConfig();
       defaultStatus = config.default_status || defaultStatus;
       defaultType = config.default_type || defaultType;
+      defaultPrefix = config.prefix || defaultPrefix;
+      defaultIdLength = config.id_length || defaultIdLength;
     } catch {
       // Ignore config read failures and keep hard defaults for repair fallback.
     }
@@ -810,6 +824,11 @@ export class BeansService {
       status: defaultStatus,
       type: defaultType,
     });
+
+    if (!inferred.id && inferred.title) {
+      inferred.id = this.generateBeanId(defaultPrefix, defaultIdLength);
+      this.logger.info(`Generated fallback bean id ${inferred.id} while repairing malformed bean metadata`);
+    }
 
     if (!inferred.id || !inferred.title || !inferred.status || !inferred.type) {
       return null;
@@ -828,16 +847,26 @@ export class BeansService {
       try {
         await this.repairBeanMarkdownFrontmatter(filePath, repaired);
       } catch (error) {
-        // File I/O failed but we still have a complete bean payload.
-        // Return the repaired bean so the caller can normalize it rather than
-        // quarantining with missing fields, which would cause recurring errors.
+        // Persist failed: do not keep an in-memory repaired bean that points to a
+        // still-broken file. Force quarantine+notification through caller flow.
         this.logger.warn(
-          `Failed to persist repaired frontmatter for ${path.basename(filePath)}: ${(error as Error).message}; returning in-memory repair`
+          `Failed to persist repaired frontmatter for ${path.basename(filePath)}: ${(error as Error).message}; escalating to quarantine`
         );
+        return null;
       }
     }
 
     return repaired;
+  }
+
+  private generateBeanId(prefix: string, idLength: number): string {
+    const normalizedPrefix = prefix?.trim() || 'bean';
+    const normalizedLength = Math.min(16, Math.max(4, Number.isFinite(idLength) ? idLength : 4));
+    const suffix = createHash('sha256')
+      .update(`${Date.now()}-${Math.random()}`)
+      .digest('hex')
+      .slice(0, normalizedLength);
+    return `${normalizedPrefix}-${suffix}`;
   }
 
   /**
@@ -1143,7 +1172,7 @@ export class BeansService {
     this.malformedWarningPaths.add(warningKey);
 
     const fileLabel = quarantinedPath ? path.basename(quarantinedPath) : rawBean.path || rawBean.id;
-    const message = `Malformed bean could not be auto-fixed and was quarantined.\n\n${fileLabel}`;
+    const message = `Malformed bean could not be auto-fixed and was quarantined: \`${fileLabel}\``;
 
     if (!quarantinedPath) {
       void vscode.window.showWarningMessage(message);

@@ -273,6 +273,123 @@ describe('BeansCommands', () => {
     );
   });
 
+  it('deletes parent and all children when user selects Delete All', async () => {
+    const parent = makeBean({ id: 'parent-1', code: 'P1', status: 'draft', title: 'Parent' });
+    const child1 = makeBean({ id: 'child-1', code: 'C1', parent: 'parent-1', status: 'todo' });
+    const child2 = makeBean({ id: 'child-2', code: 'C2', parent: 'parent-1', status: 'todo' });
+    service.listBeans.mockResolvedValueOnce([parent, child1, child2]);
+    showWarningMessage.mockResolvedValueOnce('Delete All');
+
+    await (commands as any).deleteBean(parent);
+
+    expect(service.deleteBean).toHaveBeenCalledWith('child-1');
+    expect(service.deleteBean).toHaveBeenCalledWith('child-2');
+    expect(service.deleteBean).toHaveBeenCalledWith('parent-1');
+    expect(executeCommand).toHaveBeenCalledWith('beans.refreshAll');
+  });
+
+  it('aborts parent delete when at least one child delete fails', async () => {
+    const parent = makeBean({ id: 'parent-2', code: 'P2', status: 'scrapped', title: 'Parent' });
+    const child1 = makeBean({ id: 'child-3', code: 'C3', parent: 'parent-2', status: 'todo' });
+    const child2 = makeBean({ id: 'child-4', code: 'C4', parent: 'parent-2', status: 'todo' });
+    service.listBeans.mockResolvedValueOnce([parent, child1, child2]);
+    showWarningMessage.mockResolvedValueOnce('Delete All');
+    service.deleteBean.mockImplementation(async (id: string) => {
+      if (id === 'child-4') {
+        throw new Error('delete failed');
+      }
+      return undefined;
+    });
+    showErrorMessage.mockResolvedValueOnce('Show Output');
+
+    await (commands as any).deleteBean(parent);
+    await Promise.resolve();
+
+    expect(showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('Parent delete aborted'), 'Show Output');
+    expect(logger.show).toHaveBeenCalled();
+    expect(service.deleteBean).not.toHaveBeenCalledWith('parent-2');
+  });
+
+  it('orphans children then deletes parent when user selects Delete Parent Only', async () => {
+    const parent = makeBean({ id: 'parent-3', code: 'P3', status: 'draft', title: 'Parent' });
+    const child = makeBean({ id: 'child-5', code: 'C5', parent: 'parent-3', status: 'todo' });
+    service.listBeans.mockResolvedValueOnce([parent, child]);
+    showWarningMessage.mockResolvedValueOnce('Delete Parent Only');
+
+    await (commands as any).deleteBean(parent);
+
+    expect(service.updateBean).toHaveBeenCalledWith('child-5', { clearParent: true });
+    expect(service.deleteBean).toHaveBeenCalledWith('parent-3');
+    expect(executeCommand).toHaveBeenCalledWith('beans.refreshAll');
+  });
+
+  it('aborts parent delete when child orphaning fails', async () => {
+    const parent = makeBean({ id: 'parent-4', code: 'P4', status: 'scrapped', title: 'Parent' });
+    const child = makeBean({ id: 'child-6', code: 'C6', parent: 'parent-4', status: 'todo' });
+    service.listBeans.mockResolvedValueOnce([parent, child]);
+    showWarningMessage.mockResolvedValueOnce('Delete Parent Only');
+    service.updateBean.mockRejectedValueOnce(new Error('orphan failed'));
+    showErrorMessage.mockResolvedValueOnce('Show Output');
+
+    await (commands as any).deleteBean(parent);
+    await Promise.resolve();
+
+    expect(showErrorMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to orphan child beans'),
+      'Show Output'
+    );
+    expect(logger.show).toHaveBeenCalled();
+    expect(service.deleteBean).not.toHaveBeenCalledWith('parent-4');
+  });
+
+  it('cancels child handling prompt without deleting parent', async () => {
+    const parent = makeBean({ id: 'parent-5', code: 'P5', status: 'draft', title: 'Parent' });
+    const child = makeBean({ id: 'child-7', code: 'C7', parent: 'parent-5', status: 'todo' });
+    service.listBeans.mockResolvedValueOnce([parent, child]);
+    showWarningMessage.mockResolvedValueOnce('Cancel');
+
+    await (commands as any).deleteBean(parent);
+
+    expect(service.deleteBean).not.toHaveBeenCalledWith('parent-5');
+  });
+
+  it('cancels when child handling prompt is dismissed', async () => {
+    const parent = makeBean({ id: 'parent-6', code: 'P6', status: 'draft', title: 'Parent' });
+    const child = makeBean({ id: 'child-8', code: 'C8', parent: 'parent-6', status: 'todo' });
+    service.listBeans.mockResolvedValueOnce([parent, child]);
+    showWarningMessage.mockResolvedValueOnce(undefined);
+
+    await (commands as any).deleteBean(parent);
+
+    expect(service.deleteBean).not.toHaveBeenCalledWith('parent-6');
+  });
+
+  it('uses delete confirmation flow when bean has no children', async () => {
+    const parent = makeBean({ id: 'parent-7', code: 'P7', status: 'draft', title: 'No Children Parent' });
+    service.listBeans.mockResolvedValueOnce([parent]);
+    showWarningMessage.mockResolvedValueOnce('Delete');
+
+    await (commands as any).deleteBean(parent);
+
+    expect(showWarningMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Delete bean P7: No Children Parent?'),
+      { modal: true },
+      'Delete',
+      'Cancel'
+    );
+    expect(service.deleteBean).toHaveBeenCalledWith('parent-7');
+  });
+
+  it('aborts no-children delete when confirmation is not Delete', async () => {
+    const parent = makeBean({ id: 'parent-8', code: 'P8', status: 'scrapped', title: 'No Children Parent' });
+    service.listBeans.mockResolvedValueOnce([parent]);
+    showWarningMessage.mockResolvedValueOnce('Cancel');
+
+    await (commands as any).deleteBean(parent);
+
+    expect(service.deleteBean).not.toHaveBeenCalledWith('parent-8');
+  });
+
   it('applies search text to search pane only', async () => {
     showInputBox.mockResolvedValueOnce('auth');
     filterManager.getFilter.mockReturnValue({});
