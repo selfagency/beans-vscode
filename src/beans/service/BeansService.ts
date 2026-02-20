@@ -906,8 +906,29 @@ export class BeansService {
     await writeFile(filePath, repairedContent, 'utf8');
   }
 
+  /**
+   * Produce a YAML scalar that matches the beans CLI's own formatting:
+   * - Empty string     → ''  (single-quoted empty)
+   * - Needs quoting    → 'value' with internal apostrophes doubled as ''
+   * - Plain scalar     → value (no quotes)
+   *
+   * A value needs quoting when it:
+   *   - is empty
+   *   - starts with a YAML indicator char (-, ?, :, {, }, [, ], #, &, *, !, |, >, ', ", %, @, `)
+   *   - contains `: ` (colon-space, which would start a mapping)
+   *   - contains ` #` (space-hash, which would start a comment)
+   *   - contains a newline or tab
+   */
   private yamlQuote(value: string): string {
-    return JSON.stringify(value ?? '');
+    const v = value ?? '';
+    if (v.length === 0) {
+      return "''";
+    }
+    const needsQuotes = /^[-?:{}[\]#&*!|>'"%@`]/.test(v) || /: |^: $| #|\n|\r|\t/.test(v);
+    if (!needsQuotes) {
+      return v;
+    }
+    return `'${v.replace(/'/g, "''")}'`;
   }
 
   /**

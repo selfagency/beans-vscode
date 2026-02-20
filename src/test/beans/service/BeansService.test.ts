@@ -88,7 +88,7 @@ describe('BeansService', () => {
     mockRename = rename as unknown as ReturnType<typeof vi.fn>;
     mockMkdir = mkdir as unknown as ReturnType<typeof vi.fn>;
 
-    mockReadFile.mockResolvedValue('---\nstatus: "todo"\ntype: "task"\n---\nbody');
+    mockReadFile.mockResolvedValue('---\nstatus: todo\ntype: task\n---\nbody');
     mockWriteFile.mockResolvedValue(undefined);
     mockRename.mockResolvedValue(undefined);
     mockMkdir.mockResolvedValue(undefined);
@@ -442,8 +442,8 @@ describe('BeansService', () => {
       expect(service.getConfig).toHaveBeenCalledTimes(2);
       expect(mockWriteFile).toHaveBeenCalledTimes(1);
       const writtenContent = mockWriteFile.mock.calls[0][1] as string;
-      expect(writtenContent).toContain('status: "todo"');
-      expect(writtenContent).toContain('type: "bug"');
+      expect(writtenContent).toContain('status: todo');
+      expect(writtenContent).toContain('type: bug');
     });
 
     it('does not treat in-body horizontal rules as frontmatter during repair', async () => {
@@ -472,10 +472,10 @@ describe('BeansService', () => {
       expect(beans).toHaveLength(1);
       expect(mockWriteFile).toHaveBeenCalledTimes(1);
       const writtenContent = mockWriteFile.mock.calls[0][1] as string;
-      expect(writtenContent).toContain('id: "test-bad4"');
-      expect(writtenContent).toContain('title: "hr bean"');
-      expect(writtenContent).toContain('status: "todo"');
-      expect(writtenContent).toContain('type: "task"');
+      expect(writtenContent).toContain('id: test-bad4');
+      expect(writtenContent).toContain('title: hr bean');
+      expect(writtenContent).toContain('status: todo');
+      expect(writtenContent).toContain('type: task');
       expect(writtenContent).toContain('\nBody intro\n---\nnot frontmatter\n---\nrest of body');
     });
 
@@ -665,10 +665,10 @@ describe('BeansService', () => {
       expect(beans[0].status).toBe('completed');
       expect(beans[0].type).toBe('feature');
       const writtenContent = mockWriteFile.mock.calls[0][1] as string;
-      expect(writtenContent).toContain('id: "test-hist1"');
-      expect(writtenContent).toContain('title: "My Historical Title"');
-      expect(writtenContent).toContain('status: "completed"');
-      expect(writtenContent).toContain('type: "feature"');
+      expect(writtenContent).toContain('id: test-hist1');
+      expect(writtenContent).toContain('title: My Historical Title');
+      expect(writtenContent).toContain('status: completed');
+      expect(writtenContent).toContain('type: feature');
     });
 
     it('falls back to filename inference when git log returns no commits', async () => {
