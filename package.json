@@ -53,10 +53,10 @@
     "test:watch": "vitest",
     "test:integration": "vscode-test",
     "release": "zx ./scripts/release.mjs",
-    "docs:dev": "pnpm exec vitepress dev docs",
-    "docs:build": "pnpm exec vitepress build docs",
-    "docs:preview": "pnpm exec vitepress preview docs",
-    "docs:serve": "pnpm exec vitepress serve docs",
+    "docs:dev": "pnpm exec vitepress dev",
+    "docs:build": "pnpm exec vitepress build",
+    "docs:preview": "pnpm exec vitepress preview",
+    "docs:serve": "pnpm exec vitepress serve",
     "prepare": "husky"
   },
   "contributes": {

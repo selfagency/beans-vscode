@@ -26,5 +26,6 @@
     },
     "codeQL.createQuery.qlPackLocation": "${workspaceFolder}/codeql",
     "vitest.rootConfig": ".",
-    "vitest.cliArguments": ""
+    "vitest.cliArguments": "",
+    "beans.mcp.showStartupNotification": false
 }

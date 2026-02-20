@@ -2,6 +2,8 @@ export default {
   title: 'Beans for VS Code',
   description: 'Documentation for the Beans VS Code extension',
   base: '/',
+  srcDir: 'docs',
+  outDir: './.gh-pages',
   themeConfig: {
     logo: '/icon.svg',
     nav: [
