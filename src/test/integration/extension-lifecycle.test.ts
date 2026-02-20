@@ -185,6 +185,7 @@ function makeContext(): vscode.ExtensionContext {
     subscriptions: [],
     extensionUri: vscode.Uri.file('/ext'),
     extensionPath: '/ext',
+    logUri: vscode.Uri.file('/ext-logs'),
     extension: { packageJSON: { version: '1.0.0' } },
     workspaceState: {
       get: vi.fn(() => undefined),

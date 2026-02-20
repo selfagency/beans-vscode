@@ -3,7 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { execFile } from 'node:child_process';
 import { createReadStream } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { promisify } from 'node:util';
 import { z } from 'zod';
@@ -33,6 +33,18 @@ type BeanRecord = {
 };
 
 const DEFAULT_MCP_PORT = 39173;
+
+/**
+ * Check whether `target` is contained within `root` after resolving both paths.
+ * Guards against the Windows cross-drive bypass where `path.relative(root, target)`
+ * returns an absolute path (e.g. `D:\evil`) that does not start with `..`.
+ */
+export function isPathWithinRoot(root: string, target: string): boolean {
+  const resolvedRoot = resolve(root);
+  const resolvedTarget = resolve(target);
+  const rel = relative(resolvedRoot, resolvedTarget);
+  return !!rel && !rel.startsWith('..') && !isAbsolute(rel);
+}
 
 function makeTextAndStructured<T extends Record<string, unknown>>(value: T) {
   return {
@@ -83,9 +95,8 @@ class BeansCliBackend {
 
     const beansRoot = this.getBeansRoot();
     const target = resolve(beansRoot, cleaned);
-    const relativeTarget = relative(beansRoot, target);
 
-    if (relativeTarget.startsWith('..')) {
+    if (!isPathWithinRoot(beansRoot, target)) {
       throw new Error('Path must stay within .beans directory');
     }
 
@@ -284,9 +295,12 @@ class BeansCliBackend {
       process.env.BEANS_VSCODE_OUTPUT_LOG || join(this.workspaceRoot, '.vscode', 'logs', 'beans-output.log')
     );
 
-    const relativePath = relative(this.workspaceRoot, outputPath);
-    if (relativePath.startsWith('..')) {
-      throw new Error('Output log path must stay within the workspace');
+    const isWithinWorkspace = isPathWithinRoot(this.workspaceRoot, outputPath);
+    const vscodeLogDir = process.env.BEANS_VSCODE_LOG_DIR ? resolve(process.env.BEANS_VSCODE_LOG_DIR) : undefined;
+    const isWithinVscodeLogDir = vscodeLogDir ? isPathWithinRoot(vscodeLogDir, outputPath) : false;
+
+    if (!isWithinWorkspace && !isWithinVscodeLogDir) {
+      throw new Error('Output log path must stay within the workspace or VS Code log directory');
     }
 
     const maxLines = options?.lines && options.lines > 0 ? options.lines : 500;
