@@ -409,7 +409,10 @@ describe('Extension lifecycle coverage', () => {
       throw new Error('count failed');
     });
 
-    state.filterListener?.('beans.active');
+    const onDidChangeHandler = (state.providerInstances.active as any).onDidChangeTreeData.mock.calls[0]?.[0] as
+      | (() => void)
+      | undefined;
+    onDidChangeHandler?.();
 
     expect(logger.warn).toHaveBeenCalledWith('Failed to refresh bean counts for side panel headers', expect.any(Error));
   });

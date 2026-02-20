@@ -108,8 +108,6 @@ export function registerBeansTreeViews(
           draftProvider.setFilter(filterOptions);
           break;
       }
-
-      void refreshCountTitles();
     })
   );
 
@@ -130,7 +128,6 @@ export function registerBeansTreeViews(
       if (newFilter) {
         manager.setFilter('beans.search', newFilter);
       }
-      await refreshCountTitles();
     } catch (error) {
       logger.error('Failed to apply search filter', error as Error);
     }
@@ -139,7 +136,6 @@ export function registerBeansTreeViews(
   const clearSearchFilterCmd = vscode.commands.registerCommand('beans.searchView.clear', async () => {
     try {
       manager.clearFilter('beans.search');
-      await refreshCountTitles();
       vscode.window.showInformationMessage('Search filters cleared');
     } catch (error) {
       logger.error('Failed to clear search filters', error as Error);
