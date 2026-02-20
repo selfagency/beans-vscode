@@ -7,6 +7,7 @@ priority: normal
 created_at: 2026-02-19T19:12:42Z
 updated_at: 2026-02-20T04:21:08Z
 branch: feature/beans-vscode-jf55-notify-mcp-server-startup
+pr: 56
 ---
 
 Show a startup notification when the Beans MCP server starts on port X, with an action/setting to disable this notice from extension configuration.
