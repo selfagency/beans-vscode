@@ -320,11 +320,11 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     const priorityOptions = this.escapeHtml(
       JSON.stringify([
         { value: '', label: '— None', icon: '' },
-        { value: 'critical', label: ' ① Critical', icon: '' },
-        { value: 'high', label: ' ② High', icon: '' },
-        { value: 'normal', label: ' ③ Normal', icon: '' },
-        { value: 'low', label: ' ④ Low', icon: '' },
-        { value: 'deferred', label: ' ⑤ Deferred', icon: '' },
+        { value: 'critical', label: '&nbsp;① Critical', icon: '' },
+        { value: 'high', label: '&nbsp;② High', icon: '' },
+        { value: 'normal', label: '&nbsp;③ Normal', icon: '' },
+        { value: 'low', label: '&nbsp;④ Low', icon: '' },
+        { value: 'deferred', label: '&nbsp;⑤ Deferred', icon: '' },
       ])
     );
 
@@ -454,7 +454,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
       display: grid;
       grid-template-columns: auto 1fr;
       column-gap: 8px;
-      row-gap: 6px;
+      row-gap: 10px;
       align-items: center;
     }
     .metadata-row {
@@ -605,11 +605,11 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     }
     .body-content .checklist-item {
       list-style: none;
-      margin-left: -20px;
+      margin-left: 0;
       display: flex;
       align-items: flex-start;
       gap: 8px;
-      padding: 6px 8px;
+      padding: 6px 0;
       border-radius: 4px;
     }
     .body-content .checklist-checkbox {

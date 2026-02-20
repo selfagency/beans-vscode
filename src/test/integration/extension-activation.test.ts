@@ -261,12 +261,18 @@ describe('Extension Activation', () => {
     const installPlatforms = new Set(
       installActions
         .map(action => {
-          if (action.includes('macOS')) return 'macOS';
-          if (action.includes('Linux')) return 'Linux';
-          if (action.includes('Windows')) return 'Windows';
+          if (action.includes('macOS')) {
+            return 'macOS';
+          }
+          if (action.includes('Linux')) {
+            return 'Linux';
+          }
+          if (action.includes('Windows')) {
+            return 'Windows';
+          }
           return undefined;
         })
-        .filter((p): p is 'macOS' | 'Linux' | 'Windows' => p !== undefined),
+        .filter((p): p is 'macOS' | 'Linux' | 'Windows' => p !== undefined)
     );
     expect(installPlatforms).toEqual(new Set(['macOS', 'Linux', 'Windows']));
 

@@ -346,9 +346,9 @@ describe('BeansDetailsViewProvider', () => {
     expect(typeMilestone).toBeLessThan(typeTask);
     expect(typeTask).toBeLessThan(typeBug);
 
-    expect(webview.html).toContain('&quot;label&quot;:&quot; ① Critical&quot;');
-    expect(webview.html).toContain('&quot;label&quot;:&quot; ③ Normal&quot;');
-    expect(webview.html).toContain('&quot;label&quot;:&quot; ⑤ Deferred&quot;');
+    expect(webview.html).toContain('&quot;label&quot;:&quot;&amp;nbsp;① Critical&quot;');
+    expect(webview.html).toContain('&quot;label&quot;:&quot;&amp;nbsp;③ Normal&quot;');
+    expect(webview.html).toContain('&quot;label&quot;:&quot;&amp;nbsp;⑤ Deferred&quot;');
   });
 
   it('handles update errors from message handler', async () => {
