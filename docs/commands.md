@@ -8,6 +8,7 @@ The Beans extension provides commands organized into the following categories:
 
 - [Workspace Management](#workspace-management)
 - [Bean Operations](#bean-operations)
+- [Details View and AI](#details-view-and-ai)
 - [Status Management](#status-management)
 - [Type and Priority](#type-and-priority)
 - [Relationships](#relationships)
@@ -18,28 +19,36 @@ The Beans extension provides commands organized into the following categories:
 
 ## Command Quick Reference
 
-| Command                 | Description                   | Keybinding | Context Menu         |
-| ----------------------- | ----------------------------- | ---------- | -------------------- |
-| `beans.init`            | Initialize Beans in workspace | -          | -                    |
-| `beans.refresh`         | Refresh all tree views        | -          | Tree title bar       |
-| `beans.view`            | View bean details             | -          | Tree items           |
-| `beans.create`          | Create new bean               | -          | Tree title bar       |
-| `beans.edit`            | Edit bean markdown file       | -          | Tree items           |
-| `beans.setStatus`       | Change bean status            | -          | Tree items           |
-| `beans.setType`         | Change bean type              | -          | Tree items           |
-| `beans.setPriority`     | Change bean priority          | -          | Tree items           |
-| `beans.setParent`       | Set parent bean               | -          | Tree items           |
-| `beans.removeParent`    | Remove parent relationship    | -          | Tree items           |
-| `beans.editBlocking`    | Edit blocking relationships   | -          | Tree items           |
-| `beans.filter`          | Filter beans by criteria      | -          | Tree title bar       |
-| `beans.search`          | Search beans                  | -          | Tree title bar       |
-| `beans.sort`            | Change sort mode              | -          | Tree title bar       |
-| `beans.copyId`          | Copy bean ID to clipboard     | -          | Tree items           |
-| `beans.delete`          | Delete draft/scrapped bean    | -          | Tree items           |
-| `beans.reopenCompleted` | Reopen completed bean         | -          | Command palette only |
-| `beans.reopenScrapped`  | Reopen scrapped bean          | -          | Command palette only |
-| `beans.openConfig`      | Open `.beans.yml`             | -          | -                    |
-| `beans.showOutput`      | Show extension output channel | -          | -                    |
+| Command                        | Description                     | Keybinding | Context Menu         |
+| ------------------------------ | ------------------------------- | ---------- | -------------------- |
+| `beans.init`                   | Initialize Beans in workspace   | -          | -                    |
+| `beans.refresh`                | Refresh all tree views          | -          | Active title bar     |
+| `beans.view`                   | View bean details               | -          | Tree items           |
+| `beans.create`                 | Create new bean                 | -          | Draft title bar      |
+| `beans.edit`                   | Edit bean markdown file         | -          | Tree items           |
+| `beans.setStatus`              | Change bean status              | -          | Tree items           |
+| `beans.setType`                | Change bean type                | -          | Tree items           |
+| `beans.setPriority`            | Change bean priority            | -          | Tree items           |
+| `beans.setParent`              | Set parent bean                 | -          | Tree items           |
+| `beans.removeParent`           | Remove parent relationship      | -          | Tree items           |
+| `beans.editBlocking`           | Edit blocking relationships     | -          | Tree items           |
+| `beans.filter`                 | Filter beans by criteria        | -          | -                    |
+| `beans.search`                 | Search beans                    | -          | Search title bar     |
+| `beans.sort`                   | Change sort mode                | -          | -                    |
+| `beans.copyId`                 | Copy bean ID to clipboard       | -          | Tree items           |
+| `beans.delete`                 | Delete draft/scrapped bean      | -          | Tree items           |
+| `beans.reopenCompleted`        | Reopen completed bean           | -          | Command palette only |
+| `beans.reopenScrapped`         | Reopen scrapped bean            | -          | Command palette only |
+| `beans.openConfig`             | Open `.beans.yml`               | -          | -                    |
+| `beans.openExtensionSettings`  | Open VS Code extension settings | -          | Help title bar       |
+| `beans.openUserGuide`          | Open user guide documentation   | -          | -                    |
+| `beans.openAiFeaturesGuide`    | Open AI features guide          | -          | -                    |
+| `beans.showOutput`             | Show extension output channel   | -          | Help title bar       |
+| `beans.details.back`           | Back to previous bean           | -          | Details title bar    |
+| `beans.copilotStartWork`       | Copilot: Start Work on Bean     | -          | Details title bar    |
+| `beans.searchView.filter`      | Filter search results           | -          | Search title bar     |
+| `beans.searchView.clear`       | Clear search filters            | -          | Search title bar     |
+| `beans.openFirstMalformedBean` | Open first malformed bean       | -          | Draft title bar      |
 
 ## Workspace Management
 
@@ -174,6 +183,54 @@ Open the Beans extension output channel to view logs and diagnostic information.
 
 ---
 
+### Open Extension Settings
+
+**Command**: `beans.openExtensionSettings`
+**Category**: Beans
+**Icon**: `$(gear)`
+
+Open VS Code settings filtered to Beans extension configuration.
+
+**Usage**:
+
+1. Command Palette: "Beans: Open Extension Settings"
+2. Or click gear icon in Help view title bar
+
+**When to use**:
+
+- Configuring AI features, display mode, sort defaults
+- Adjusting file watcher debounce or logging levels
+
+---
+
+### Open User Guide
+
+**Command**: `beans.openUserGuide`
+**Category**: Beans
+**Icon**: `$(info)`
+
+Open the Beans extension user guide documentation.
+
+**Usage**:
+
+1. Command Palette: "Beans: Open User Guide"
+
+---
+
+### Open AI Features Guide
+
+**Command**: `beans.openAiFeaturesGuide`
+**Category**: Beans
+**Icon**: `$(sparkle)`
+
+Open the Beans AI features documentation covering MCP tools, chat participant, and Copilot integration.
+
+**Usage**:
+
+1. Command Palette: "Beans: Open AI Features Guide"
+
+---
+
 ## Bean Operations
 
 ### View Bean
@@ -282,6 +339,134 @@ Open bean markdown file in VS Code editor.
 - Create task lists with `- [ ]` and `- [x]`
 - Add code blocks, tables, links as normal Markdown
 - Metadata changes via frontmatter require bean code knowledge
+
+---
+
+## Details View and AI
+
+### Back to Previous Bean
+
+**Command**: `beans.details.back`
+**Category**: Beans
+**Icon**: `$(arrow-left)`
+**When**: Workspace initialized, bean selected, history available
+**Context Menu**: Details view title bar
+
+Navigate back in the Details view browsing history.
+
+**Usage**:
+
+- Click the back arrow in the Details view title bar
+
+**What it does**:
+
+- Returns to the previously viewed bean in the Details panel
+- Maintains a navigation stack as you click between beans
+- Only visible when there is history to navigate back to
+
+**When to use**:
+
+- After navigating through parent/child/blocking relationships in the Details view
+- When you want to return to a bean you were viewing before
+
+---
+
+### Copilot: Start Work on Bean
+
+**Command**: `beans.copilotStartWork`
+**Category**: Beans
+**Icon**: `$(comment-discussion)`
+**When**: Workspace initialized, bean selected, AI enabled
+**Context Menu**: Details view title bar
+
+Open Copilot Chat with a pre-filled prompt template for working on the selected bean.
+
+**Usage**:
+
+1. View a bean in the Details panel
+2. Click the chat icon in the Details title bar
+3. Choose a workflow template:
+   - **Assess current status** - Analyze progress
+   - **Determine remaining steps** - Identify what's left
+   - **Close and commit** - Complete the bean with a commit
+   - **Export to GitHub issue** - Draft a GitHub issue
+   - **Set in-progress** - Start working on the bean
+   - **Flesh out specs** - Expand description and requirements
+
+**What it does**:
+
+- Opens Copilot Chat pre-filled with the selected bean's context
+- Applies the chosen template to guide the AI interaction
+- Provides structured starting points for common bean workflows
+
+**When to use**:
+
+- Starting work on a new bean
+- Getting AI assistance with planning or completing a bean
+- Exporting bean details to external systems
+
+---
+
+### Open First Malformed Bean
+
+**Command**: `beans.openFirstMalformedBean`
+**Category**: Beans
+**Icon**: `$(warning)`
+**When**: Workspace initialized, malformed beans detected
+**Context Menu**: Draft view title bar (when malformed files exist)
+
+Navigate to the first malformed bean file for correction.
+
+**Usage**:
+
+- Click the warning icon in the Drafts view title bar
+
+**What it does**:
+
+- Opens the first `.fixme` file detected in the `.beans/` directory
+- Allows you to inspect and fix the malformed bean content
+
+**When to use**:
+
+- When the warning icon appears in the Drafts title bar
+- After a Beans CLI operation produces malformed output
+
+---
+
+### Filter Search Results
+
+**Command**: `beans.searchView.filter`
+**Category**: Beans
+**Icon**: `$(filter)`
+**When**: Workspace initialized
+**Context Menu**: Search view title bar
+
+Apply additional filters to narrow down search results.
+
+**Usage**:
+
+- Click the filter icon in the Search view title bar
+
+**What it does**:
+
+- Opens filter quick pick for the search results view
+- Allows filtering search results by status, type, priority, or tags
+
+---
+
+### Clear Search Filters
+
+**Command**: `beans.searchView.clear`
+**Category**: Beans
+**Icon**: `$(circle-slash)`
+**When**: Workspace initialized
+**Context Menu**: Search view title bar
+
+Remove all filters from search results and clear the search query.
+
+**Usage**:
+
+- Click the clear icon in the Search view title bar
 
 ---
 
@@ -1187,6 +1372,8 @@ Currently, the extension does not define default keyboard shortcuts. Users can c
 
 ## See Also
 
+- [User Guide](./user-guide.md)
+- [AI Features](./ai-features.md)
 - [Architecture Documentation](./architecture.md)
 - [Testing Documentation](./testing.md)
 - [README](../README.md)

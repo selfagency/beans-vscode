@@ -15,12 +15,16 @@
 
 ## Key Features
 
-- **🌴 Tree Views**: Organized views for active, completed, draft, and scrapped beans
-- **🔍 Search & Filter**: Full-text search, filter by status/type/priority/tags
-- **🎯 Drag & Drop**: Create hierarchies and relationships visually
-- **🤖 AI Integration**: MCP tools, `@beans` chat participant, auto-generated Copilot skills & instructions
+- **🌴 Tree Views**: Organized sidebar panes for drafts, open, completed, and scrapped beans with hierarchical nesting, in-progress descendant badges, and item counts
+- **📋 Details View**: Rich webview panel with rendered markdown, interactive checklists, editable properties, relationship navigation, and browsing history with back navigation
+- **🔍 Search & Filter**: Full-text search across all fields, filter by status/type/priority/tags, five sort modes, and dedicated search results view with context menus
+- **🎯 Drag & Drop**: Create parent-child hierarchies visually with cycle detection and confirmation
+- **🔗 Relationships**: Parent-child hierarchies (milestone > epic > feature > task) and blocking/blocked-by dependency tracking
+- **🤖 AI Integration**: MCP tools for all operations, `@beans` chat participant with 7 slash commands, auto-generated Copilot skills & instructions, and "Start Work" templates for Copilot-assisted workflows
 - **🌐 Remote Ready**: Works seamlessly in SSH, WSL, containers, and Codespaces
 - **⚡ Keyboard-First**: Configurable shortcuts for all operations
+- **📂 File Watching**: Automatic tree refresh on filesystem changes with configurable debounce
+- **🛡️ Resilient**: Offline mode with caching, request deduplication, retry with exponential backoff, malformed bean detection, and structured error handling with actionable guidance
 - **🧪 Extensively Tested**: Comprehensive automated unit and integration test suite
 - **♿ Accessible**: Built following WCAG 2.2 Level AA guidelines
 - **🤫 Privacy Respecting**: No telemetry or data collection of any kind
@@ -76,9 +80,10 @@ Click the `+` icon in the Beans sidebar, enter a title, select a type (task, bug
 ## Documentation
 
 - **[User Guide](./docs/user-guide.md)** - Complete guide to using the extension
-- **[AI Features](./docs/ai-features.md)** - MCP tools, chat participant, and Copilot integration
-- **[Commands Reference](./docs/commands.md)** - Complete command listing with examples
+- **[AI Features](./docs/ai-features.md)** - MCP tools, chat participant, Copilot skills, and "Start Work" templates
+- **[Commands Reference](./docs/commands.md)** - All 30+ commands with examples and workflow guides
 - **[Architecture](./docs/architecture.md)** - Technical design and module boundaries
+- **[Testing Guide](./docs/testing.md)** - Test strategy, running tests, and writing new tests
 - **[Remote Development](./docs/remote-compatibility-testing.md)** - Remote testing guide
 
 ## Remote Development
@@ -125,6 +130,10 @@ Please see our **[Contributing Guide](./CONTRIBUTING.md)** for full details on o
 2. **Implement changes** using the TDD-first workflow.
 3. **Ensure all checks pass** including linting and tests.
 4. **Submit a PR** with conventional commits.
+
+## Support the Project
+
+If you find this extension useful, please leave a review on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=selfagency.beans-vscode) or [Open VSX](https://open-vsx.org/extension/selfagency/beans-vscode). Reviews help other developers discover the extension.
 
 ## License
 

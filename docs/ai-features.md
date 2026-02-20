@@ -7,7 +7,8 @@ Comprehensive guide to using Beans with AI assistants and Copilot.
 - [Overview](#overview)
 - [MCP Integration](#mcp-integration)
 - [Chat Participant](#chat-participant)
-- [Copilot Skills](#copilot-skills)
+- [Copilot Start Work](#copilot-start-work)
+- [Copilot Skills and Instructions](#copilot-skills-and-instructions)
 - [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
 
@@ -235,20 +236,42 @@ Copilot: [Uses beans_vscode_list with type=bug filter]
     Most urgent: "Fix authentication timeout" (bean-abc)
 ```
 
-## Copilot Skills
+## Copilot Start Work
 
-### Auto-Generated Skill Files
+The "Start Work" feature provides Copilot-assisted workflows directly from the Details view. When viewing a bean, click the chat icon in the Details title bar to choose from six workflow templates:
 
-When `beans.ai.enabled` is `true`, the extension automatically generates:
+| Template                      | Description                                                    |
+| ----------------------------- | -------------------------------------------------------------- |
+| **Assess current status**     | Get Copilot's analysis of progress and state                   |
+| **Determine remaining steps** | Ask Copilot to identify what work is left                      |
+| **Close and commit**          | Get guidance on completing the bean and writing a commit       |
+| **Export to GitHub issue**    | Draft a GitHub issue with title, body, labels, and assignees   |
+| **Set in-progress**           | Mark the bean as in-progress with Copilot assistance           |
+| **Flesh out specs**           | Have Copilot expand the description and requirements           |
 
-**`.github/skills/beans/SKILL.md`**
+Each template opens Copilot Chat pre-filled with context about the selected bean.
 
-This file contains:
+**Requirement**: The `beans.ai.enabled` setting must be `true` and GitHub Copilot must be active.
+
+## Copilot Skills and Instructions
+
+### Auto-Generated Artifacts
+
+When `beans.ai.enabled` is `true`, the extension can automatically generate two types of files on initialization:
+
+**`.github/skills/beans/SKILL.md`** - Copilot skill file containing:
 
 - Planning-mode guidance for epic decomposition
 - Instructions for creating and linking child issues
 - Best practices for Beans workflow with AI
 - Example workflows and command patterns
+
+**`.github/instructions/tasks.instructions.md`** - Copilot instruction file containing:
+
+- Task-tracking workflow guidance derived from the Beans GraphQL schema
+- Instructions for how AI assistants should interact with beans
+
+On first activation with AI enabled, the extension prompts you to generate these artifacts. Your preference is stored per workspace.
 
 ### Using Copilot Skills
 
@@ -399,3 +422,5 @@ You: [Make changes, then commit using suggested message]
 ---
 
 For general usage instructions, see [user-guide.md](./user-guide.md).
+
+For the full command reference, see [commands.md](./commands.md).
