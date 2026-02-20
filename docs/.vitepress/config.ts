@@ -1,7 +1,7 @@
 export default {
   title: 'Beans for VS Code',
   description: 'Documentation for the Beans VS Code extension',
-  base: '/beans-vscode/',
+  base: '/',
   themeConfig: {
     logo: '/icon.svg',
     nav: [
