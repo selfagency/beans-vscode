@@ -1,7 +1,7 @@
 ---
 # beans-vscode-v4tm
 title: Interactive checklists in details view
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-02-18T05:17:09Z
