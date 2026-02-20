@@ -199,6 +199,12 @@ describe('MCP Integration', () => {
 
       vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
         get: vi.fn((key: string, defaultValue?: any) => {
+          if (key === 'ai.enabled') {
+            return true;
+          }
+          if (key === 'mcp.enabled') {
+            return true;
+          }
           if (key === 'cliPath') {
             return '/custom/beans/path';
           }
@@ -229,6 +235,12 @@ describe('MCP Integration', () => {
 
       vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
         get: vi.fn((key: string, defaultValue?: any) => {
+          if (key === 'ai.enabled') {
+            return true;
+          }
+          if (key === 'mcp.enabled') {
+            return true;
+          }
           if (key === 'cliPath') {
             return '/custom/beans/path';
           }
@@ -247,12 +259,109 @@ describe('MCP Integration', () => {
       expect(showInfoMessageSpy).not.toHaveBeenCalled();
     });
 
+    it('should not show startup notification when ai.enabled is false', async () => {
+      const inputDefinition = new vscode.McpStdioServerDefinition('Beans Commands', process.execPath, [], {}, '0.1.0');
+      const showInfoMessageSpy = vi.spyOn(vscode.window, 'showInformationMessage').mockResolvedValue(undefined as any);
+
+      vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+        get: vi.fn((key: string, defaultValue?: any) => {
+          if (key === 'ai.enabled') {
+            return false;
+          }
+          if (key === 'mcp.enabled') {
+            return true;
+          }
+          if (key === 'cliPath') {
+            return '/custom/beans/path';
+          }
+          if (key === 'mcp.port') {
+            return 49731;
+          }
+          if (key === 'mcp.showStartupNotification') {
+            return true;
+          }
+          return defaultValue;
+        }),
+      } as unknown as vscode.WorkspaceConfiguration);
+
+      await mcpIntegration.resolveMcpServerDefinition(inputDefinition);
+
+      expect(showInfoMessageSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not show startup notification when mcp.enabled is false', async () => {
+      const inputDefinition = new vscode.McpStdioServerDefinition('Beans Commands', process.execPath, [], {}, '0.1.0');
+      const showInfoMessageSpy = vi.spyOn(vscode.window, 'showInformationMessage').mockResolvedValue(undefined as any);
+
+      vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+        get: vi.fn((key: string, defaultValue?: any) => {
+          if (key === 'ai.enabled') {
+            return true;
+          }
+          if (key === 'mcp.enabled') {
+            return false;
+          }
+          if (key === 'cliPath') {
+            return '/custom/beans/path';
+          }
+          if (key === 'mcp.port') {
+            return 49731;
+          }
+          if (key === 'mcp.showStartupNotification') {
+            return true;
+          }
+          return defaultValue;
+        }),
+      } as unknown as vscode.WorkspaceConfiguration);
+
+      await mcpIntegration.resolveMcpServerDefinition(inputDefinition);
+
+      expect(showInfoMessageSpy).not.toHaveBeenCalled();
+    });
+
+    it('should only show startup notification once per session', async () => {
+      const inputDefinition = new vscode.McpStdioServerDefinition('Beans Commands', process.execPath, [], {}, '0.1.0');
+      const showInfoMessageSpy = vi.spyOn(vscode.window, 'showInformationMessage').mockResolvedValue(undefined as any);
+
+      vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+        get: vi.fn((key: string, defaultValue?: any) => {
+          if (key === 'ai.enabled') {
+            return true;
+          }
+          if (key === 'mcp.enabled') {
+            return true;
+          }
+          if (key === 'cliPath') {
+            return '/custom/beans/path';
+          }
+          if (key === 'mcp.port') {
+            return 49731;
+          }
+          if (key === 'mcp.showStartupNotification') {
+            return true;
+          }
+          return defaultValue;
+        }),
+      } as unknown as vscode.WorkspaceConfiguration);
+
+      await mcpIntegration.resolveMcpServerDefinition(inputDefinition);
+      await mcpIntegration.resolveMcpServerDefinition(inputDefinition);
+
+      expect(showInfoMessageSpy).toHaveBeenCalledTimes(1);
+    });
+
     it('should disable startup notification when user selects the disable action', async () => {
       const inputDefinition = new vscode.McpStdioServerDefinition('Beans Commands', process.execPath, [], {}, '0.1.0');
       const configUpdateSpy = vi.fn().mockResolvedValue(undefined);
 
       vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
         get: vi.fn((key: string, defaultValue?: any) => {
+          if (key === 'ai.enabled') {
+            return true;
+          }
+          if (key === 'mcp.enabled') {
+            return true;
+          }
           if (key === 'cliPath') {
             return '/custom/beans/path';
           }
@@ -275,6 +384,42 @@ describe('MCP Integration', () => {
         'mcp.showStartupNotification',
         false,
         vscode.ConfigurationTarget.Workspace
+      );
+    });
+
+    it('should open startup notification setting when user selects Open Settings', async () => {
+      const inputDefinition = new vscode.McpStdioServerDefinition('Beans Commands', process.execPath, [], {}, '0.1.0');
+      const executeCommandSpy = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
+
+      vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+        get: vi.fn((key: string, defaultValue?: any) => {
+          if (key === 'ai.enabled') {
+            return true;
+          }
+          if (key === 'mcp.enabled') {
+            return true;
+          }
+          if (key === 'cliPath') {
+            return '/custom/beans/path';
+          }
+          if (key === 'mcp.port') {
+            return 49731;
+          }
+          if (key === 'mcp.showStartupNotification') {
+            return true;
+          }
+          return defaultValue;
+        }),
+        update: vi.fn().mockResolvedValue(undefined),
+      } as unknown as vscode.WorkspaceConfiguration);
+
+      vi.spyOn(vscode.window, 'showInformationMessage').mockResolvedValue('Open Settings' as any);
+
+      await mcpIntegration.resolveMcpServerDefinition(inputDefinition);
+
+      expect(executeCommandSpy).toHaveBeenCalledWith(
+        'workbench.action.openSettings',
+        'beans.mcp.showStartupNotification'
       );
     });
 
