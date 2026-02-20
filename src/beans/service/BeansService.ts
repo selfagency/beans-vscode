@@ -247,6 +247,7 @@ export class BeansService {
 
     // Create new request with retry logic. Log a redacted summary of args.
     this.logger.debug(`Executing: ${this.cliPath} ${args.slice(0, 5).join(' ')}${args.length > 5 ? ' ...' : ''}`);
+    this.logger.diagnostics('CLI command arguments', { cliPath: this.cliPath, args });
 
     const requestPromise = (async () => {
       try {
@@ -261,6 +262,7 @@ export class BeansService {
           // Log CLI output
           if (stdout) {
             this.logger.debug(`CLI stdout: ${stdout.substring(0, 500)}${stdout.length > 500 ? '...' : ''}`);
+            this.logger.diagnostics('CLI stdout', stdout);
           }
 
           if (stderr) {
@@ -270,6 +272,7 @@ export class BeansService {
             } else {
               this.logger.warn(`CLI stderr: ${stderr}`);
             }
+            this.logger.diagnostics('CLI stderr', stderr);
           }
 
           try {
@@ -377,6 +380,10 @@ export class BeansService {
 
     // Create new request with retry logic
     this.logger.debug(`Executing GraphQL: ${query.substring(0, 100)}...`);
+    this.logger.diagnostics('GraphQL query', query);
+    if (variables) {
+      this.logger.diagnostics('GraphQL variables', variables);
+    }
 
     const requestPromise = (async () => {
       try {
@@ -391,6 +398,13 @@ export class BeansService {
           // Log CLI stderr
           if (stderr && !stderr.includes('[INFO]')) {
             this.logger.warn(`GraphQL CLI stderr: ${stderr}`);
+          }
+          if (stderr) {
+            this.logger.diagnostics('GraphQL CLI stderr', stderr);
+          }
+
+          if (stdout) {
+            this.logger.diagnostics('GraphQL CLI stdout', stdout);
           }
 
           try {

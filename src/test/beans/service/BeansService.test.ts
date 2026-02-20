@@ -2,6 +2,7 @@ import { execFile } from 'child_process';
 import { mkdir, readFile, readdir, rename, writeFile } from 'fs/promises';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
+import { BeansOutput } from '../../../beans/logging/BeansOutput';
 import { BeansCLINotFoundError, BeansJSONParseError, BeansTimeoutError } from '../../../beans/model';
 import { BeansService } from '../../../beans/service';
 
@@ -187,6 +188,75 @@ describe('BeansService', () => {
       expect(beans).toHaveLength(1);
       expect(beans[0].id).toBe('test-abc1');
       expect(beans[0].code).toBe('abc1');
+    });
+
+    it('logs GraphQL query and CLI response diagnostics when diagnostics mode is enabled', async () => {
+      const config = vscode.workspace.getConfiguration('beans');
+      (config.get as ReturnType<typeof vi.fn>).mockImplementation((key: string, defaultValue?: unknown) => {
+        if (key === 'cliPath') {
+          return 'beans';
+        }
+        if (key === 'workspaceRoot') {
+          return '';
+        }
+        if (key === 'logging.level') {
+          return 'debug';
+        }
+        if (key === 'logging.diagnostics.enabled') {
+          return true;
+        }
+        return defaultValue;
+      });
+      BeansOutput.getInstance().refreshConfig();
+
+      const outputChannel = vscode.window.createOutputChannel('Beans', { log: true });
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
+      });
+
+      await service.listBeans({ status: ['todo'] });
+
+      expect(outputChannel.appendLine).toHaveBeenCalledWith(expect.stringContaining('[DIAGNOSTICS] GraphQL query'));
+      expect(outputChannel.appendLine).toHaveBeenCalledWith(expect.stringContaining('query ListBeans'));
+      expect(outputChannel.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('[DIAGNOSTICS] GraphQL CLI stdout')
+      );
+    });
+
+    it('logs GraphQL stderr diagnostics when CLI writes to stderr', async () => {
+      const config = vscode.workspace.getConfiguration('beans');
+      (config.get as ReturnType<typeof vi.fn>).mockImplementation((key: string, defaultValue?: unknown) => {
+        if (key === 'cliPath') {
+          return 'beans';
+        }
+        if (key === 'workspaceRoot') {
+          return '';
+        }
+        if (key === 'logging.level') {
+          return 'debug';
+        }
+        if (key === 'logging.diagnostics.enabled') {
+          return true;
+        }
+        return defaultValue;
+      });
+      BeansOutput.getInstance().refreshConfig();
+
+      const outputChannel = vscode.window.createOutputChannel('Beans', { log: true });
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(null, {
+          stdout: JSON.stringify({ beans: mockBeanData }),
+          stderr: 'graphql warning: test stderr output',
+        });
+      });
+
+      await service.listBeans({ status: ['todo'] });
+
+      expect(outputChannel.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('[DIAGNOSTICS] GraphQL CLI stderr')
+      );
     });
 
     it('applies status filters', async () => {
