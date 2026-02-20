@@ -9,7 +9,7 @@ export default {
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Getting started', link: '/getting-started' },
-      { text: 'User Guide', link: '/user-guide' },
+      { text: 'User Guide', link: '/user-guide/' },
       { text: 'Developers', link: '/developers/' },
       { text: 'VS Marketplace', link: 'https://marketplace.visualstudio.com/items?itemName=selfagency.beans-vscode' },
       { text: 'Open VSX', link: 'https://open-vsx.org/extension/selfagency/beans' },
@@ -17,7 +17,7 @@ export default {
     ],
     sidebar: {
       '/user-guide/': [
-        { text: 'Core features', link: '/user-guide' },
+        { text: 'Core features', link: '/user-guide/' },
         { text: 'AI features', link: '/user-guide/ai' },
         { text: 'Commands reference', link: '/user-guide/commands' },
         { text: 'Keyboard shortcuts', link: '/user-guide/keyboard' },
