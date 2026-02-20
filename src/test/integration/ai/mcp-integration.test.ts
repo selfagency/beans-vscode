@@ -99,6 +99,18 @@ describe('MCP Integration', () => {
       mcpIntegration.register();
     });
 
+    it('should show startup notification when definitions are provided', () => {
+      const showInfoMessageSpy = vi.spyOn(vscode.window, 'showInformationMessage').mockResolvedValue(undefined as any);
+
+      mcpIntegration.provideMcpServerDefinitions();
+
+      expect(showInfoMessageSpy).toHaveBeenCalledWith(
+        'Beans MCP server started on port 39173.',
+        'Open Settings',
+        "Don't Show Again"
+      );
+    });
+
     it('should provide server definition when ai.enabled and mcp.enabled are true', () => {
       const definitions = mcpIntegration.provideMcpServerDefinitions() as vscode.McpStdioServerDefinition[];
 

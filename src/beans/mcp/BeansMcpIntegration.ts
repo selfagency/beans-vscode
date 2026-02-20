@@ -103,6 +103,7 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
       info.env,
       info.version
     );
+    this.maybeShowStartupNotification(info.port);
     return [definition];
   }
 
