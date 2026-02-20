@@ -10,7 +10,7 @@ Comprehensive guide to using Beans with AI assistants and Copilot.
 - [Copilot Start Work](#copilot-start-work)
 - [Copilot Skills and Instructions](#copilot-skills-and-instructions)
 - [Configuration](#configuration)
-- [Troubleshooting](#troubleshooting)
+- [Troubleshooting](../user-guide/troubleshooting.md)
 
 ## Overview
 
@@ -240,14 +240,14 @@ Copilot: [Uses beans_vscode_list with type=bug filter]
 
 The "Start Work" feature provides Copilot-assisted workflows directly from the Details view. When viewing a bean, click the chat icon in the Details title bar to choose from six workflow templates:
 
-| Template                      | Description                                                    |
-| ----------------------------- | -------------------------------------------------------------- |
-| **Assess current status**     | Get Copilot's analysis of progress and state                   |
-| **Determine remaining steps** | Ask Copilot to identify what work is left                      |
-| **Close and commit**          | Get guidance on completing the bean and writing a commit       |
-| **Export to GitHub issue**    | Draft a GitHub issue with title, body, labels, and assignees   |
-| **Set in-progress**           | Mark the bean as in-progress with Copilot assistance           |
-| **Flesh out specs**           | Have Copilot expand the description and requirements           |
+| Template                      | Description                                                  |
+| ----------------------------- | ------------------------------------------------------------ |
+| **Assess current status**     | Get Copilot's analysis of progress and state                 |
+| **Determine remaining steps** | Ask Copilot to identify what work is left                    |
+| **Close and commit**          | Get guidance on completing the bean and writing a commit     |
+| **Export to GitHub issue**    | Draft a GitHub issue with title, body, labels, and assignees |
+| **Set in-progress**           | Mark the bean as in-progress with Copilot assistance         |
+| **Flesh out specs**           | Have Copilot expand the description and requirements         |
 
 Each template opens Copilot Chat pre-filled with context about the selected bean.
 
@@ -317,67 +317,6 @@ The MCP server is automatically configured. To customize:
 
 > Note: Beans MCP currently uses stdio transport. `beans.mcp.port` is propagated via args/env for host and integration compatibility, and for forward compatibility with port-aware tooling.
 
-## Troubleshooting
-
-### MCP Tools Not Available
-
-**Check**:
-
-- Is `beans.ai.enabled` set to `true`?
-- Is the MCP server running?
-- Are you using an MCP-compatible AI client?
-
-**Solutions**:
-
-1. Enable AI features: Settings → `beans.ai.enabled` → `true`
-2. Refresh MCP server: `Beans: MCP: Refresh Server Definitions`
-3. View server info: `Beans: MCP: Show Server Info`
-4. Check logs: `Beans: MCP: Open Logs`
-
-### Chat Participant Not Responding
-
-**Check**:
-
-- Is GitHub Copilot activated?
-- Is `beans.ai.enabled` set to `true`?
-- Is `@beans` recognized in Chat?
-
-**Solutions**:
-
-1. Check Copilot status in status bar
-2. Enable AI features in extension settings
-3. Reload window: `Developer: Reload Window`
-4. Try a simple command: `@beans /summary`
-
-### Copilot Skill Not Being Used
-
-**Check**:
-
-- Is `.github/skills/beans/SKILL.md` present?
-- Is file content up to date?
-
-**Solutions**:
-
-1. Verify skill file exists in workspace
-2. Refresh skill: `Beans: Generate Copilot Skill`
-3. Copilot may need time to index the file
-4. Try explicitly mentioning Beans in your prompt
-
-### MCP Server Crashes
-
-**Check**:
-
-- View error messages in Output channel
-- Check logs: `Beans: MCP: Open Logs`
-
-**Solutions**:
-
-1. Check workspace is initialized: `beans init`
-2. Verify Beans CLI is working: `beans --version`
-3. Reload window: `Developer: Reload Window`
-4. Check for extension updates
-5. Report issue with logs
-
 ## Best Practices
 
 ### Working with AI and Beans
@@ -418,9 +357,3 @@ Copilot: [Generates commit message]
 
 You: [Make changes, then commit using suggested message]
 ```
-
----
-
-For general usage instructions, see [user-guide.md](./user-guide.md).
-
-For the full command reference, see [commands.md](./commands.md).

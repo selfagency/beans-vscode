@@ -1,4 +1,6 @@
-# Architecture Documentation
+---
+title: Architecture
+---
 
 ## Overview
 
@@ -529,19 +531,16 @@ Copilot displays formatted summary
 ### Common Issues
 
 1. **"Beans CLI not found"**
-
    - Check `beans.cliPath` setting
    - Verify CLI in PATH: `which beans`
    - Install beans: `brew install hmans/beans/beans`
 
 2. **MCP tools not showing**
-
    - Check `beans.ai.enabled` setting
    - Run "Beans: MCP: Refresh Server Definitions"
    - Check MCP logs: "Beans: MCP: Open Logs"
 
 3. **Tree view not populating**
-
    - Check workspace has `.beans.yml`
    - Run "Beans: Initialize Beans in Workspace"
    - Check output channel: "Beans" for errors
