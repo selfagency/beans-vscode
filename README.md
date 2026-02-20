@@ -46,42 +46,54 @@ Learn more about Beans: [github.com/hmans/beans](https://github.com/hmans/beans)
 
 ## Quick Start
 
-### 1. Install Prerequisites
-
-**Install Beans CLI**:
+### Install the [`beans`](https://github.com/hmans/beans#installation) CLI
 
 ```bash
-# macOS (Homebrew)
+# macOS (Requires Homebrew)
 brew install hmans/beans/beans
+```
 
-# Go
+```bash
+# Linux, MacOs, Windows (Requires Go)
 go install github.com/hmans/beans@latest
 ```
 
-Full installation guide: [Beans Documentation](https://github.com/hmans/beans#installation)
+### Install the Beans extension
 
-### 2. Install Extension
-
-Install from [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=selfagency.beans-vscode) or [Open VSX](https://open-vsx.org/extension/selfagency/beans-vscode).
-
-Alternately, run:
+Use the IDE's Extension sidebar to search for `beans` or execute the following command:
 
 ```bash
-  code --install-extension selfagency.beans-vscode
+code --install-extension selfagency.beans-vscode
 ```
 
-### 3. Initialize Your Project
+### Initialize Beans in your project
+
+#### Option 1: Command Palette
+
+1. Open your project in VS Code
+2. Press `Cmd+Shift+P` / `Ctrl+Shift+P`
+3. Run: "Beans: Initialize Beans in Workspace"
+
+#### Option 2: Terminal
 
 ```bash
-cd your-project
+cd \<project-folder\>
 beans init
 ```
 
-Or use Command Palette: `Beans: Initialize Beans in Workspace`
+### Create Your First Bean
 
-### 4. Create Your First Bean
+1. Click the `+` icon in the Beans sidebar
+2. Enter a title: "My first bean"
+3. Select type: "task"
+4. Optionally add a description
+5. Bean created! 🎉
 
-Click the `+` icon in the Beans sidebar, enter a title, select a type (task, bug, feature), and you're done!
+### View Beans
+
+- **Sidebar**: Click any bean in the Active tree
+- **Details Panel**: Opens with bean markdown content
+- **Edit**: Click pencil icon to edit bean file directly
 
 ## Remote Development
 
