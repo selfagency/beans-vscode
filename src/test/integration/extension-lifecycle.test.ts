@@ -487,7 +487,7 @@ describe('Extension lifecycle coverage', () => {
 
   it('handles BeansCLINotFoundError in activation catch and opens install URL', async () => {
     state.checkCliThrows = new BeansCLINotFoundError('missing');
-    state.showErrorQueue.push('Install Instructions');
+    state.showErrorQueue.push('Install Linux (go install github.com/hmans/beans@latest)');
 
     await activate(makeContext());
 
