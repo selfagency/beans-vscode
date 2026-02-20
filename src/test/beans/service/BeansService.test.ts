@@ -1220,6 +1220,108 @@ describe('BeansService', () => {
         'Invalid priority'
       );
     });
+
+    describe('frontmatter repair after creation', () => {
+      it('repairs unquoted title containing a colon in the written file', async () => {
+        const mockBean = {
+          id: 'new-xyz9',
+          title: 'Command palette: Reinitialize Copilot',
+          slug: 'command-palette-reinitialize-copilot',
+          path: '.beans/new-xyz9.md',
+          body: '',
+          status: 'todo',
+          type: 'task',
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-02T00:00:00Z',
+          etag: 'etag1',
+        };
+
+        mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+          callback(null, { stdout: JSON.stringify({ createBean: mockBean }), stderr: '' });
+        });
+
+        // Simulate the file as written by the CLI — unquoted title with colon
+        mockReadFile.mockResolvedValue(
+          '---\ntitle: Command palette: Reinitialize Copilot\nstatus: todo\ntype: task\n---\n'
+        );
+
+        await service.createBean({
+          title: 'Command palette: Reinitialize Copilot',
+          type: 'task',
+        });
+
+        // writeFile must have been called with the title wrapped in double quotes
+        const writeCalls = mockWriteFile.mock.calls.filter(
+          c => typeof c[1] === 'string' && (c[1] as string).includes('title:')
+        );
+        expect(writeCalls.length).toBeGreaterThan(0);
+        const written = writeCalls[0][1] as string;
+        expect(written).toContain('title: "Command palette: Reinitialize Copilot"');
+      });
+
+      it('does not rewrite the file when title needs no quoting', async () => {
+        const mockBean = {
+          id: 'new-abc1',
+          title: 'Simple title',
+          slug: 'simple-title',
+          path: '.beans/new-abc1.md',
+          body: '',
+          status: 'todo',
+          type: 'task',
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-02T00:00:00Z',
+          etag: 'etag1',
+        };
+
+        mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+          callback(null, { stdout: JSON.stringify({ createBean: mockBean }), stderr: '' });
+        });
+
+        mockReadFile.mockResolvedValue('---\ntitle: Simple title\nstatus: todo\ntype: task\n---\n');
+
+        await service.createBean({ title: 'Simple title', type: 'task' });
+
+        // writeFile should NOT have been called for frontmatter repair
+        const writeCalls = mockWriteFile.mock.calls.filter(
+          c => typeof c[1] === 'string' && (c[1] as string).includes('title:')
+        );
+        expect(writeCalls.length).toBe(0);
+      });
+
+      it('repairs title with colon in batchCreateBeans', async () => {
+        const mockBatch = {
+          c0: {
+            id: 'batch-001',
+            title: 'Feature: new search',
+            slug: 'feature-new-search',
+            path: '.beans/batch-001.md',
+            body: '',
+            status: 'todo',
+            type: 'task',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+            etag: 'etag1',
+          },
+        };
+
+        mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+          callback(null, { stdout: JSON.stringify(mockBatch), stderr: '' });
+        });
+
+        mockReadFile.mockResolvedValue('---\ntitle: Feature: new search\nstatus: todo\ntype: task\n---\n');
+
+        const results = await service.batchCreateBeans([{ title: 'Feature: new search', type: 'task' }]);
+
+        expect(results[0].success).toBe(true);
+
+        const writeCalls = mockWriteFile.mock.calls.filter(
+          c => typeof c[1] === 'string' && (c[1] as string).includes('title:')
+        );
+        expect(writeCalls.length).toBeGreaterThan(0);
+        const written = writeCalls[0][1] as string;
+        expect(written).toContain('title: "Feature: new search"');
+      });
+    });
   });
 
   describe('updateBean', () => {
