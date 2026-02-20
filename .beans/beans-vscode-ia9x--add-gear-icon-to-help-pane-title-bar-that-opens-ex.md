@@ -5,6 +5,7 @@ status: in-progress
 type: task
 priority: normal
 branch: feature/beans-vscode-ia9x-help-pane-settings-gear
+pr: 60
 created_at: 2026-02-20T05:56:32Z
 updated_at: 2026-02-20T05:58:28Z
 ---
