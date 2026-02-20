@@ -60,53 +60,53 @@ This skill drives all Beans issue tracker operations in this workspace using the
 
 ### Bean operations
 
-| Command                 | Purpose                                                   |
-| ----------------------- | --------------------------------------------------------- |
-| `beans.create`          | Create a new bean                                         |
-| `beans.view`            | Open bean in Details sidebar panel                        |
-| `beans.edit`            | Edit bean body/frontmatter in editor                      |
-| `beans.delete`          | Delete a bean (only draft or scrapped)                    |
-| `beans.setStatus`       | Change status (todo → in-progress → completed / scrapped) |
-| `beans.setType`         | Change type (task / feature / bug / epic / milestone)     |
-| `beans.setPriority`     | Change priority (critical/high/normal/low/deferred)       |
-| `beans.setParent`       | Link a bean to a parent epic or milestone                 |
-| `beans.removeParent`    | Remove parent link                                        |
-| `beans.editBlocking`    | Edit blocking/blocked-by relationships                    |
-| `beans.reopenCompleted` | Reopen a completed bean                                   |
-| `beans.reopenScrapped`  | Reopen a scrapped bean                                    |
-| `beans.copyId`          | Copy bean ID to clipboard                                 |
+| Command                  | Purpose                                                   |
+| ------------------------ | --------------------------------------------------------- |
+| `beans.create`           | Create a new bean                                         |
+| `beans.view`             | Open bean in Details sidebar panel                        |
+| `beans.edit`             | Edit bean body/frontmatter in editor                      |
+| `beans.delete`           | Delete a bean (only draft or scrapped)                    |
+| `beans.setStatus`        | Change status (todo → in-progress → completed / scrapped) |
+| `beans.setType`          | Change type (task / feature / bug / epic / milestone)     |
+| `beans.setPriority`      | Change priority (critical/high/normal/low/deferred)       |
+| `beans.setParent`        | Link a bean to a parent epic or milestone                 |
+| `beans.removeParent`     | Remove parent link                                        |
+| `beans.editBlocking`     | Edit blocking/blocked-by relationships                    |
+| `beans.reopenCompleted`  | Reopen a completed bean                                   |
+| `beans.reopenScrapped`   | Reopen a scrapped bean                                    |
+| `beans.copyId`           | Copy bean ID to clipboard                                 |
 
 ### Search and navigation
 
-| Command                   | Purpose                                        |
-| ------------------------- | ---------------------------------------------- |
-| `beans.search`            | Full-text search across all beans              |
-| `beans.filter`            | Filter tree by status/type/priority/tag        |
-| `beans.sort`              | Change tree sort mode                          |
-| `beans.refresh`           | Force reload from disk                         |
-| `beans.searchView.filter` | Filter search results                          |
-| `beans.searchView.clear`  | Clear search filters and query                 |
-| `beans.details.back`      | Navigate back in Details view browsing history |
+| Command                  | Purpose                                                   |
+| ------------------------ | --------------------------------------------------------- |
+| `beans.search`           | Full-text search across all beans                         |
+| `beans.filter`           | Filter tree by status/type/priority/tag                   |
+| `beans.sort`             | Change tree sort mode                                     |
+| `beans.refresh`          | Force reload from disk                                    |
+| `beans.searchView.filter`| Filter search results                                     |
+| `beans.searchView.clear` | Clear search filters and query                            |
+| `beans.details.back`     | Navigate back in Details view browsing history            |
 
 ### AI and workflow
 
-| Command                  | Purpose                                         |
-| ------------------------ | ----------------------------------------------- |
-| `beans.copilotStartWork` | Open Copilot Chat with a bean workflow template |
+| Command                  | Purpose                                                   |
+| ------------------------ | --------------------------------------------------------- |
+| `beans.copilotStartWork` | Open Copilot Chat with a bean workflow template           |
 
 **`beans.copilotStartWork` templates:** assess status, remaining steps, close/commit, export to GitHub issue, set in-progress, flesh out specs.
 
 ### Configuration and help
 
-| Command                        | Purpose                                              |
-| ------------------------------ | ---------------------------------------------------- |
-| `beans.init`                   | Initialize Beans in an uninitialized workspace       |
-| `beans.openConfig`             | Open `.beans.yml` configuration file                 |
-| `beans.openExtensionSettings`  | Open VS Code extension settings for Beans            |
-| `beans.showOutput`             | Show the Beans extension output/log channel          |
-| `beans.openUserGuide`          | Open user guide documentation                        |
-| `beans.openAiFeaturesGuide`    | Open AI features documentation                       |
-| `beans.openFirstMalformedBean` | Navigate to first malformed bean file for correction |
+| Command                       | Purpose                                              |
+| ----------------------------- | ---------------------------------------------------- |
+| `beans.init`                  | Initialize Beans in an uninitialized workspace       |
+| `beans.openConfig`            | Open `.beans.yml` configuration file                 |
+| `beans.openExtensionSettings` | Open VS Code extension settings for Beans            |
+| `beans.showOutput`            | Show the Beans extension output/log channel          |
+| `beans.openUserGuide`         | Open user guide documentation                        |
+| `beans.openAiFeaturesGuide`   | Open AI features documentation                       |
+| `beans.openFirstMalformedBean`| Navigate to first malformed bean file for correction |
 
 ## Chat participant (`@beans`) guidance
 
