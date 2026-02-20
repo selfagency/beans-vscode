@@ -3,7 +3,7 @@ title: Beans Task Management Rules
 description: Generated Copilot instructions for Beans workflows in this workspace.
 ---
 
-## Beans Task Management Rules
+# Beans Task Management Rules
 
 <CRITICALLY_IMPORTANT>
 
