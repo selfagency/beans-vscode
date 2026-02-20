@@ -538,6 +538,17 @@ describe('BeansCommands', () => {
     expect(showTextDocument).toHaveBeenCalled();
   });
 
+  it('opens extension settings filtered to this extension', async () => {
+    commands.registerAll();
+
+    const handler = commandHandlers.get('beans.openExtensionSettings');
+    expect(handler).toBeDefined();
+
+    await handler?.();
+
+    expect(executeCommand).toHaveBeenCalledWith('workbench.action.openSettings', '@ext:selfagency.beans-vscode');
+  });
+
   it('copies bean id to clipboard', async () => {
     const bean = makeBean({ id: 'beans-vscode-7777', code: '7777' });
     await (commands as any).copyId(bean);
