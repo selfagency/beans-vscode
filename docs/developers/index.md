@@ -2,7 +2,7 @@
 title: Developers
 ---
 
-We welcome contributions and follow a strict **TDD-first** (Test-Driven Development) workflow. For detailed onboarding, branch naming conventions, and the Beans workflow, please refer to the **[Contributing Guide](/developers/contributing)**.
+We welcome contributions and follow a strict **TDD-first** (Test-Driven Development) workflow. For detailed onboarding, branch naming conventions, and the Beans workflow, please refer to the **[Contributing Guide](./contributing)**.
 
 ## Quick Setup
 
@@ -26,18 +26,18 @@ pnpm run check-types   # Type-check everything
 ## Running Locally
 
 - **Debug Extension**: Press `F5` in VS Code to launch the **Extension Development Host**.
-- **MCP Server**: Run `node ./dist/beans-mcp-server.js` (see [CONTRIBUTING.md](/developers/contributing#running-the-mcp-server-locally) for details).
+- **MCP Server**: Run `node ./dist/beans-mcp-server.js` (see [CONTRIBUTING.md](./contributing#running-the-mcp-server-locally) for details).
 
 ## Testing
 
 Please see our test documentation for full details on our testing procedures.
 
-- [Testing](/developers/testing)
-- [Remote compatibility testing](/developers/remote-testing)
+- [Testing](./testing)
+- [Remote compatibility testing](./remote-testing)
 
 ## Contributing
 
-Please see our **[Contributing Guide](/developers/contributing)** for full details on our developer principles, branch naming, and pull request process.
+Please see our **[Contributing Guide](./contributing)** for full details on our developer principles, branch naming, and pull request process.
 
 1. **Find or create a Bean** in `.beans/` (this project uses Beans for self-tracking!)
 2. **Implement changes** using the TDD-first workflow.
