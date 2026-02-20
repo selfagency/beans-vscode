@@ -101,6 +101,13 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
   }
 
   /**
+   * Number of beans currently loaded and visible to this provider after filtering.
+   */
+  getVisibleCount(): number {
+    return this.beans.length;
+  }
+
+  /**
    * Get children for a tree element
    */
   async getChildren(element?: BeanTreeItem): Promise<BeanTreeItem[]> {

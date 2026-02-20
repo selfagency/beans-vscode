@@ -21,6 +21,7 @@ const state = vi.hoisted(() => ({
   initThrows: undefined as unknown,
   primeOutput: 'prime output',
   detailsShouldReject: false,
+  showHeaderCounts: true,
   filters: new Map<string, any>(),
   filterListener: undefined as ((viewId: string) => void) | undefined,
   showInfoQueue: [] as Array<string | undefined>,
@@ -28,6 +29,7 @@ const state = vi.hoisted(() => ({
   showWarningQueue: [] as Array<string | undefined>,
   registeredCommands: new Map<string, (...args: any[]) => any>(),
   selectionHandlers: new Map<string, (e: any) => void>(),
+  treeViews: new Map<string, { title?: string }>(),
   watcherCallbacks: [] as Array<() => void>,
   configChangeHandler: undefined as ((e: { affectsConfiguration: (key: string) => boolean }) => void) | undefined,
   providerInstances: {
@@ -158,6 +160,9 @@ vi.mock('../../beans/tree/providers', () => {
   class BaseProvider {
     refresh = vi.fn();
     setFilter = vi.fn();
+    getChildren = vi.fn(async () => []);
+    getVisibleCount = vi.fn(() => 0);
+    onDidChangeTreeData = vi.fn(() => ({ dispose: vi.fn() }));
   }
   class ActiveBeansProvider extends BaseProvider {
     constructor() {
@@ -207,6 +212,7 @@ describe('Extension lifecycle coverage', () => {
     state.initThrows = undefined;
     state.primeOutput = 'prime output';
     state.detailsShouldReject = false;
+    state.showHeaderCounts = true;
     state.filters = new Map();
     state.filterListener = undefined;
     state.showInfoQueue = [];
@@ -214,6 +220,7 @@ describe('Extension lifecycle coverage', () => {
     state.showWarningQueue = [];
     state.registeredCommands = new Map();
     state.selectionHandlers = new Map();
+    state.treeViews = new Map();
     state.watcherCallbacks = [];
     state.configChangeHandler = undefined;
     state.providerInstances = { active: undefined, completed: undefined, draft: undefined };
@@ -244,6 +251,9 @@ describe('Extension lifecycle coverage', () => {
           if (key === 'autoInit.enabled') {
             return true;
           }
+          if (key === 'view.showCounts') {
+            return state.showHeaderCounts;
+          }
           if (key === 'fileWatcher.debounceMs') {
             return 25;
           }
@@ -266,13 +276,17 @@ describe('Extension lifecycle coverage', () => {
     vi.spyOn(vscode.window, 'showWarningMessage').mockImplementation(async () => state.showWarningQueue.shift() as any);
 
     (vscode.window as any).createTreeView = vi.fn((id: string) => {
-      return {
+      const treeView = {
+        title: undefined as string | undefined,
         onDidChangeSelection: (cb: (e: any) => void) => {
           state.selectionHandlers.set(id, cb);
           return { dispose: vi.fn() };
         },
         dispose: vi.fn(),
       } as any;
+
+      state.treeViews.set(id, treeView);
+      return treeView;
     });
     vi.spyOn(vscode.window, 'registerWebviewViewProvider').mockReturnValue({ dispose: vi.fn() });
 
@@ -355,6 +369,38 @@ describe('Extension lifecycle coverage', () => {
 
     deactivate();
     expect(logger.dispose).toHaveBeenCalled();
+  });
+
+  it('shows and keeps side-panel header counts in sync with refresh and filters', async () => {
+    await activate(makeContext());
+
+    expect(state.treeViews.get('beans.draft')?.title).toBe('Drafts (0)');
+    expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans (0)');
+    expect(state.treeViews.get('beans.completed')?.title).toBe('Completed (0)');
+    expect(state.treeViews.get('beans.search')?.title).toBe('Search (0)');
+
+    await state.registeredCommands.get('beans.refreshAll')?.();
+
+    expect(state.treeViews.get('beans.draft')?.title).toBe('Drafts (0)');
+    expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans (0)');
+    expect(state.treeViews.get('beans.completed')?.title).toBe('Completed (0)');
+    expect(state.treeViews.get('beans.search')?.title).toBe('Search (0)');
+
+    state.filters.set('beans.search', { text: 'query' });
+    state.filterListener?.('beans.search');
+
+    expect(state.treeViews.get('beans.search')?.title).toBe('Search (0)');
+  });
+
+  it('hides side-panel header counts when beans.view.showCounts is disabled', async () => {
+    state.showHeaderCounts = false;
+
+    await activate(makeContext());
+
+    expect(state.treeViews.get('beans.draft')?.title).toBe('Drafts');
+    expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans');
+    expect(state.treeViews.get('beans.completed')?.title).toBe('Completed');
+    expect(state.treeViews.get('beans.search')?.title).toBe('Search');
   });
 
   it('prompts for CLI install when cli is unavailable and can open settings', async () => {

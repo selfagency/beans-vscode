@@ -319,6 +319,11 @@
           ],
           "description": "Choose how beans are displayed in the sidebar. Requires extension reload to take effect."
         },
+        "beans.view.showCounts": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show item counts in Beans side panel headers (for example: Open Beans (12))."
+        },
         "beans.autoInit.enabled": {
           "type": "boolean",
           "default": true,

@@ -275,6 +275,11 @@ export async function activate(context: vscode.ExtensionContext) {
           void vscode.commands.executeCommand('setContext', 'beans.aiEnabled', aiEnabledNow);
           logger.info(`AI feature visibility updated: beans.aiEnabled=${aiEnabledNow}`);
         }
+
+        if (e.affectsConfiguration('beans.view.showCounts')) {
+          void vscode.commands.executeCommand('beans.refreshAll');
+          logger.info('Updated side panel headers after beans.view.showCounts change');
+        }
       })
     );
 
