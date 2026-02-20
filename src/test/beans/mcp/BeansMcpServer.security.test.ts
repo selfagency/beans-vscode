@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { isPathWithinRoot } from '../../../beans/mcp/BeansMcpServer.js';
 
 const toolHandlers = vi.hoisted(() => new Map<string, (...args: any[]) => any>());
 const connectSpy = vi.hoisted(() => vi.fn(async () => {}));
@@ -71,7 +72,7 @@ describe('BeansMcpServer security review', () => {
       await expect(readTool({ path: '../../etc/passwd' })).rejects.toThrow('Path must stay within .beans directory');
     });
 
-    it('should reject read_output_log if BEANS_VSCODE_OUTPUT_LOG points outside workspace', async () => {
+    it('should reject read_output_log if BEANS_VSCODE_OUTPUT_LOG points outside allowed roots', async () => {
       const originalEnv = process.env.BEANS_VSCODE_OUTPUT_LOG;
       process.env.BEANS_VSCODE_OUTPUT_LOG = '/etc/passwd';
 
@@ -79,7 +80,9 @@ describe('BeansMcpServer security review', () => {
 
       try {
         // MCP10-B: Path Traversal via environment variables
-        await expect(readOutputTool({})).rejects.toThrow('Output log path must stay within the workspace');
+        await expect(readOutputTool({})).rejects.toThrow(
+          'Output log path must stay within the workspace or VS Code log directory'
+        );
       } finally {
         process.env.BEANS_VSCODE_OUTPUT_LOG = originalEnv;
       }
@@ -150,5 +153,26 @@ describe('BeansMcpServer security review', () => {
 
       delete process.env.SECRET_TOKEN;
     });
+  });
+});
+
+describe('isPathWithinRoot', () => {
+  it('should accept a path inside the root', () => {
+    expect(isPathWithinRoot('/workspace', '/workspace/sub/file.txt')).toBe(true);
+  });
+
+  it('should reject a path that traverses above the root', () => {
+    expect(isPathWithinRoot('/workspace', '/workspace/../etc/passwd')).toBe(false);
+  });
+
+  it('should reject an absolute target on a different root', () => {
+    // Simulates the Windows cross-drive case: relative('C:\\root', 'D:\\evil')
+    // returns an absolute path that doesn't start with '..'
+    expect(isPathWithinRoot('/workspace', '/etc/passwd')).toBe(false);
+  });
+
+  it('should reject when root and target are the same path', () => {
+    // A path equal to the root is not *within* it
+    expect(isPathWithinRoot('/workspace', '/workspace')).toBe(false);
   });
 });

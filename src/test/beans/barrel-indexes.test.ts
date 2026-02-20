@@ -54,7 +54,6 @@ describe('Beans barrel exports', () => {
     expect(providers.ActiveBeansProvider).toBeDefined();
     expect(providers.CompletedBeansProvider).toBeDefined();
     expect(providers.DraftBeansProvider).toBeDefined();
-    expect(providers.ScrappedBeansProvider).toBeDefined();
   });
 
   it('exports model symbols', async () => {

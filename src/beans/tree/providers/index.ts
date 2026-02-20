@@ -53,26 +53,45 @@ export class DraftBeansProvider extends BeansTreeDataProvider {
   }
 
   protected override async augmentBeans(beans: Bean[]): Promise<Bean[]> {
-    // beans = all draft beans. Now fetch children of drafts that aren't drafts themselves.
-    const draftIds = new Set(beans.map(b => b.id));
+    // beans = all draft beans. Now fetch transitive descendants of drafts
+    // so the full hierarchy nests under draft roots in this view.
+    const includedIds = new Set(beans.map(b => b.id));
 
-    // Fetch active + completed + scrapped beans to find children of drafts
     const otherBeans = await this.service.listBeans({
       status: ['todo', 'in-progress', 'completed', 'scrapped'],
     });
 
-    const childrenOfDrafts = otherBeans.filter(b => b.parent && draftIds.has(b.parent));
+    // Build parent→children index for efficient traversal
+    const childrenByParent = new Map<string, Bean[]>();
+    for (const bean of otherBeans) {
+      if (bean.parent) {
+        const siblings = childrenByParent.get(bean.parent);
+        if (siblings) {
+          siblings.push(bean);
+        } else {
+          childrenByParent.set(bean.parent, [bean]);
+        }
+      }
+    }
 
-    return [...beans, ...childrenOfDrafts];
-  }
-}
+    // BFS from each draft root to collect all transitive descendants
+    const descendants: Bean[] = [];
+    const queue = [...includedIds];
+    while (queue.length > 0) {
+      const parentId = queue.pop()!;
+      const children = childrenByParent.get(parentId);
+      if (!children) {
+        continue;
+      }
+      for (const child of children) {
+        if (!includedIds.has(child.id)) {
+          includedIds.add(child.id);
+          descendants.push(child);
+          queue.push(child.id);
+        }
+      }
+    }
 
-/**
- * Tree provider for scrapped beans
- * Uses flat list since parent beans may not be scrapped
- */
-export class ScrappedBeansProvider extends BeansTreeDataProvider {
-  constructor(service: BeansService) {
-    super(service, ['scrapped'], true);
+    return [...beans, ...descendants];
   }
 }

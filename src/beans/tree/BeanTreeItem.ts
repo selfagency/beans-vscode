@@ -68,11 +68,12 @@ export class BeanTreeItem extends vscode.TreeItem {
    * Display labels for priority values (emoji + title case).
    */
   private static readonly PRIORITY_LABELS: Record<string, string> = {
-    critical: '$(circle-large-filled) Critical',
-    high: '$(circle-large-filled) High',
-    normal: '$(circle-large-filled) Normal',
-    low: '$(circle-large-filled) Low',
-    deferred: '$(circle-large-filled) Deferred',
+    // Use circled Unicode numerals to match project UI conventions
+    critical: '① Critical',
+    high: '② High',
+    normal: '③ Normal',
+    low: '④ Low',
+    deferred: '⑤ Deferred',
   };
 
   /**

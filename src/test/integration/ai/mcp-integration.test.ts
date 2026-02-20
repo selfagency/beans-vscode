@@ -17,6 +17,7 @@ describe('MCP Integration', () => {
       subscriptions: [],
       extensionPath: '/mock/extension/path',
       extensionUri: vscode.Uri.file('/mock/extension/path'),
+      logUri: vscode.Uri.file('/mock/logs'),
       extension: {
         packageJSON: { version: '0.1.0' },
       },
