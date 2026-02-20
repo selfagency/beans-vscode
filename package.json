@@ -18,7 +18,7 @@
     "remote development",
     "git-native"
   ],
-  "homepage": "https://github.com/selfagency/beans-vscode#readme",
+  "homepage": "https://beans.self.agency",
   "bugs": {
     "url": "https://github.com/selfagency/beans-vscode/issues"
   },
@@ -55,6 +55,7 @@
     "release": "zx ./scripts/release.mjs",
     "docs:dev": "pnpm exec vitepress dev docs",
     "docs:build": "pnpm exec vitepress build docs",
+    "docs:preview": "pnpm exec vitepress preview docs",
     "docs:serve": "pnpm exec vitepress serve docs",
     "prepare": "husky"
   },
