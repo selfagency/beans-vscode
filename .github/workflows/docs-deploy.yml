@@ -47,6 +47,7 @@ jobs:
         with:
           name: docs-build
           path: docs/.vitepress/dist
+          include-hidden-files: true
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
