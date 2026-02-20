@@ -1,13 +1,11 @@
 ---
 # beans-vscode-ia9x
 title: Add gear icon to Help pane title bar that opens extension settings
-status: in-progress
+status: completed
 type: task
 priority: normal
-branch: feature/beans-vscode-ia9x-help-pane-settings-gear
-pr: 60
 created_at: 2026-02-20T05:56:32Z
-updated_at: 2026-02-20T05:58:28Z
+updated_at: 2026-02-20T06:12:55Z
 ---
 
 Add a gear icon action in the Help pane title bar that opens the extension settings for @ext:selfagency.beans-vscode.
