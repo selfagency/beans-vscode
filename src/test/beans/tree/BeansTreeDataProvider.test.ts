@@ -83,6 +83,14 @@ describe('BeansTreeDataProvider', () => {
       provider = new BeansTreeDataProvider(service);
     });
 
+    it('should return visible count for loaded beans', async () => {
+      mockBeans = [createBean('bean-1', 'A', 'todo'), createBean('bean-2', 'B', 'todo')];
+
+      expect(provider.getVisibleCount()).toBe(0);
+      await provider.getChildren();
+      expect(provider.getVisibleCount()).toBe(2);
+    });
+
     it('should return tree item unchanged', () => {
       const bean: Bean = {
         id: 'bean-1',

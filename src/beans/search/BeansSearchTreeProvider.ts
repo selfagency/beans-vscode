@@ -42,6 +42,10 @@ export class BeansSearchTreeProvider implements vscode.TreeDataProvider<BeanTree
     this._onDidChangeTreeData.fire();
   }
 
+  getVisibleCount(): number {
+    return this.beans.length;
+  }
+
   setFilter(filter: BeansFilterState | undefined): void {
     this.currentFilter = filter;
     this.refresh();

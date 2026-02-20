@@ -23,12 +23,65 @@ export function registerBeansTreeViews(
   details: BeansDetailsViewProvider,
   logger: BeansOutput
 ): RegisteredBeanProviders {
+  const baseTitles = {
+    active: 'Open Beans',
+    completed: 'Completed',
+    draft: 'Drafts',
+    search: 'Search',
+  } as const;
+
   const dragAndDropController = new BeansDragAndDropController(service);
 
   const activeProvider = new ActiveBeansProvider(service);
   const completedProvider = new CompletedBeansProvider(service);
   const draftProvider = new DraftBeansProvider(service);
   const searchProvider = new BeansSearchTreeProvider(service);
+
+  const activeTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.active', {
+    treeDataProvider: activeProvider,
+    showCollapseAll: true,
+    dragAndDropController,
+  });
+
+  const searchTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.search', {
+    treeDataProvider: searchProvider,
+    showCollapseAll: false,
+  });
+
+  const completedTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.completed', {
+    treeDataProvider: completedProvider,
+    showCollapseAll: true,
+    dragAndDropController,
+  });
+
+  const draftTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.draft', {
+    treeDataProvider: draftProvider,
+    showCollapseAll: true,
+    dragAndDropController,
+  });
+
+  const shouldShowCounts = (): boolean => {
+    return vscode.workspace.getConfiguration('beans').get<boolean>('view.showCounts', true);
+  };
+
+  const formatTitle = (baseTitle: string, count: number): string => {
+    return shouldShowCounts() ? `${baseTitle} (${count})` : baseTitle;
+  };
+
+  const applyCountTitles = (): void => {
+    draftTreeView.title = formatTitle(baseTitles.draft, draftProvider.getVisibleCount());
+    activeTreeView.title = formatTitle(baseTitles.active, activeProvider.getVisibleCount());
+    completedTreeView.title = formatTitle(baseTitles.completed, completedProvider.getVisibleCount());
+    searchTreeView.title = formatTitle(baseTitles.search, searchProvider.getVisibleCount());
+  };
+
+  const refreshCountTitles = (): void => {
+    try {
+      applyCountTitles();
+    } catch (error) {
+      logger.warn('Failed to refresh bean counts for side panel headers', error as Error);
+    }
+  };
 
   context.subscriptions.push(
     manager.onDidChangeFilter(viewId => {
@@ -68,17 +121,6 @@ export function registerBeansTreeViews(
     })
   );
 
-  const activeTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.active', {
-    treeDataProvider: activeProvider,
-    showCollapseAll: true,
-    dragAndDropController,
-  });
-
-  const searchTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.search', {
-    treeDataProvider: searchProvider,
-    showCollapseAll: false,
-  });
-
   const applySearchFilterCmd = vscode.commands.registerCommand('beans.searchView.filter', async () => {
     try {
       const current = manager.getFilter('beans.search');
@@ -91,7 +133,7 @@ export function registerBeansTreeViews(
     }
   });
 
-  const clearSearchFilterCmd = vscode.commands.registerCommand('beans.searchView.clear', () => {
+  const clearSearchFilterCmd = vscode.commands.registerCommand('beans.searchView.clear', async () => {
     try {
       manager.clearFilter('beans.search');
       vscode.window.showInformationMessage('Search filters cleared');
@@ -102,19 +144,19 @@ export function registerBeansTreeViews(
 
   context.subscriptions.push(applySearchFilterCmd, clearSearchFilterCmd);
 
-  const completedTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.completed', {
-    treeDataProvider: completedProvider,
-    showCollapseAll: true,
-    dragAndDropController,
-  });
-
-  const draftTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.draft', {
-    treeDataProvider: draftProvider,
-    showCollapseAll: true,
-    dragAndDropController,
-  });
-
   context.subscriptions.push(
+    activeProvider.onDidChangeTreeData(() => {
+      void refreshCountTitles();
+    }),
+    completedProvider.onDidChangeTreeData(() => {
+      void refreshCountTitles();
+    }),
+    draftProvider.onDidChangeTreeData(() => {
+      void refreshCountTitles();
+    }),
+    searchProvider.onDidChangeTreeData(() => {
+      void refreshCountTitles();
+    }),
     activeTreeView.onDidChangeSelection(e => {
       if (e.selection.length > 0) {
         const bean = e.selection[0].bean;
@@ -158,6 +200,12 @@ export function registerBeansTreeViews(
   );
 
   context.subscriptions.push(activeTreeView, completedTreeView, draftTreeView, searchTreeView);
+
+  applyCountTitles();
+  if (activeTreeView.visible || completedTreeView.visible || draftTreeView.visible || searchTreeView.visible) {
+    // Only trigger the potentially expensive count refresh if any view is visible
+    void refreshCountTitles();
+  }
 
   logger.info('Tree views registered with drag-and-drop support and details view integration');
 

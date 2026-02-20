@@ -7,6 +7,7 @@ import { activate, deactivate } from '../../extension';
 interface MockBeansTreeProvider {
   refresh: () => void;
   setFilter: (filter: unknown) => void;
+  getVisibleCount: () => number;
 }
 
 // TODO(beans-vscode-y4k2): Add lower-mock integration tests that exercise
@@ -21,6 +22,10 @@ const state = vi.hoisted(() => ({
   initThrows: undefined as unknown,
   primeOutput: 'prime output',
   detailsShouldReject: false,
+  showHeaderCounts: true,
+  throwOnSearchGetFilter: false,
+  throwOnSearchClearFilter: false,
+  setFilterCalls: [] as Array<{ viewId: string; filter: unknown }>,
   filters: new Map<string, any>(),
   filterListener: undefined as ((viewId: string) => void) | undefined,
   showInfoQueue: [] as Array<string | undefined>,
@@ -28,6 +33,7 @@ const state = vi.hoisted(() => ({
   showWarningQueue: [] as Array<string | undefined>,
   registeredCommands: new Map<string, (...args: any[]) => any>(),
   selectionHandlers: new Map<string, (e: any) => void>(),
+  treeViews: new Map<string, { title?: string }>(),
   watcherCallbacks: [] as Array<() => void>,
   configChangeHandler: undefined as ((e: { affectsConfiguration: (key: string) => boolean }) => void) | undefined,
   providerInstances: {
@@ -54,6 +60,10 @@ const configFns = vi.hoisted(() => ({
   buildBeansCopilotSkill: vi.fn((graphqlSchema: string) => `skill:${graphqlSchema}`),
   writeBeansCopilotSkill: vi.fn(async () => '/ws/.github/skills/beans/SKILL.md'),
   removeBeansCopilotSkill: vi.fn(async () => undefined),
+}));
+
+const searchFilterFns = vi.hoisted(() => ({
+  showSearchFilterUI: vi.fn(async (current: unknown) => current),
 }));
 
 const fsReaddirMock = vi.hoisted(() => vi.fn(async () => [] as any[]));
@@ -122,6 +132,10 @@ vi.mock('../../beans/search', () => ({
   },
 }));
 
+vi.mock('../../beans/search/SearchFilterUI', () => ({
+  showSearchFilterUI: searchFilterFns.showSearchFilterUI,
+}));
+
 vi.mock('../../beans/details', () => ({
   BeansDetailsViewProvider: class BeansDetailsViewProvider {
     static viewType = 'beans.details';
@@ -143,9 +157,19 @@ vi.mock('../../beans/tree', () => ({
   BeansDragAndDropController: class BeansDragAndDropController {},
   BeansFilterManager: class BeansFilterManager {
     getFilter(viewId: string): any {
+      if (viewId === 'beans.search' && state.throwOnSearchGetFilter) {
+        throw new Error('search getFilter failed');
+      }
       return state.filters.get(viewId);
     }
-    setFilter = vi.fn();
+    setFilter = vi.fn((viewId: string, filter: unknown) => {
+      state.setFilterCalls.push({ viewId, filter });
+    });
+    clearFilter = vi.fn((_viewId: string) => {
+      if (state.throwOnSearchClearFilter) {
+        throw new Error('search clear failed');
+      }
+    });
     showFilterUI = vi.fn(async (f: any) => f);
     onDidChangeFilter = (listener: (viewId: string) => void) => {
       state.filterListener = listener;
@@ -158,6 +182,9 @@ vi.mock('../../beans/tree/providers', () => {
   class BaseProvider {
     refresh = vi.fn();
     setFilter = vi.fn();
+    getChildren = vi.fn(async () => []);
+    getVisibleCount = vi.fn(() => 0);
+    onDidChangeTreeData = vi.fn(() => ({ dispose: vi.fn() }));
   }
   class ActiveBeansProvider extends BaseProvider {
     constructor() {
@@ -207,6 +234,10 @@ describe('Extension lifecycle coverage', () => {
     state.initThrows = undefined;
     state.primeOutput = 'prime output';
     state.detailsShouldReject = false;
+    state.showHeaderCounts = true;
+    state.throwOnSearchGetFilter = false;
+    state.throwOnSearchClearFilter = false;
+    state.setFilterCalls = [];
     state.filters = new Map();
     state.filterListener = undefined;
     state.showInfoQueue = [];
@@ -214,6 +245,7 @@ describe('Extension lifecycle coverage', () => {
     state.showWarningQueue = [];
     state.registeredCommands = new Map();
     state.selectionHandlers = new Map();
+    state.treeViews = new Map();
     state.watcherCallbacks = [];
     state.configChangeHandler = undefined;
     state.providerInstances = { active: undefined, completed: undefined, draft: undefined };
@@ -244,6 +276,9 @@ describe('Extension lifecycle coverage', () => {
           if (key === 'autoInit.enabled') {
             return true;
           }
+          if (key === 'view.showCounts') {
+            return state.showHeaderCounts;
+          }
           if (key === 'fileWatcher.debounceMs') {
             return 25;
           }
@@ -266,13 +301,17 @@ describe('Extension lifecycle coverage', () => {
     vi.spyOn(vscode.window, 'showWarningMessage').mockImplementation(async () => state.showWarningQueue.shift() as any);
 
     (vscode.window as any).createTreeView = vi.fn((id: string) => {
-      return {
+      const treeView = {
+        title: undefined as string | undefined,
         onDidChangeSelection: (cb: (e: any) => void) => {
           state.selectionHandlers.set(id, cb);
           return { dispose: vi.fn() };
         },
         dispose: vi.fn(),
       } as any;
+
+      state.treeViews.set(id, treeView);
+      return treeView;
     });
     vi.spyOn(vscode.window, 'registerWebviewViewProvider').mockReturnValue({ dispose: vi.fn() });
 
@@ -353,8 +392,88 @@ describe('Extension lifecycle coverage', () => {
     state.configChangeHandler?.({ affectsConfiguration: (key: string) => key === 'beans.ai.enabled' });
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith('setContext', 'beans.aiEnabled', true);
 
+    state.configChangeHandler?.({ affectsConfiguration: (key: string) => key === 'beans.view.showCounts' });
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('beans.refreshAll');
+    expect(logger.info).toHaveBeenCalledWith(
+      'beans.view.showCounts changed; header formatting will update on next tree refresh'
+    );
+
     deactivate();
     expect(logger.dispose).toHaveBeenCalled();
+  });
+
+  it('logs a warning when refreshing side-panel count titles throws', async () => {
+    await activate(makeContext());
+
+    state.providerInstances.active!.getVisibleCount = vi.fn(() => {
+      throw new Error('count failed');
+    });
+
+    const onDidChangeHandler = (state.providerInstances.active as any).onDidChangeTreeData.mock.calls[0]?.[0] as
+      | (() => void)
+      | undefined;
+    onDidChangeHandler?.();
+
+    expect(logger.warn).toHaveBeenCalledWith('Failed to refresh bean counts for side panel headers', expect.any(Error));
+  });
+
+  it('logs errors when search filter commands fail', async () => {
+    await activate(makeContext());
+
+    state.throwOnSearchGetFilter = true;
+    await state.registeredCommands.get('beans.searchView.filter')?.();
+
+    state.throwOnSearchGetFilter = false;
+    state.throwOnSearchClearFilter = true;
+    await state.registeredCommands.get('beans.searchView.clear')?.();
+
+    expect(logger.error).toHaveBeenCalledWith('Failed to apply search filter', expect.any(Error));
+    expect(logger.error).toHaveBeenCalledWith('Failed to clear search filters', expect.any(Error));
+  });
+
+  it('applies search filter when filter UI returns a value', async () => {
+    await activate(makeContext());
+
+    searchFilterFns.showSearchFilterUI.mockResolvedValueOnce({ text: 'needle', statuses: ['todo'] });
+
+    await state.registeredCommands.get('beans.searchView.filter')?.();
+
+    expect(state.setFilterCalls).toContainEqual({
+      viewId: 'beans.search',
+      filter: { text: 'needle', statuses: ['todo'] },
+    });
+  });
+
+  it('shows and keeps side-panel header counts in sync with refresh and filters', async () => {
+    await activate(makeContext());
+
+    expect(state.treeViews.get('beans.draft')?.title).toBe('Drafts (0)');
+    expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans (0)');
+    expect(state.treeViews.get('beans.completed')?.title).toBe('Completed (0)');
+    expect(state.treeViews.get('beans.search')?.title).toBe('Search (0)');
+
+    await state.registeredCommands.get('beans.refreshAll')?.();
+
+    expect(state.treeViews.get('beans.draft')?.title).toBe('Drafts (0)');
+    expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans (0)');
+    expect(state.treeViews.get('beans.completed')?.title).toBe('Completed (0)');
+    expect(state.treeViews.get('beans.search')?.title).toBe('Search (0)');
+
+    state.filters.set('beans.search', { text: 'query' });
+    state.filterListener?.('beans.search');
+
+    expect(state.treeViews.get('beans.search')?.title).toBe('Search (0)');
+  });
+
+  it('hides side-panel header counts when beans.view.showCounts is disabled', async () => {
+    state.showHeaderCounts = false;
+
+    await activate(makeContext());
+
+    expect(state.treeViews.get('beans.draft')?.title).toBe('Drafts');
+    expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans');
+    expect(state.treeViews.get('beans.completed')?.title).toBe('Completed');
+    expect(state.treeViews.get('beans.search')?.title).toBe('Search');
   });
 
   it('prompts for CLI install when cli is unavailable and can open settings', async () => {
