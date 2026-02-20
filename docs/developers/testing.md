@@ -1,4 +1,6 @@
-# Testing Documentation
+---
+title: Testing
+---
 
 This document covers the testing strategy, test execution, writing tests, and CI/CD integration for the Beans VS Code extension.
 
@@ -810,7 +812,7 @@ This script:
 - Tests parent-child and blocking relationships
 - Verifies file structure and data persistence
 
-See [Remote Compatibility Testing Guide](./remote-compatibility-testing.md) for manual testing procedures in SSH, WSL, Dev Containers, and Codespaces.
+See [Remote Compatibility Testing Guide](./remote-testing.md) for manual testing procedures in SSH, WSL, Dev Containers, and Codespaces.
 
 ### Testing Remote Scenarios
 

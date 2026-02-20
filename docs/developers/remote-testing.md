@@ -1,4 +1,6 @@
-# Remote Compatibility Testing Guide
+---
+title: Remote compatibility testing
+---
 
 This document provides step-by-step instructions for testing the Beans VS Code extension in various remote development scenarios.
 
@@ -15,7 +17,6 @@ This document provides step-by-step instructions for testing the Beans VS Code e
 #### Setup
 
 1. Connect to a remote server via SSH:
-
    - Open VS Code
    - Press `F1` → "Remote-SSH: Connect to Host..."
    - Select or add an SSH host
@@ -63,7 +64,6 @@ This document provides step-by-step instructions for testing the Beans VS Code e
    ```
 
 2. Open folder in WSL:
-
    - `F1` → "WSL: Connect to WSL"
    - Or click "Open Folder" → select WSL path
 

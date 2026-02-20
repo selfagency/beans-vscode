@@ -64,6 +64,12 @@ Full installation guide: [Beans Documentation](https://github.com/hmans/beans#in
 
 Install from [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=selfagency.beans-vscode) or [Open VSX](https://open-vsx.org/extension/selfagency/beans-vscode).
 
+Alternately, run:
+
+```bash
+  code --install-extension selfagency.beans-vscode
+```
+
 ### 3. Initialize Your Project
 
 ```bash
@@ -77,59 +83,15 @@ Or use Command Palette: `Beans: Initialize Beans in Workspace`
 
 Click the `+` icon in the Beans sidebar, enter a title, select a type (task, bug, feature), and you're done!
 
-## Documentation
-
-- **[User Guide](./docs/user-guide.md)** - Complete guide to using the extension
-- **[AI Features](./docs/ai-features.md)** - MCP tools, chat participant, Copilot skills, and "Start Work" templates
-- **[Commands Reference](./docs/commands.md)** - All 30+ commands with examples and workflow guides
-- **[Architecture](./docs/architecture.md)** - Technical design and module boundaries
-- **[Testing Guide](./docs/testing.md)** - Test strategy, running tests, and writing new tests
-- **[Remote Development](./docs/remote-compatibility-testing.md)** - Remote testing guide
-
 ## Remote Development
 
 This extension fully supports VS Code Remote Development (SSH, WSL, containers, Codespaces).
 
 **Critical requirement**: The Beans CLI must be installed on the **remote** machine, not your local machine.
 
-See the [Remote Development Guide](./docs/remote-compatibility-testing.md) for detailed setup instructions.
+## Documentation
 
-## Development
-
-We welcome contributions and follow a strict **TDD-first** (Test-Driven Development) workflow. For detailed onboarding, branch naming conventions, and the Beans workflow, please refer to the **[Contributing Guide](./CONTRIBUTING.md)**.
-
-### Quick Setup
-
-```bash
-git clone https://github.com/selfagency/beans-vscode.git
-cd beans-vscode
-pnpm install
-pnpm run compile
-pnpm test
-```
-
-### Common Commands
-
-```bash
-pnpm run watch         # Watch for code and type changes
-pnpm run test:watch    # Watch mode for unit tests
-pnpm run lint          # Lint changes
-pnpm run check-types   # Type-check everything
-```
-
-### Running Locally
-
-- **Debug Extension**: Press `F5` in VS Code to launch the **Extension Development Host**.
-- **MCP Server**: Run `node ./dist/beans-mcp-server.js` (see [CONTRIBUTING.md](./CONTRIBUTING.md#running-the-mcp-server-locally) for details).
-
-## Contributing
-
-Please see our **[Contributing Guide](./CONTRIBUTING.md)** for full details on our developer principles, branch naming, and pull request process.
-
-1. **Find or create a Bean** in `.beans/` (this project uses Beans for self-tracking!)
-2. **Implement changes** using the TDD-first workflow.
-3. **Ensure all checks pass** including linting and tests.
-4. **Submit a PR** with conventional commits.
+Full user and developer documentation can be found at [beans.self.agency](beans.self.agency).
 
 ## Support the Project
 
