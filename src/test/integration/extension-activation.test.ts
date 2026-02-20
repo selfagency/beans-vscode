@@ -222,4 +222,76 @@ describe('Extension Activation', () => {
     expect(outcome).toBe('resolved');
     expect(mockContext.subscriptions.length).toBeGreaterThan(0);
   });
+
+  it('should offer an OS-specific install action when Beans CLI is missing', async () => {
+    vi.spyOn(BeansService.prototype, 'checkCLIAvailable').mockResolvedValue(false);
+    vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue([mockWorkspaceFolder]);
+    vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+      get: vi.fn((key: string, defaultValue?: any) => {
+        if (key === 'enableOnlyIfInitialized') {
+          return false;
+        }
+        if (key === 'ai.enabled') {
+          return true;
+        }
+        if (key === 'cliPath') {
+          return 'beans';
+        }
+        return defaultValue;
+      }),
+      has: vi.fn(),
+      inspect: vi.fn(),
+      update: vi.fn(),
+    } as any);
+
+    const showErrorMessageSpy = vi
+      .spyOn(vscode.window, 'showErrorMessage')
+      .mockResolvedValue(undefined as unknown as any);
+
+    await activate(mockContext);
+
+    expect(showErrorMessageSpy).toHaveBeenCalled();
+    const args = showErrorMessageSpy.mock.calls[0] as unknown[];
+    const actions = args.slice(1).filter(arg => typeof arg === 'string') as string[];
+
+    // All three OS-specific install options should be present
+    const installActions = actions.filter(action => /Install .*?(macOS|Linux|Windows)/.test(action));
+    expect(installActions.length).toBeGreaterThanOrEqual(3);
+
+    const installPlatforms = new Set(
+      installActions
+        .map(action => {
+          if (action.includes('macOS')) return 'macOS';
+          if (action.includes('Linux')) return 'Linux';
+          if (action.includes('Windows')) return 'Windows';
+          return undefined;
+        })
+        .filter((p): p is 'macOS' | 'Linux' | 'Windows' => p !== undefined),
+    );
+    expect(installPlatforms).toEqual(new Set(['macOS', 'Linux', 'Windows']));
+
+    // The current platform's option should appear first among install actions
+    const platformLabel =
+      process.platform === 'darwin'
+        ? 'macOS'
+        : process.platform === 'linux'
+          ? 'Linux'
+          : process.platform === 'win32'
+            ? 'Windows'
+            : undefined;
+
+    if (platformLabel) {
+      const installActionIndices = installActions
+        .map(action => actions.indexOf(action))
+        .filter(index => index >= 0)
+        .sort((a, b) => a - b);
+
+      const firstInstallAction = actions[installActionIndices[0]];
+      expect(firstInstallAction.includes(platformLabel)).toBe(true);
+    }
+
+    // Existing non-install actions should still be present
+    expect(actions).toContain('Configure Path');
+    expect(actions).toContain('Dismiss');
+  });
 });
