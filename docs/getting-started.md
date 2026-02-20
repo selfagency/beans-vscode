@@ -2,8 +2,6 @@
 title: Getting started
 ---
 
-## Quick start for users
-
 ## Quick Start
 
 ### Install the [`beans`](https://github.com/hmans/beans#installation) CLI

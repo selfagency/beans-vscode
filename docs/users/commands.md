@@ -80,8 +80,6 @@ Initialize a new Beans workspace in the current folder. Creates `.beans.yml` con
 - First time using Beans in a project
 - After cloning a repository without Beans setup
 
----
-
 ### Refresh
 
 **Command**: `beans.refresh`
@@ -107,8 +105,6 @@ Refresh all tree views to reflect latest changes from filesystem.
 - After making changes outside VS Code
 - After CLI operations in terminal
 - To ensure UI is in sync with filesystem
-
----
 
 ### Open Configuration
 
@@ -153,8 +149,6 @@ priorities:
   - deferred
 ```
 
----
-
 ### Show Output
 
 **Command**: `beans.showOutput`
@@ -183,8 +177,6 @@ Open the Beans extension output channel to view logs and diagnostic information.
 - Debugging MCP tool calls
 - Reporting bugs
 
----
-
 ### Open Extension Settings
 
 **Command**: `beans.openExtensionSettings`
@@ -203,8 +195,6 @@ Open VS Code settings filtered to Beans extension configuration.
 - Configuring AI features, display mode, sort defaults
 - Adjusting file watcher debounce or logging levels
 
----
-
 ### Open User Guide
 
 **Command**: `beans.openUserGuide`
@@ -217,8 +207,6 @@ Open the Beans extension user guide documentation.
 
 1. Command Palette: "Beans: Open User Guide"
 
----
-
 ### Open AI Features Guide
 
 **Command**: `beans.openAiFeaturesGuide`
@@ -230,8 +218,6 @@ Open the Beans AI features documentation covering MCP tools, chat participant, a
 **Usage**:
 
 1. Command Palette: "Beans: Open AI Features Guide"
-
----
 
 ## Bean Operations
 
@@ -265,8 +251,6 @@ View bean details in markdown preview pane.
 - **Relationships**: Parent bean, child beans, blocking relationships
 - **Body**: Markdown-rendered description and checklists
 - **Actions**: Quick access buttons for edit, status change, etc.
-
----
 
 ### Create Bean
 
@@ -307,8 +291,6 @@ Type: feature
 Description: "Implement JWT-based auth with refresh tokens"
 → Creates beans-vscode-xyzw--add-user-authentication.md
 ```
-
----
 
 ### Edit Bean
 

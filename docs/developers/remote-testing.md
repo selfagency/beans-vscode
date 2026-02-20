@@ -53,8 +53,6 @@ This document provides step-by-step instructions for testing the Beans VS Code e
 - CLI invocation uses remote PATH
 - No local filesystem access attempted
 
----
-
 ### 2. WSL (Windows Subsystem for Linux)
 
 #### Setup
@@ -93,8 +91,6 @@ This document provides step-by-step instructions for testing the Beans VS Code e
 - **PATH not set**: Add beans to `~/.profile` or `~/.bashrc`
 - **Windows PATH pollution**: Ensure WSL uses its own PATH
 - **File permission issues**: Check workspace folder ownership
-
----
 
 ### 3. Dev Containers
 
@@ -139,8 +135,6 @@ This document provides step-by-step instructions for testing the Beans VS Code e
 - [ ] Resource limits don't affect extension performance
 - [ ] Network access works for any external integrations
 
----
-
 ### 4. GitHub Codespaces
 
 #### Setup
@@ -166,8 +160,6 @@ This document provides step-by-step instructions for testing the Beans VS Code e
 - [ ] Multiple Codespaces of same repo → independent bean states
 - [ ] Secrets/env vars passed correctly if needed
 - [ ] Port forwarding works if extension needs network access
-
----
 
 ## Cross-Scenario Validation
 
@@ -216,8 +208,6 @@ Test these scenarios across ALL remote environments:
 - [ ] No UI blocking during CLI operations
 - [ ] Memory usage stays reasonable (<100MB typical)
 
----
-
 ## Debugging Remote Issues
 
 ### Enable Extension Host Logs
@@ -250,8 +240,6 @@ echo $VSCODE_IPC_HOOK_CLI      # Should show remote socket path
 | MCP server fails       | Tools not available   | Check MCP logs, verify Node.js on remote        |
 | File operations fail   | Errors saving beans   | Check workspace folder permissions              |
 | Slow performance       | Commands timeout      | Check remote machine resources, network latency |
-
----
 
 ## Automated Remote Testing
 
@@ -287,8 +275,6 @@ docker run --rm \
 echo "✓ Remote container test passed"
 ```
 
----
-
 ## Reporting Remote Issues
 
 When reporting bugs specific to remote scenarios, include:
@@ -302,8 +288,6 @@ When reporting bugs specific to remote scenarios, include:
 - Extension host logs (if relevant)
 - Steps to reproduce in remote environment
 
----
-
 ## CI/CD Remote Testing
 
 The extension's CI workflow tests on multiple OS platforms, but cannot test true remote scenarios. Consider:
@@ -312,11 +296,3 @@ The extension's CI workflow tests on multiple OS platforms, but cannot test true
 - Automated Docker-based tests in CI
 - Community testing program for diverse environments
 - Telemetry to detect remote usage patterns (with privacy considerations)
-
----
-
-## Summary
-
-Remote development is fully supported. All features should work identically to local development, with the key requirement being that **beans CLI must be installed on the remote machine**.
-
-If you encounter issues not covered in this guide, please report them with detailed environment information.

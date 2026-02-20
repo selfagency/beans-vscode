@@ -90,9 +90,9 @@ The extension automatically watches the `.beans/` directory for changes and refr
 
 The debounce interval is configurable via `beans.fileWatcher.debounceMs` (default: 20 seconds).
 
-### Malformed Bean Detection
+### Corrupt Bean Detection
 
-If Beans detects malformed files (indicated by `.fixme` files), a warning icon appears in the Drafts pane title bar. Click it to navigate directly to the first malformed bean for correction.
+The extension automatically attempts to repair corrupted beans by reviewing the file's Git history. If it's unable to to repair the bean, it will be moved to `.beans/.quarantine` for manual editing and restoration.
 
 ### Filtering and Search
 

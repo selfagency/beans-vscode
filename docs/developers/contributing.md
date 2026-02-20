@@ -14,8 +14,6 @@ We follow these principles to ensure high code quality, security, and maintainab
 4. **Clean Code**: We use descriptive naming, avoid `any` types, and keep modules focused.
 5. **Conventional Commits**: We use a structured commit message format to automate changelogs.
 
----
-
 ## The TDD Workflow (Red-Green-Refactor)
 
 All new features and bug fixes must start with a failing test. No exceptions.
@@ -28,8 +26,6 @@ All new features and bug fixes must start with a failing test. No exceptions.
 
 **Example**:
 If adding a new validation to `BeansService`, first add a test case to `src/test/beans/service/BeansService.test.ts` that asserts the validation error, confirm failure, then implement the logic.
-
----
 
 ## Working with Beans (Issue Tracking)
 
@@ -45,8 +41,6 @@ We use Beans (this extension!) to track all work in this repository.
 
 **Note**: In this repository, beans are located in the `.beans/` directory.
 
----
-
 ## Branch Naming & Commits
 
 ### Branch Naming
@@ -56,8 +50,6 @@ We use Beans (this extension!) to track all work in this repository.
 - **Docs/Chore**: `docs/<slug>` or `chore/<slug>`
 
 _Example_: `feature/beans-vscode-li45-developer-docs`
-
----
 
 ## Local Development Setup
 
@@ -95,16 +87,12 @@ pnpm run test:integration # Run real extension-host integration tests via vscode
 **Markdown Templates in Tests**:
 Our tests can import `.md` files as strings (used for Copilot templates). This is achieved via a custom `mdTextPlugin` in `vitest.config.ts`, which mirrors the `esbuild.js` loader configuration.
 
----
-
 ## Debugging the Extension
 
 1. Open the project in VS Code.
 2. Go to the **Run and Debug** view (`Ctrl+Shift+D`).
 3. Select **Extension Development Host**.
 4. Press `F5`. This opens a new VS Code window with your developmental version of the extension loaded.
-
----
 
 ## Running the MCP Server Locally
 
@@ -117,8 +105,6 @@ pnpm run compile
 # Run the server manually
 node ./dist/beans-mcp-server.js --workspace . --cli-path beans --port 39173
 ```
-
----
 
 ## Pull Request Checklist
 
