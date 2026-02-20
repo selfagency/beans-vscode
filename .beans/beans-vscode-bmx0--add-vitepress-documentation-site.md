@@ -5,8 +5,8 @@ status: in-progress
 type: docs
 created_at: 2026-02-20T15:38:37Z
 updated_at: 2026-02-20T16:00:00Z
-pr_url: https://github.com/selfagency/beans-vscode/pull/68
-pr_branch: feature/beans-vscode-bmx0-vitepress-site
+pr: 68
+branch: feature/beans-vscode-bmx0-vitepress-site
 ---
 
 ## Todo
@@ -22,4 +22,5 @@ pr_branch: feature/beans-vscode-bmx0-vitepress-site
 - [ ] Open PR, add PR URL to bean frontmatter, and mark checklist items done as completed
 
 ## Notes
+
 Scope: website/ at repo root with user-facing docs only (README Quick Start, user guide, commands, AI features). Internal plans excluded.
