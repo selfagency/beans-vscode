@@ -20,6 +20,9 @@ import { BeansOutput } from '../logging';
 
 const MCP_PROVIDER_ID = 'beans.mcpServers';
 const DEFAULT_MCP_PORT = 39173;
+const MCP_STARTUP_NOTICE_SETTING = 'mcp.showStartupNotification';
+const MCP_STARTUP_NOTICE_OPEN_SETTINGS = 'Open Settings';
+const MCP_STARTUP_NOTICE_DISABLE = "Don't Show Again";
 
 /**
  * Publishes the Beans MCP server definition to VS Code and exposes troubleshooting commands.
@@ -27,6 +30,7 @@ const DEFAULT_MCP_PORT = 39173;
 export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<vscode.McpStdioServerDefinition> {
   private readonly logger = BeansOutput.getInstance();
   private readonly onDidChangeEmitter = new vscode.EventEmitter<void>();
+  private startupNoticeShown = false;
   readonly onDidChangeMcpServerDefinitions = this.onDidChangeEmitter.event;
 
   constructor(
@@ -108,7 +112,46 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
     // Allow users to override cli path at resolve-time before server launch.
     const configuredCliPath = vscode.workspace.getConfiguration('beans').get<string>('cliPath', this.cliPath);
     const info = this.getServerInfo(configuredCliPath);
+    this.maybeShowStartupNotification(info.port);
     return new vscode.McpStdioServerDefinition(server.label, info.command, info.args, info.env, info.version);
+  }
+
+  private maybeShowStartupNotification(port: number): void {
+    if (this.startupNoticeShown) {
+      return;
+    }
+
+    const config = vscode.workspace.getConfiguration('beans');
+    const aiEnabled = config.get<boolean>('ai.enabled', true);
+    const mcpEnabled = config.get<boolean>('mcp.enabled', true);
+    const showStartupNotification = config.get<boolean>(MCP_STARTUP_NOTICE_SETTING, true);
+
+    if (!aiEnabled || !mcpEnabled || !showStartupNotification) {
+      return;
+    }
+
+    this.startupNoticeShown = true;
+
+    void (async () => {
+      try {
+        const selection = await vscode.window.showInformationMessage(
+          `Beans MCP server started on port ${port}.`,
+          MCP_STARTUP_NOTICE_OPEN_SETTINGS,
+          MCP_STARTUP_NOTICE_DISABLE
+        );
+
+        if (selection === MCP_STARTUP_NOTICE_OPEN_SETTINGS) {
+          await vscode.commands.executeCommand('workbench.action.openSettings', `beans.${MCP_STARTUP_NOTICE_SETTING}`);
+          return;
+        }
+
+        if (selection === MCP_STARTUP_NOTICE_DISABLE) {
+          await config.update(MCP_STARTUP_NOTICE_SETTING, false, vscode.ConfigurationTarget.Workspace);
+        }
+      } catch (error) {
+        this.logger.warn(`Failed to handle MCP startup notification action: ${(error as Error).message}`);
+      }
+    })();
   }
 
   private getServerInfo(cliPathOverride?: string): {
@@ -116,6 +159,7 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
     args: string[];
     env: Record<string, string | number | null>;
     version: string;
+    port: number;
   } {
     const config = vscode.workspace.getConfiguration('beans');
     const configuredPort = config.get<number>('mcp.port', DEFAULT_MCP_PORT);
@@ -147,6 +191,7 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
         BEANS_MCP_PORT: String(mcpPort),
       },
       version,
+      port: mcpPort,
     };
   }
 }
