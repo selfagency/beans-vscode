@@ -1,13 +1,11 @@
 ---
 # beans-vscode-z9nx
 title: Start branch + branch naming & checkout guidance
-status: in-progress
+status: completed
 type: task
 priority: normal
-branch: feat/z9nx-start-branch-naming-checkout-guidance
-pr: 53
 created_at: 2026-02-19T12:00:00Z
-updated_at: 2026-02-20T03:43:27Z
+updated_at: 2026-02-20T04:07:00Z
 ---
 
 Update the Copilot instructions template to tell users to:
