@@ -1,13 +1,13 @@
 ---
 # beans-vscode-hm49
-title: ""
+title: switch to graphql api
 status: completed
 type: task
 priority: normal
 created_at: 2026-02-18T23:45:30Z
 updated_at: 2026-02-18T23:45:51Z
+id: beans-vscode-hm49
 ---
-
 use beans graphql api instead of cli to ensure better safey
 
 ## Summary of Changes

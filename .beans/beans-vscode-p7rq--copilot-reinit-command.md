@@ -1,4 +1,3 @@
-```markdown
 ---
 # beans-vscode-p7rq
 title: Command palette: Reinitialize Copilot instructions & skills
@@ -14,4 +13,3 @@ Add a command to the command palette that reinitializes the Copilot instructions
 - Be discoverable via command palette (e.g., "Beans: Reinitialize Copilot Instructions & Skills").
 - Ask for confirmation before overwriting existing user-modified instruction/skill files.
 - Update the extension telemetry/logs when run and surface success/failure to the user via notification.
-```
