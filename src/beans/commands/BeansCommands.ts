@@ -153,13 +153,56 @@ function formatLabel(value: string): string {
     .join(' ');
 }
 
+const STATUS_PICK_LABELS: Record<string, string> = {
+  todo: '$(issues) Todo',
+  'in-progress': '$(play-circle) In Progress',
+  completed: '$(issue-closed) Completed',
+  draft: '$(issue-draft) Draft',
+  scrapped: '$(stop) Scrapped',
+};
+
+const TYPE_PICK_LABELS: Record<string, string> = {
+  milestone: '$(milestone) Milestone',
+  epic: '$(zap) Epic',
+  feature: '$(lightbulb) Feature',
+  bug: '$(bug) Bug',
+  task: '$(list-unordered) Task',
+};
+
+const PRIORITY_PICK_LABELS: Record<string, string> = {
+  critical: '① Critical',
+  high: '② High',
+  normal: '③ Normal',
+  low: '④ Low',
+  deferred: '⑤ Deferred',
+};
+
+type ValuePickKind = 'plain' | 'status' | 'type' | 'priority';
+
+function getPickLabel(value: string, kind: ValuePickKind): string {
+  if (kind === 'status') {
+    return STATUS_PICK_LABELS[value] ?? formatLabel(value);
+  }
+  if (kind === 'type') {
+    return TYPE_PICK_LABELS[value] ?? formatLabel(value);
+  }
+  if (kind === 'priority') {
+    return PRIORITY_PICK_LABELS[value] ?? formatLabel(value);
+  }
+  return formatLabel(value);
+}
+
 /**
  * Create QuickPickItems from raw values with human-readable labels.
  * Returns the selected raw value or undefined if cancelled.
  */
-async function pickFromValues(values: string[], options: vscode.QuickPickOptions): Promise<string | undefined> {
+async function pickFromValues(
+  values: string[],
+  options: vscode.QuickPickOptions,
+  kind: ValuePickKind = 'plain'
+): Promise<string | undefined> {
   const items: vscode.QuickPickItem[] = values.map(v => ({
-    label: formatLabel(v),
+    label: getPickLabel(v, kind),
     description: v,
   }));
   const picked = await vscode.window.showQuickPick(items, options);
@@ -516,10 +559,14 @@ export class BeansCommands {
       }
 
       // Get bean type
-      const type = await vscode.window.showQuickPick(['milestone', 'epic', 'feature', 'bug', 'task'], {
-        placeHolder: 'Select type',
-        title: 'Bean Type',
-      });
+      const type = await pickFromValues(
+        ['milestone', 'epic', 'feature', 'bug', 'task'],
+        {
+          placeHolder: 'Select type',
+          title: 'Bean Type',
+        },
+        'type'
+      );
 
       if (!type) {
         return;
@@ -604,10 +651,14 @@ export class BeansCommands {
       const config = await this.service.getConfig();
       const statuses = config.statuses || ['todo', 'in-progress', 'completed', 'scrapped', 'draft'];
 
-      const status = await pickFromValues(statuses, {
-        placeHolder: `Current: ${formatLabel(bean.status)}`,
-        title: `Set Status for ${bean.code}`,
-      });
+      const status = await pickFromValues(
+        statuses,
+        {
+          placeHolder: `Current: ${formatLabel(bean.status)}`,
+          title: `Set Status for ${bean.code}`,
+        },
+        'status'
+      );
 
       if (!status || status === bean.status) {
         return;
@@ -640,10 +691,14 @@ export class BeansCommands {
       const statuses = config.statuses || ['todo', 'in-progress', 'completed', 'scrapped', 'draft'];
       const nonClosedStatuses = statuses.filter(s => s !== 'completed' && s !== 'scrapped');
 
-      const newStatus = await pickFromValues(nonClosedStatuses, {
-        placeHolder: 'Select new status',
-        title: `Reopen ${bean.code}`,
-      });
+      const newStatus = await pickFromValues(
+        nonClosedStatuses,
+        {
+          placeHolder: 'Select new status',
+          title: `Reopen ${bean.code}`,
+        },
+        'status'
+      );
 
       if (!newStatus) {
         return;
@@ -676,10 +731,14 @@ export class BeansCommands {
       const statuses = config.statuses || ['todo', 'in-progress', 'completed', 'scrapped', 'draft'];
       const nonClosedStatuses = statuses.filter(s => s !== 'completed' && s !== 'scrapped');
 
-      const newStatus = await pickFromValues(nonClosedStatuses, {
-        placeHolder: 'Select new status',
-        title: `Reopen ${bean.code}`,
-      });
+      const newStatus = await pickFromValues(
+        nonClosedStatuses,
+        {
+          placeHolder: 'Select new status',
+          title: `Reopen ${bean.code}`,
+        },
+        'status'
+      );
 
       if (!newStatus) {
         return;
@@ -714,10 +773,14 @@ export class BeansCommands {
       const config = await this.service.getConfig();
       const types = config.types || ['milestone', 'epic', 'feature', 'bug', 'task'];
 
-      const type = await pickFromValues(types, {
-        placeHolder: `Current: ${formatLabel(bean.type)}`,
-        title: `Set Type for ${bean.code}`,
-      });
+      const type = await pickFromValues(
+        types,
+        {
+          placeHolder: `Current: ${formatLabel(bean.type)}`,
+          title: `Set Type for ${bean.code}`,
+        },
+        'type'
+      );
 
       if (!type || type === bean.type) {
         return;
@@ -752,10 +815,14 @@ export class BeansCommands {
       const config = await this.service.getConfig();
       const priorities = config.priorities || ['critical', 'high', 'normal', 'low', 'deferred'];
 
-      const priority = await pickFromValues(priorities, {
-        placeHolder: bean.priority ? `Current: ${formatLabel(bean.priority)}` : 'No priority set',
-        title: `Set Priority for ${bean.code}`,
-      });
+      const priority = await pickFromValues(
+        priorities,
+        {
+          placeHolder: bean.priority ? `Current: ${formatLabel(bean.priority)}` : 'No priority set',
+          title: `Set Priority for ${bean.code}`,
+        },
+        'priority'
+      );
 
       if (!priority || priority === bean.priority) {
         return;
