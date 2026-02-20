@@ -26,7 +26,7 @@ pnpm run check-types   # Type-check everything
 ## Running Locally
 
 - **Debug Extension**: Press `F5` in VS Code to launch the **Extension Development Host**.
-- **MCP Server**: Run `node ./dist/beans-mcp-server.js` (see [CONTRIBUTING.md](./contributing#running-the-mcp-server-locally) for details).
+- **MCP Server**: Run `node ./dist/beans-mcp-server.js` (see [CONTRIBUTING.md](./contributing.md#running-the-mcp-server-locally) for details).
 
 ## Testing
 
