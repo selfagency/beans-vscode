@@ -39,7 +39,7 @@ code --install-extension selfagency.beans-vscode
 #### Option 2: Terminal
 
 ```bash
-cd \<project-folder\>
+cd <project-folder>
 beans init
 ```
 

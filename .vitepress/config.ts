@@ -1,5 +1,5 @@
 export default {
-  title: 'Beans for VS Code',
+  title: 'Beans for VS Code 🫘',
   description: 'Documentation for the Beans VS Code extension',
   base: '/',
   srcDir: 'docs',
@@ -9,10 +9,9 @@ export default {
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Getting started', link: '/getting-started' },
-      { text: 'User Guide', link: '/users/' },
+      { text: 'Users', link: '/users/' },
       { text: 'Developers', link: '/developers/' },
-      { text: 'VS Marketplace', link: 'https://marketplace.visualstudio.com/items?itemName=selfagency.beans-vscode' },
-      { text: 'Open VSX', link: 'https://open-vsx.org/extension/selfagency/beans' },
+      { text: 'Install', link: 'https://marketplace.visualstudio.com/items?itemName=selfagency.beans-vscode' },
       { text: 'GitHub', link: 'https://github.com/selfagency/beans-vscode' },
     ],
     sidebar: {

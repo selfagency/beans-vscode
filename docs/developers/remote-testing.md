@@ -4,6 +4,8 @@ title: Remote compatibility testing
 
 This document provides step-by-step instructions for testing the Beans VS Code extension in various remote development scenarios.
 
+[![Remote Tests](https://github.com/selfagency/beans-vscode/actions/workflows/remote-test.yml/badge.svg)](https://github.com/selfagency/beans-vscode/actions/workflows/remote-test.yml)
+
 ## Prerequisites
 
 - VS Code with Remote Development extensions installed
