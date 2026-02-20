@@ -39,5 +39,13 @@ jobs:
       - name: Build docs
         run: pnpm run docs:build
 
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: docs-build
+          path: docs/.vitepress/dist
+
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: docs-build
