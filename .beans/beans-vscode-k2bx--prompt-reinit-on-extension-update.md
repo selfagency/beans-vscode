@@ -1,4 +1,3 @@
-```markdown
 ---
 # beans-vscode-k2bx
 title: Prompt user to reinitialize Copilot artifacts after extension update
@@ -16,4 +15,3 @@ When a new version of the extension is installed or activated, prompt the user t
 - If the user selects "Reinitialize now", run the reinitialization flow (see bean for command palette reinit).
 
 Ensure this respects workspace trust and only writes files when the workspace is trusted.
-```

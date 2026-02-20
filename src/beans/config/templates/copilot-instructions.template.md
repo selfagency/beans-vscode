@@ -77,11 +77,29 @@ Use these as authoritative guidance for Beans workflows in this repository.
 
 ## Extension commands (preferred)
 
-- `beans.view`, `beans.create`, `beans.edit`
+**Bean operations:**
+
+- `beans.create`, `beans.view`, `beans.edit`, `beans.delete` (draft/scrapped only)
 - `beans.setStatus`, `beans.setType`, `beans.setPriority`
 - `beans.setParent`, `beans.removeParent`, `beans.editBlocking`
+- `beans.reopenCompleted`, `beans.reopenScrapped`
+- `beans.copyId`
+
+**Search and navigation:**
+
 - `beans.search`, `beans.filter`, `beans.sort`, `beans.refresh`
-- `beans.copyId`, `beans.delete` (allowed statuses only)
+- `beans.searchView.filter` (filter search results), `beans.searchView.clear` (clear search)
+- `beans.details.back` (navigate back in Details view history)
+
+**AI and workflow:**
+
+- `beans.copilotStartWork` — open Copilot Chat with a workflow template (assess status, remaining steps, close/commit, export to GitHub issue, set in-progress, flesh out specs)
+
+**Configuration and help:**
+
+- `beans.init`, `beans.openConfig`, `beans.openExtensionSettings`
+- `beans.showOutput`, `beans.openUserGuide`, `beans.openAiFeaturesGuide`
+- `beans.openFirstMalformedBean` (navigate to malformed bean files)
 
 ## Chat workflows (`@beans`)
 
