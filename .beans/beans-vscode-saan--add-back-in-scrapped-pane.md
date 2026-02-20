@@ -5,6 +5,7 @@ status: in-progress
 type: task
 priority: normal
 branch: feature/beans-vscode-saan-add-back-scrapped-pane
+pr: 61
 created_at: 2026-02-20T05:56:32Z
 updated_at: 2026-02-20T06:04:33Z
 ---
