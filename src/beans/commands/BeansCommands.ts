@@ -856,8 +856,19 @@ export class BeansCommands {
         return '$(bug)';
       case 'task':
       default:
-        return '$(issues)';
+        return '$(list-unordered)';
     }
+  }
+
+  /**
+   * Icon to display in bean quick-pick labels.
+   * In-progress beans always use play-circle, otherwise use type icon.
+   */
+  private beanPickerIcon(bean: Bean): string {
+    if (bean.status === 'in-progress') {
+      return '$(play-circle)';
+    }
+    return this.typeIcon(bean.type);
   }
 
   /**
@@ -1491,8 +1502,8 @@ export class BeansCommands {
     }
 
     const items = filteredBeans.map(bean => ({
-      label: `${bean.code}: ${bean.title}`,
-      description: `${bean.type} • ${bean.status}${bean.priority ? ` • ${bean.priority}` : ''}`,
+      label: `${this.beanPickerIcon(bean)} ${bean.title}`,
+      description: bean.code,
       bean,
     }));
 

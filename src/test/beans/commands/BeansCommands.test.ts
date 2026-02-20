@@ -495,6 +495,39 @@ describe('BeansCommands', () => {
     expect(items.map(i => i.bean.id)).toEqual(['a']);
   });
 
+  it('renders issue picker with type icon (or in-progress icon) and code description', async () => {
+    const todoTask = makeBean({ id: 'task-1', code: 'T1', title: 'Todo task', type: 'task', status: 'todo' });
+    const inProgressBug = makeBean({
+      id: 'bug-1',
+      code: 'B1',
+      title: 'In-progress bug',
+      type: 'bug',
+      status: 'in-progress',
+    });
+
+    service.listBeans.mockResolvedValueOnce([todoTask, inProgressBug]);
+    showQuickPick.mockResolvedValueOnce({ bean: todoTask });
+
+    await (commands as any).pickBean('Pick issue', undefined, true);
+
+    const items = showQuickPick.mock.calls[0][0] as Array<{ label: string; description?: string; bean: Bean }>;
+
+    expect(items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          bean: expect.objectContaining({ id: 'task-1' }),
+          label: '$(list-unordered) Todo task',
+          description: 'T1',
+        }),
+        expect.objectContaining({
+          bean: expect.objectContaining({ id: 'bug-1' }),
+          label: '$(play-circle) In-progress bug',
+          description: 'B1',
+        }),
+      ])
+    );
+  });
+
   it('opens user guide via preview and falls back to text editor', async () => {
     executeCommand.mockRejectedValueOnce(new Error('preview failed'));
     showTextDocument.mockResolvedValueOnce(undefined);
