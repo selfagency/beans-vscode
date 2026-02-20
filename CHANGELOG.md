@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-02-20
+
+## What's Changed
+* Fix/ebyy quote yaml titles containing colons by @selfagency in https://github.com/selfagency/beans-vscode/pull/67
+* fix: update sidebar pane counts even when panes are collapsed by @selfagency in https://github.com/selfagency/beans-vscode/pull/66
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.3.1...v1.3.2
+
+_Source: changes from v1.3.1 to v1.3.2._
+
+
 ## [1.3.1] - 2026-02-20
 
 ## What's Changed
