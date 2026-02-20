@@ -106,6 +106,7 @@ describe('Command Registration', () => {
       'beans.search',
       'beans.sort',
       'beans.openConfig',
+      'beans.openExtensionSettings',
     ];
 
     for (const cmd of expectedCommands) {
@@ -178,5 +179,6 @@ describe('Command Registration', () => {
   it('should register configuration command', () => {
     commands.registerAll();
     expect(registeredCommands.has('beans.openConfig')).toBe(true);
+    expect(registeredCommands.has('beans.openExtensionSettings')).toBe(true);
   });
 });
