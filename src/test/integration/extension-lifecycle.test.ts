@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { BeansCLINotFoundError } from '../../beans/model';
@@ -40,7 +42,9 @@ const state = vi.hoisted(() => ({
     active: undefined as MockBeansTreeProvider | undefined,
     completed: undefined as MockBeansTreeProvider | undefined,
     draft: undefined as MockBeansTreeProvider | undefined,
+    scrapped: undefined as MockBeansTreeProvider | undefined,
   },
+  searchProvider: undefined as MockBeansTreeProvider | undefined,
 }));
 
 const logger = vi.hoisted(() => ({
@@ -132,6 +136,22 @@ vi.mock('../../beans/search', () => ({
   },
 }));
 
+vi.mock('../../beans/search/BeansSearchTreeProvider', () => {
+  class BeansSearchTreeProvider {
+    refresh = vi.fn();
+    setFilter = vi.fn();
+    getChildren = vi.fn(async () => []);
+    getVisibleCount = vi.fn(() => 0);
+    onDidChangeTreeData = vi.fn(() => ({ dispose: vi.fn() }));
+
+    constructor() {
+      state.searchProvider = this as unknown as MockBeansTreeProvider;
+    }
+  }
+
+  return { BeansSearchTreeProvider };
+});
+
 vi.mock('../../beans/search/SearchFilterUI', () => ({
   showSearchFilterUI: searchFilterFns.showSearchFilterUI,
 }));
@@ -204,7 +224,13 @@ vi.mock('../../beans/tree/providers', () => {
       state.providerInstances.draft = this;
     }
   }
-  return { ActiveBeansProvider, CompletedBeansProvider, DraftBeansProvider };
+  class ScrappedBeansProvider extends BaseProvider {
+    constructor() {
+      super();
+      state.providerInstances.scrapped = this;
+    }
+  }
+  return { ActiveBeansProvider, CompletedBeansProvider, DraftBeansProvider, ScrappedBeansProvider };
 });
 
 function makeContext(): vscode.ExtensionContext {
@@ -248,7 +274,8 @@ describe('Extension lifecycle coverage', () => {
     state.treeViews = new Map();
     state.watcherCallbacks = [];
     state.configChangeHandler = undefined;
-    state.providerInstances = { active: undefined, completed: undefined, draft: undefined };
+    state.providerInstances = { active: undefined, completed: undefined, draft: undefined, scrapped: undefined };
+    state.searchProvider = undefined;
 
     vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue([
       { uri: vscode.Uri.file('/ws'), name: 'ws', index: 0 } as vscode.WorkspaceFolder,
@@ -370,10 +397,13 @@ describe('Extension lifecycle coverage', () => {
     state.filterListener?.('beans.completed');
     state.filters.set('beans.draft', { text: 'z' });
     state.filterListener?.('beans.draft');
+    state.filters.set('beans.scrapped', { text: 's' });
+    state.filterListener?.('beans.scrapped');
 
     expect(state.providerInstances.active!.setFilter).toHaveBeenCalled();
     expect(state.providerInstances.completed!.setFilter).toHaveBeenCalled();
     expect(state.providerInstances.draft!.setFilter).toHaveBeenCalled();
+    expect(state.providerInstances.scrapped!.setFilter).toHaveBeenCalled();
 
     state.detailsShouldReject = true;
     await state.registeredCommands.get('beans.openBean')?.({ id: 'bean-1' });
@@ -414,6 +444,24 @@ describe('Extension lifecycle coverage', () => {
       | undefined;
     onDidChangeHandler?.();
 
+    const completedOnDidChangeHandler = (state.providerInstances.completed as any).onDidChangeTreeData.mock
+      .calls[0]?.[0] as (() => void) | undefined;
+    completedOnDidChangeHandler?.();
+
+    const scrappedOnDidChangeHandler = (state.providerInstances.scrapped as any).onDidChangeTreeData.mock
+      .calls[0]?.[0] as (() => void) | undefined;
+    scrappedOnDidChangeHandler?.();
+
+    const draftOnDidChangeHandler = (state.providerInstances.draft as any).onDidChangeTreeData.mock.calls[0]?.[0] as
+      | (() => void)
+      | undefined;
+    draftOnDidChangeHandler?.();
+
+    const searchOnDidChangeHandler = (state.searchProvider as any)?.onDidChangeTreeData?.mock?.calls?.[0]?.[0] as
+      | (() => void)
+      | undefined;
+    searchOnDidChangeHandler?.();
+
     expect(logger.warn).toHaveBeenCalledWith('Failed to refresh bean counts for side panel headers', expect.any(Error));
   });
 
@@ -450,6 +498,7 @@ describe('Extension lifecycle coverage', () => {
     expect(state.treeViews.get('beans.draft')?.title).toBe('Drafts (0)');
     expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans (0)');
     expect(state.treeViews.get('beans.completed')?.title).toBe('Completed (0)');
+    expect(state.treeViews.get('beans.scrapped')?.title).toBe('Scrapped (0)');
     expect(state.treeViews.get('beans.search')?.title).toBe('Search (0)');
 
     await state.registeredCommands.get('beans.refreshAll')?.();
@@ -457,6 +506,7 @@ describe('Extension lifecycle coverage', () => {
     expect(state.treeViews.get('beans.draft')?.title).toBe('Drafts (0)');
     expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans (0)');
     expect(state.treeViews.get('beans.completed')?.title).toBe('Completed (0)');
+    expect(state.treeViews.get('beans.scrapped')?.title).toBe('Scrapped (0)');
     expect(state.treeViews.get('beans.search')?.title).toBe('Search (0)');
 
     state.filters.set('beans.search', { text: 'query' });
@@ -473,7 +523,54 @@ describe('Extension lifecycle coverage', () => {
     expect(state.treeViews.get('beans.draft')?.title).toBe('Drafts');
     expect(state.treeViews.get('beans.active')?.title).toBe('Open Beans');
     expect(state.treeViews.get('beans.completed')?.title).toBe('Completed');
+    expect(state.treeViews.get('beans.scrapped')?.title).toBe('Scrapped');
     expect(state.treeViews.get('beans.search')?.title).toBe('Search');
+  });
+
+  it('refreshes side-panel count titles on activation when at least one view is visible', async () => {
+    (vscode.window.createTreeView as ReturnType<typeof vi.fn>).mockImplementation((id: string) => {
+      const treeView = {
+        title: undefined as string | undefined,
+        visible: id === 'beans.scrapped',
+        onDidChangeSelection: (cb: (e: any) => void) => {
+          state.selectionHandlers.set(id, cb);
+          return { dispose: vi.fn() };
+        },
+        dispose: vi.fn(),
+      } as any;
+
+      state.treeViews.set(id, treeView);
+      return treeView;
+    });
+
+    state.providerInstances.active = {
+      refresh: vi.fn(),
+      setFilter: vi.fn(),
+      getVisibleCount: vi.fn(() => 0),
+    } as unknown as MockBeansTreeProvider;
+
+    await activate(makeContext());
+
+    // If the visibility guard runs, the title formatter is reapplied and scrapped title remains populated.
+    expect(state.treeViews.get('beans.scrapped')?.title).toBe('Scrapped (0)');
+  });
+
+  it('contributes Scrapped pane ordered below Completed and above Search by default', () => {
+    const manifestPath = resolve(__dirname, '../../../package.json');
+    const packageJson = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      contributes?: { views?: { beans?: Array<{ id: string; order?: number }> } };
+    };
+
+    const beansViews = packageJson.contributes?.views?.beans ?? [];
+    const completed = beansViews.find(view => view.id === 'beans.completed');
+    const scrapped = beansViews.find(view => view.id === 'beans.scrapped');
+    const search = beansViews.find(view => view.id === 'beans.search');
+
+    expect(completed?.order).toBeTypeOf('number');
+    expect(scrapped?.order).toBeTypeOf('number');
+    expect(search?.order).toBeTypeOf('number');
+    expect((completed?.order as number) < (scrapped?.order as number)).toBe(true);
+    expect((scrapped?.order as number) < (search?.order as number)).toBe(true);
   });
 
   it('prompts for CLI install when cli is unavailable and can open settings', async () => {

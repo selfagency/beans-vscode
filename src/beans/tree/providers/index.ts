@@ -42,6 +42,16 @@ export class CompletedBeansProvider extends BeansTreeDataProvider {
 }
 
 /**
+ * Tree provider for scrapped beans
+ * Uses flat list since parent beans may not be scrapped
+ */
+export class ScrappedBeansProvider extends BeansTreeDataProvider {
+  constructor(service: BeansService) {
+    super(service, ['scrapped'], true, 'updated');
+  }
+}
+
+/**
  * Tree provider for draft beans.
  * Shows draft beans hierarchically, and also includes non-draft children
  * of draft parents so they nest under the parent in this view.

@@ -8,12 +8,13 @@ import { BeansService } from '../service';
 import { BeanTreeItem } from './BeanTreeItem';
 import { BeansDragAndDropController } from './BeansDragAndDropController';
 import { BeansFilterManager } from './BeansFilterManager';
-import { ActiveBeansProvider, CompletedBeansProvider, DraftBeansProvider } from './providers';
+import { ActiveBeansProvider, CompletedBeansProvider, DraftBeansProvider, ScrappedBeansProvider } from './providers';
 
 export interface RegisteredBeanProviders {
   activeProvider: ActiveBeansProvider;
   completedProvider: CompletedBeansProvider;
   draftProvider: DraftBeansProvider;
+  scrappedProvider: ScrappedBeansProvider;
 }
 
 export function registerBeansTreeViews(
@@ -26,6 +27,7 @@ export function registerBeansTreeViews(
   const baseTitles = {
     active: 'Open Beans',
     completed: 'Completed',
+    scrapped: 'Scrapped',
     draft: 'Drafts',
     search: 'Search',
   } as const;
@@ -34,6 +36,7 @@ export function registerBeansTreeViews(
 
   const activeProvider = new ActiveBeansProvider(service);
   const completedProvider = new CompletedBeansProvider(service);
+  const scrappedProvider = new ScrappedBeansProvider(service);
   const draftProvider = new DraftBeansProvider(service);
   const searchProvider = new BeansSearchTreeProvider(service);
 
@@ -50,6 +53,12 @@ export function registerBeansTreeViews(
 
   const completedTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.completed', {
     treeDataProvider: completedProvider,
+    showCollapseAll: true,
+    dragAndDropController,
+  });
+
+  const scrappedTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.scrapped', {
+    treeDataProvider: scrappedProvider,
     showCollapseAll: true,
     dragAndDropController,
   });
@@ -72,6 +81,7 @@ export function registerBeansTreeViews(
     draftTreeView.title = formatTitle(baseTitles.draft, draftProvider.getVisibleCount());
     activeTreeView.title = formatTitle(baseTitles.active, activeProvider.getVisibleCount());
     completedTreeView.title = formatTitle(baseTitles.completed, completedProvider.getVisibleCount());
+    scrappedTreeView.title = formatTitle(baseTitles.scrapped, scrappedProvider.getVisibleCount());
     searchTreeView.title = formatTitle(baseTitles.search, searchProvider.getVisibleCount());
   };
 
@@ -103,6 +113,9 @@ export function registerBeansTreeViews(
           break;
         case 'beans.completed':
           completedProvider.setFilter(filterOptions);
+          break;
+        case 'beans.scrapped':
+          scrappedProvider.setFilter(filterOptions);
           break;
         case 'beans.draft':
           draftProvider.setFilter(filterOptions);
@@ -151,6 +164,9 @@ export function registerBeansTreeViews(
     completedProvider.onDidChangeTreeData(() => {
       void refreshCountTitles();
     }),
+    scrappedProvider.onDidChangeTreeData(() => {
+      void refreshCountTitles();
+    }),
     draftProvider.onDidChangeTreeData(() => {
       void refreshCountTitles();
     }),
@@ -168,6 +184,16 @@ export function registerBeansTreeViews(
       }
     }),
     completedTreeView.onDidChangeSelection(e => {
+      if (e.selection.length > 0) {
+        const bean = e.selection[0].bean;
+        if (bean) {
+          details.showBean(bean).catch(error => {
+            logger.error('Failed to show bean details', error as Error);
+          });
+        }
+      }
+    }),
+    scrappedTreeView.onDidChangeSelection(e => {
       if (e.selection.length > 0) {
         const bean = e.selection[0].bean;
         if (bean) {
@@ -199,10 +225,16 @@ export function registerBeansTreeViews(
     })
   );
 
-  context.subscriptions.push(activeTreeView, completedTreeView, draftTreeView, searchTreeView);
+  context.subscriptions.push(activeTreeView, completedTreeView, scrappedTreeView, draftTreeView, searchTreeView);
 
   applyCountTitles();
-  if (activeTreeView.visible || completedTreeView.visible || draftTreeView.visible || searchTreeView.visible) {
+  if (
+    activeTreeView.visible ||
+    completedTreeView.visible ||
+    scrappedTreeView.visible ||
+    draftTreeView.visible ||
+    searchTreeView.visible
+  ) {
     // Only trigger the potentially expensive count refresh if any view is visible
     void refreshCountTitles();
   }
@@ -213,5 +245,6 @@ export function registerBeansTreeViews(
     activeProvider,
     completedProvider,
     draftProvider,
+    scrappedProvider,
   };
 }

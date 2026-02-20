@@ -598,6 +598,14 @@
           "visibility": "visible"
         },
         {
+          "icon": "$(stop)",
+          "id": "beans.scrapped",
+          "name": "Scrapped",
+          "order": 35,
+          "when": "beans.initialized",
+          "visibility": "visible"
+        },
+        {
           "icon": "$(search)",
           "id": "beans.search",
           "name": "Search",
