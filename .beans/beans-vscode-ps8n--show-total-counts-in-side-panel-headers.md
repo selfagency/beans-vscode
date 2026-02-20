@@ -1,7 +1,7 @@
 ---
 # beans-vscode-ps8n
 title: Show total counts in side panel headers
-status: in-progress
+status: completed
 type: feature
 priority: normal
 branch: feature/beans-vscode-ps8n-show-total-counts-side-panel-headers
