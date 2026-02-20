@@ -13,6 +13,10 @@ describe('buildBeansCopilotInstructions', () => {
   it('generates extension-first instructions with planning mode and CLI fallback', () => {
     const content = buildBeansCopilotInstructions('');
 
+    expect(content.startsWith('---\n')).toBe(true);
+    expect(content).toContain('title: Beans Task Management Rules');
+    expect(content).toContain('description: Generated Copilot instructions for Beans workflows in this workspace.');
+    expect(content).not.toContain('Template: copilot-instructions.template.md');
     expect(content).toContain('<CRITICALLY_IMPORTANT>');
     expect(content).toContain('# Beans Task Management Rules');
     expect(content).toContain('# Beans Usage Guide for Agents (Extension-First)');

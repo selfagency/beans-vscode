@@ -7,7 +7,7 @@ priority: normal
 branch: feature/beans-vscode-5flm-add-debug-logging-mode
 pr: 55
 created_at: 2026-02-19T19:12:43Z
-updated_at: 2026-02-20T03:57:32Z
+updated_at: 2026-02-20T04:09:05Z
 ---
 
 Add an extension setting to enable debug logging that includes fuller diagnostics such as GraphQL queries and CLI responses.
