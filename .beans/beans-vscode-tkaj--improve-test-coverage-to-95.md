@@ -1,11 +1,11 @@
 ---
 # beans-vscode-tkaj
 title: Improve test coverage to 95%+
-status: in-progress
+status: draft
 type: epic
 priority: high
 created_at: 2026-02-17T01:34:46Z
-updated_at: 2026-02-17T22:52:06Z
+updated_at: 2026-02-22T06:55:36Z
 ---
 
 Comprehensive test suite implementation to achieve 95%+ coverage across all modules. Current coverage: 25.27%

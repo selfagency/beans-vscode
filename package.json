@@ -657,6 +657,10 @@
     "src/**/*.ts": [
       "eslint --fix",
       "prettier --write"
+    ],
+    "docs/**/*.md": [
+      "vitepress build",
+      "prettier --write"
     ]
   },
   "devDependencies": {
@@ -664,14 +668,14 @@
     "@octokit/rest": "^22.0.1",
     "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^25.0.0",
+    "@types/node": "^25.3.0",
     "@types/vscode": "^1.109.0",
     "@vitest/coverage-v8": "^4.0.18",
     "@vscode/codicons": "^0.0.44",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "esbuild": "^0.27.3",
-    "eslint": "10.0.0",
+    "eslint": "10.0.1",
     "husky": "^9.1.7",
     "js-yaml": "^4.1.1",
     "lint-staged": "^16.2.7",
