@@ -7,6 +7,7 @@ priority: high
 created_at: 2026-02-24T13:49:13Z
 updated_at: 2026-02-24T13:49:13Z
 branch: fix/42zk-simplify-escapehtml
+pr: https://github.com/selfagency/beans-vscode/pull/83
 ---
 
 ## Problem
