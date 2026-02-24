@@ -1279,10 +1279,9 @@ export class BeansCommands {
           `${bean.code} has ${children.length} child bean${children.length === 1 ? '' : 's'}. What should happen to them?`,
           { modal: true },
           'Delete All',
-          'Delete Parent Only',
-          'Cancel'
+          'Delete Parent Only'
         );
-        if (!result || result === 'Cancel') {
+        if (!result) {
           return;
         }
         deleteChildren = result === 'Delete All';
@@ -1290,10 +1289,9 @@ export class BeansCommands {
         const result = await vscode.window.showWarningMessage(
           `Delete bean ${bean.code}: ${bean.title}?`,
           { modal: true },
-          'Delete',
-          'Cancel'
+          'Delete'
         );
-        if (result !== 'Delete') {
+        if (!result) {
           return;
         }
       }
