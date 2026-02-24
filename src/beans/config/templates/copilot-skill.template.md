@@ -27,6 +27,19 @@ This skill drives all Beans issue tracker operations in this workspace using the
 - **Commit beans promptly.** Commit after create/edit unless building an epic hierarchy (batch commit everything together).
 - **Track todos in the bean body.** Maintain a `## Todo` checklist; update and commit after every completed step.
 
+## Agent constraints (must-follow)
+
+- **Always create or switch to the bean's branch before editing code or files.**
+  - If a branch exists for the bean, checkout it first. If not, create and push a new branch following the repository branch naming rules.
+  - Record the branch in the bean frontmatter immediately after creating or checking out the branch.
+
+- **Do not keep an internal agent todo list.**
+  - All task state and subtasks must live in the bean's `## Todo` checklist in the bean body. The agent must update the bean `## Todo` via MCP or extension commands and commit the bean to persist progress.
+
+- **Do not create or edit bean files by hand.**
+  - Use the MCP or extension commands for bean creation and edits; never write `.md` bean files directly to the repository.
+  - The agent must not add custom frontmatter keys except `branch` and `pr` (PR number). Adding other custom fields is forbidden.
+
 ## Starting work on a bean
 
 1. Orient yourself first: `@beans /next` (what should I work on?) or `@beans /search <keywords>` (does a bean already exist?). Use `beans.search` if you know what you are looking for.
