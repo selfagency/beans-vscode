@@ -5,7 +5,7 @@ status: scrapped
 type: task
 priority: normal
 created_at: 2026-02-17T03:20:10Z
-updated_at: 2026-02-24T16:09:35Z
+updated_at: 2026-02-24T16:36:10Z
 ---
 
 Expand drag-and-drop test fidelity beyond unit-level handler coverage:
