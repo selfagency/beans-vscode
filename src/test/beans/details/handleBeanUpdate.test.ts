@@ -30,4 +30,17 @@ describe('BeansDetailsViewProvider.handleBeanUpdate payload validation', () => {
 
     expect(fakeService.updateBean).not.toHaveBeenCalled();
   });
+
+  it('strips invalid field values and keeps valid ones', async () => {
+    const fakeService = { updateBean: vi.fn().mockResolvedValue({}) } as any;
+    const provider = new BeansDetailsViewProvider(vscode.Uri.file('/tmp'), fakeService);
+    (provider as any)._currentBean = { id: 'n2u0' };
+
+    const payload = { status: 'evil', title: 'Okay', priority: 'not-a-priority' };
+    await (provider as any).handleBeanUpdate(payload);
+
+    expect(fakeService.updateBean).toHaveBeenCalledTimes(1);
+    const [, sent] = (fakeService.updateBean as any).mock.calls[0];
+    expect(sent).toEqual({ title: 'Okay' });
+  });
 });
