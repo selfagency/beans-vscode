@@ -1,11 +1,11 @@
 ---
 # beans-vscode-gamf
 title: 'fix: BeansTreeDataProvider EventEmitter never disposed — memory leak'
-status: todo
+status: completed
 type: bug
 priority: critical
 created_at: 2026-02-24T13:48:56Z
-updated_at: 2026-02-24T13:48:56Z
+updated_at: 2026-02-24T14:05:28Z
 branch: fix/gamf-dispose-treeprovider
 pr: https://github.com/selfagency/beans-vscode/pull/82
 ---

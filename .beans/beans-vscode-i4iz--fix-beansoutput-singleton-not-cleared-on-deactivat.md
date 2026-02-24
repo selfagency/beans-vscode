@@ -1,11 +1,11 @@
 ---
 # beans-vscode-i4iz
 title: 'fix: BeansOutput singleton not cleared on deactivation — second activation gets disposed logger'
-status: todo
+status: completed
 type: bug
 priority: critical
 created_at: 2026-02-24T13:48:51Z
-updated_at: 2026-02-24T13:48:51Z
+updated_at: 2026-02-24T14:05:09Z
 ---
 
 ## Problem
