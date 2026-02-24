@@ -23,6 +23,7 @@ import {
   Bean,
   BeansCLINotFoundError,
   BeansConcurrencyError,
+  VALID_PARENT_TYPES,
   BeansConfigMissingError,
   BeansIntegrityCheckFailedError,
   BeansJSONParseError,
@@ -892,6 +893,10 @@ export class BeansCommands {
 
       // Get all beans, filter out self, descendants, scrapped, completed
       const allBeans = await this.service.listBeans();
+
+      // Apply type hierarchy: if the bean type has restricted valid parent types, enforce them
+      const validParentTypes = VALID_PARENT_TYPES[bean.type];
+
       const potentialParents = allBeans
         .filter(b => {
           if (b.id === bean!.id) {
@@ -903,11 +908,20 @@ export class BeansCommands {
           if (b.status === 'completed' || b.status === 'scrapped') {
             return false;
           }
+          if (validParentTypes && !validParentTypes.includes(b.type)) {
+            return false;
+          }
           return true;
         })
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-      const parentOnlyTypes = potentialParents.filter(b => b.type === 'milestone' || b.type === 'epic');
+      if (potentialParents.length === 0) {
+        const typeList = validParentTypes ? validParentTypes.join(', ') : 'any type';
+        vscode.window.showWarningMessage(
+          `No valid parents found for ${bean.code}. A ${bean.type} can only be parented to: ${typeList}.`
+        );
+        return;
+      }
 
       interface ParentPickItem extends vscode.QuickPickItem {
         bean?: Bean;
@@ -920,30 +934,17 @@ export class BeansCommands {
           bean: b,
         }));
 
+      const typeHint = validParentTypes
+        ? `Valid parent types: ${validParentTypes.join(', ')}`
+        : bean.parent
+          ? `Current parent: ${bean.parent}`
+          : 'Select a parent';
+
       const qp = vscode.window.createQuickPick<ParentPickItem>();
       qp.title = `Set Parent for ${bean.code}`;
-      qp.placeholder = bean.parent ? `Current parent: ${bean.parent}` : 'Select a parent (milestones & epics)';
+      qp.placeholder = typeHint;
       qp.matchOnDescription = true;
-
-      let showAllTypes = false;
-      qp.items = toItems(parentOnlyTypes);
-
-      const toggleButton: vscode.QuickInputButton = {
-        iconPath: new vscode.ThemeIcon('list-unordered'),
-        tooltip: 'Show all issue types',
-      };
-      qp.buttons = [toggleButton];
-
-      qp.onDidTriggerButton(() => {
-        showAllTypes = !showAllTypes;
-        if (showAllTypes) {
-          qp.items = toItems(potentialParents);
-          qp.placeholder = bean!.parent ? `Current parent: ${bean!.parent}` : 'Select a parent (all types)';
-        } else {
-          qp.items = toItems(parentOnlyTypes);
-          qp.placeholder = bean!.parent ? `Current parent: ${bean!.parent}` : 'Select a parent (milestones & epics)';
-        }
-      });
+      qp.items = toItems(potentialParents);
 
       const selected = await new Promise<ParentPickItem | undefined>(resolve => {
         qp.onDidAccept(() => {

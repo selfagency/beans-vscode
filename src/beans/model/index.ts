@@ -9,6 +9,9 @@ export { BEAN_PRIORITIES, BEAN_STATUSES, BEAN_TYPES, Bean, BeanPriority, BeanSta
 // Configuration types
 export { BeansConfig, BeansInitOptions } from './config';
 
+// Parent type constraints
+export { VALID_PARENT_TYPES } from './parentTypes';
+
 // Error types
 export {
   BeansCLINotFoundError,

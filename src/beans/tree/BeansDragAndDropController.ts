@@ -1,21 +1,10 @@
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
-import { Bean } from '../model';
+import { Bean, VALID_PARENT_TYPES } from '../model';
 import { BeansService } from '../service';
 import { BeanTreeItem } from './BeanTreeItem';
 
 const logger = BeansOutput.getInstance();
-
-/**
- * Defines which bean types are valid parents for each child type.
- * Mirrors the CLI's internal ValidateParent rule: milestone → epic → feature → task/bug.
- */
-const VALID_PARENT_TYPES: Readonly<Record<string, readonly string[]>> = {
-  epic: ['milestone'],
-  feature: ['milestone', 'epic'],
-  task: ['milestone', 'epic', 'feature'],
-  bug: ['milestone', 'epic', 'feature'],
-};
 
 /**
  * Drag and drop controller for re-parenting beans via tree view drag/drop
