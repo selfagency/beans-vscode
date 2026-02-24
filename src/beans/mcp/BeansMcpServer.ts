@@ -7,7 +7,8 @@ import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { promisify } from 'node:util';
 import { z } from 'zod';
-import { buildBeansCopilotInstructions, writeBeansCopilotInstructions } from '../config/CopilotInstructions';
+import { writeBeansCopilotInstructions } from '../config/CopilotInstructions';
+import { handleQueryOperation, sortBeans as querySortBeans } from './internal/queryHelpers';
 import * as graphql from '../service/graphql';
 
 const execFileAsync = promisify(execFile);
@@ -363,63 +364,7 @@ class BeansCliBackend {
   }
 }
 
-export function sortBeans(beans: BeanRecord[], mode: SortMode): BeanRecord[] {
-  const sorted = [...beans];
-  const statusWeight: Record<string, number> = {
-    'in-progress': 0,
-    todo: 1,
-    draft: 2,
-    completed: 3,
-    scrapped: 4,
-  };
-  const priorityWeight: Record<string, number> = {
-    critical: 0,
-    high: 1,
-    normal: 2,
-    low: 3,
-    deferred: 4,
-  };
-  const typeWeight: Record<string, number> = {
-    milestone: 0,
-    epic: 1,
-    feature: 2,
-    bug: 3,
-    task: 4,
-  };
-
-  if (mode === 'updated') {
-    return sorted.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-  }
-
-  if (mode === 'created') {
-    return sorted.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  }
-
-  if (mode === 'id') {
-    return sorted.sort((a, b) => a.id.localeCompare(b.id));
-  }
-
-  return sorted.sort((a, b) => {
-    const statusCmp = (statusWeight[a.status] ?? 99) - (statusWeight[b.status] ?? 99);
-    if (statusCmp !== 0) {
-      return statusCmp;
-    }
-
-    const aPriority = a.priority || 'normal';
-    const bPriority = b.priority || 'normal';
-    const priorityCmp = (priorityWeight[aPriority] ?? 99) - (priorityWeight[bPriority] ?? 99);
-    if (priorityCmp !== 0) {
-      return priorityCmp;
-    }
-
-    const typeCmp = (typeWeight[a.type] ?? 99) - (typeWeight[b.type] ?? 99);
-    if (typeCmp !== 0) {
-      return typeCmp;
-    }
-
-    return a.title.localeCompare(b.title);
-  });
-}
+export const sortBeans = querySortBeans;
 
 export function parseCliArgs(argv: string[]): { workspaceRoot: string; cliPath: string; port: number } {
   let workspaceRoot = process.cwd();
@@ -741,51 +686,18 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       writeToWorkspaceInstructions?: boolean;
       includeClosed?: boolean;
     }) => {
-      if (operation === 'llm_context') {
-        const graphqlSchema = await backend.graphqlSchema();
-        const generatedInstructions = buildBeansCopilotInstructions(graphqlSchema);
-        const instructionsPath = writeToWorkspaceInstructions
-          ? await backend.writeInstructions(generatedInstructions)
-          : null;
-        return makeTextAndStructured({ graphqlSchema, generatedInstructions, instructionsPath });
-      }
-
-      if (operation === 'open_config') {
-        return makeTextAndStructured(await backend.openConfig());
-      }
-      const normalizedStatuses = Array.isArray(statuses) ? statuses : undefined;
-      const normalizedTypes = Array.isArray(types) ? types : undefined;
-
-      if (operation === 'refresh') {
-        const beans = await backend.list();
-        return makeTextAndStructured({ count: beans.length, beans });
-      }
-
-      if (operation === 'filter') {
-        let beans = await backend.list({ status: normalizedStatuses, type: normalizedTypes, search });
-        if (Array.isArray(tags) && tags.length > 0) {
-          const tagSet = new Set(tags);
-          beans = beans.filter(bean => (bean.tags || []).some(tag => tagSet.has(tag)));
-        }
-        return makeTextAndStructured({ count: beans.length, beans });
-      }
-
-      if (operation === 'search') {
-        // support legacy `includeClosed` flag used by callers/tests
-        let beans = await backend.list({ search });
-        if (includeClosed === false) {
-          beans = beans.filter(b => b.status !== 'completed' && b.status !== 'scrapped');
-        }
-        return makeTextAndStructured({ query: search, count: beans.length, beans });
-      }
-
-      // sort
-      const beans = await backend.list({ status: normalizedStatuses, type: normalizedTypes, search });
-      return makeTextAndStructured({
+      // Delegate to the consolidated query helper to avoid duplicated logic.
+      const result = await handleQueryOperation(backend, {
+        operation,
         mode,
-        count: beans.length,
-        beans: sortBeans(beans, mode || 'status-priority-type-title'),
+        statuses,
+        types,
+        search,
+        tags,
+        writeToWorkspaceInstructions,
+        includeClosed,
       });
+      return result;
     }
   );
 
