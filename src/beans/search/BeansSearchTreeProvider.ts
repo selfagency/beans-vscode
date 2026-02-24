@@ -25,7 +25,7 @@ const STATUS_ORDER: Record<string, number> = {
  * TreeDataProvider showing flat search results for beans.
  * Single-level, non-hierarchical list suitable for the sidebar.
  */
-export class BeansSearchTreeProvider implements vscode.TreeDataProvider<BeanTreeItem> {
+export class BeansSearchTreeProvider implements vscode.TreeDataProvider<BeanTreeItem>, vscode.Disposable {
   private _onDidChangeTreeData: vscode.EventEmitter<BeanTreeItem | undefined | null | void> = new vscode.EventEmitter<
     BeanTreeItem | undefined | null | void
   >();
@@ -242,5 +242,13 @@ export class BeansSearchTreeProvider implements vscode.TreeDataProvider<BeanTree
 
       return a.title.localeCompare(b.title);
     });
+  }
+
+  dispose(): void {
+    try {
+      this._onDidChangeTreeData.dispose();
+    } catch {
+      // ignore disposal errors
+    }
   }
 }

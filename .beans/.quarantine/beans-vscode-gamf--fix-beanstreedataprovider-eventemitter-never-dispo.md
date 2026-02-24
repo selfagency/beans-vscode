@@ -6,6 +6,10 @@ type: bug
 priority: critical
 created_at: 2026-02-24T13:48:56Z
 updated_at: 2026-02-24T14:05:28Z
+branch: fix/gamf-dispose-treeprovider
+files:
+	- src/test/beans/tree/disposeProviders.test.ts
+pr: https://github.com/selfagency/beans-vscode/pull/82
 ---
 
 ## Problem
