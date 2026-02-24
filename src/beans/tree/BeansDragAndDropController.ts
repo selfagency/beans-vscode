@@ -167,11 +167,10 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
     const result = await vscode.window.showInformationMessage(
       `Re-parent ${draggedName} to ${targetName}?`,
       { modal: true },
-      'Yes',
-      'No'
+      'Move'
     );
 
-    return result === 'Yes';
+    return result === 'Move';
   }
 
   /**

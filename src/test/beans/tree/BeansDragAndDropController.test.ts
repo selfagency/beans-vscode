@@ -172,7 +172,7 @@ describe('BeansDragAndDropController', () => {
   });
 
   it('does not re-parent when user cancels confirmation', async () => {
-    showInformationMessage.mockResolvedValueOnce('No');
+    showInformationMessage.mockResolvedValueOnce(undefined);
 
     const dragged = createBean('bean-1', 'ABC', 'Dragged', undefined, 'task');
     const target = createBean('bean-2', 'DEF', 'Target', undefined, 'feature');
@@ -190,7 +190,7 @@ describe('BeansDragAndDropController', () => {
   });
 
   it('re-parents successfully and notifies user', async () => {
-    showInformationMessage.mockResolvedValueOnce('Yes').mockResolvedValueOnce(undefined);
+    showInformationMessage.mockResolvedValueOnce('Move').mockResolvedValueOnce(undefined);
 
     const dragged = createBean('bean-1', 'ABC', 'Dragged', undefined, 'task');
     const target = createBean('bean-2', 'DEF', 'Target', undefined, 'feature');
@@ -210,7 +210,7 @@ describe('BeansDragAndDropController', () => {
   });
 
   it('supports dropping to root (no parent)', async () => {
-    showInformationMessage.mockResolvedValueOnce('Yes').mockResolvedValueOnce(undefined);
+    showInformationMessage.mockResolvedValueOnce('Move').mockResolvedValueOnce(undefined);
 
     const dragged = createBean('bean-1', 'ABC', 'Dragged');
     const vscode = await import('vscode');
@@ -223,7 +223,7 @@ describe('BeansDragAndDropController', () => {
   });
 
   it('continues when ancestor lookup fails during cycle check', async () => {
-    showInformationMessage.mockResolvedValueOnce('Yes').mockResolvedValueOnce(undefined);
+    showInformationMessage.mockResolvedValueOnce('Move').mockResolvedValueOnce(undefined);
     service.showBean.mockRejectedValueOnce(new Error('parent lookup failed'));
 
     const dragged = createBean('bean-1', 'ABC', 'Dragged', undefined, 'task');
@@ -244,7 +244,7 @@ describe('BeansDragAndDropController', () => {
   });
 
   it('shows error when re-parent operation fails', async () => {
-    showInformationMessage.mockResolvedValueOnce('Yes');
+    showInformationMessage.mockResolvedValueOnce('Move');
     service.updateBean.mockRejectedValueOnce(new Error('update failed'));
 
     const dragged = createBean('bean-1', 'ABC', 'Dragged', undefined, 'task');
@@ -264,7 +264,7 @@ describe('BeansDragAndDropController', () => {
   });
 
   it('falls back to code/id names in re-parent logging and notifications', async () => {
-    showInformationMessage.mockResolvedValueOnce('Yes').mockResolvedValueOnce(undefined);
+    showInformationMessage.mockResolvedValueOnce('Move').mockResolvedValueOnce(undefined);
 
     const dragged = {
       ...createBean('bean-1', '', '', undefined, 'task'),
@@ -379,7 +379,7 @@ describe('BeansDragAndDropController', () => {
     });
 
     it('allows dropping a feature onto an epic', async () => {
-      showInformationMessage.mockResolvedValueOnce('Yes').mockResolvedValueOnce(undefined);
+      showInformationMessage.mockResolvedValueOnce('Move').mockResolvedValueOnce(undefined);
 
       const dragged = createBean('bean-1', 'ABC', 'Feature A', undefined, 'feature');
       const target = createBean('bean-2', 'DEF', 'Epic B', undefined, 'epic');
@@ -399,7 +399,7 @@ describe('BeansDragAndDropController', () => {
     });
 
     it('allows dropping a feature onto a milestone', async () => {
-      showInformationMessage.mockResolvedValueOnce('Yes').mockResolvedValueOnce(undefined);
+      showInformationMessage.mockResolvedValueOnce('Move').mockResolvedValueOnce(undefined);
 
       const dragged = createBean('bean-1', 'ABC', 'Feature A', undefined, 'feature');
       const target = createBean('bean-2', 'DEF', 'Milestone B', undefined, 'milestone');
@@ -419,7 +419,7 @@ describe('BeansDragAndDropController', () => {
     });
 
     it('allows dropping a task onto a feature', async () => {
-      showInformationMessage.mockResolvedValueOnce('Yes').mockResolvedValueOnce(undefined);
+      showInformationMessage.mockResolvedValueOnce('Move').mockResolvedValueOnce(undefined);
 
       const dragged = createBean('bean-1', 'ABC', 'Task A', undefined, 'task');
       const target = createBean('bean-2', 'DEF', 'Feature B', undefined, 'feature');
@@ -439,7 +439,7 @@ describe('BeansDragAndDropController', () => {
     });
 
     it('allows dropping a bug onto a feature', async () => {
-      showInformationMessage.mockResolvedValueOnce('Yes').mockResolvedValueOnce(undefined);
+      showInformationMessage.mockResolvedValueOnce('Move').mockResolvedValueOnce(undefined);
 
       const dragged = createBean('bean-1', 'ABC', 'Bug A', undefined, 'bug');
       const target = createBean('bean-2', 'DEF', 'Feature B', undefined, 'feature');
@@ -459,7 +459,7 @@ describe('BeansDragAndDropController', () => {
     });
 
     it('allows dropping any type onto root (no target)', async () => {
-      showInformationMessage.mockResolvedValueOnce('Yes').mockResolvedValueOnce(undefined);
+      showInformationMessage.mockResolvedValueOnce('Move').mockResolvedValueOnce(undefined);
 
       const dragged = createBean('bean-1', 'ABC', 'Feature A', undefined, 'feature');
       const vscode = await import('vscode');
