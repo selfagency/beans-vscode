@@ -680,8 +680,11 @@
       "eslint --fix",
       "prettier --write"
     ],
-    "docs/**/*.md": [
+    "docs/!(plans)/**/*.md": [
       "vitepress build",
+      "prettier --write"
+    ],
+    "docs/plans/**/*.md": [
       "prettier --write"
     ]
   },
