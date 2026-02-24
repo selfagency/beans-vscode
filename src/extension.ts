@@ -62,6 +62,13 @@ let firstMalformedBeanFilePath: string | undefined;
 const ARTIFACT_GENERATION_PREF_KEY = 'beans.ai.artifactsGenerationPreference';
 const AI_ENABLEMENT_PREF_KEY = 'beans.ai.enablementPreference';
 
+// Lightweight provider interface for components that can reapply header titles
+// without a full refresh. Providers implementing this can update cached counts
+// or title formatting in-place.
+interface HeaderReapplyable {
+  reapplyHeaderTitles?: () => void;
+}
+
 interface CliInstallOption {
   label: string;
   url: string;
@@ -336,7 +343,7 @@ export async function activate(context: vscode.ExtensionContext) {
           // Attempt to reapply header titles in-place without forcing a full provider refresh.
           // Providers may expose a lightweight reapplyHeaderTitles() method to update titles
           // using cached counts. Fall back to a no-op and allow headers to update on next refresh.
-          const tryReapply = (provider: any | undefined) => {
+          const tryReapply = (provider: HeaderReapplyable | undefined) => {
             try {
               provider?.reapplyHeaderTitles?.();
             } catch (err) {
@@ -344,9 +351,9 @@ export async function activate(context: vscode.ExtensionContext) {
             }
           };
 
-          tryReapply(activeProvider);
-          tryReapply(completedProvider);
-          tryReapply(draftProvider);
+          tryReapply(activeProvider as unknown as HeaderReapplyable);
+          tryReapply(completedProvider as unknown as HeaderReapplyable);
+          tryReapply(draftProvider as unknown as HeaderReapplyable);
 
           // If providers do not implement the lightweight update, avoid triggering expensive
           // data refresh here; the header formatting will update on the next tree refresh.

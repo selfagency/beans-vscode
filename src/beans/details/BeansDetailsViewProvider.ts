@@ -115,7 +115,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
         return;
       }
 
-      const sanitized = this.sanitizeAndValidateUpdates(updates as Record<string, unknown>);
+      const sanitized = this.sanitizeAndValidateUpdates(updates);
       if (!sanitized || Object.keys(sanitized).length === 0) {
         // Nothing valid to update after sanitization/validation
         return;
@@ -139,47 +139,61 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
    * Sanitize and validate incoming updates from the webview.
    * Returns a new object containing only allowed fields with valid values.
    */
-  private sanitizeAndValidateUpdates(updates: Record<string, unknown>): Record<string, unknown> | undefined {
+  /**
+   * A validated, typed shape for allowed updates coming from the webview.
+   */
+  private sanitizeAndValidateUpdates(
+    updates: unknown
+  ):
+    | { status?: Bean['status']; type?: Bean['type']; priority?: Bean['priority']; title?: string; body?: string }
+    | undefined {
     if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
       return undefined;
     }
 
-    const out: Record<string, unknown> = {};
+    const upd = updates as Record<string, unknown>;
+    const out: {
+      status?: Bean['status'];
+      type?: Bean['type'];
+      priority?: Bean['priority'];
+      title?: string;
+      body?: string;
+    } = {};
 
     const allowedStatuses = new Set(['draft', 'todo', 'in-progress', 'completed', 'scrapped']);
     const allowedTypes = new Set(['milestone', 'epic', 'feature', 'task', 'bug']);
     const allowedPriorities = new Set(['critical', 'high', 'normal', 'low', 'deferred', '']);
 
-    if (Object.prototype.hasOwnProperty.call(updates, 'status')) {
-      const v = updates['status'];
+    if (Object.prototype.hasOwnProperty.call(upd, 'status')) {
+      const v = upd['status'];
       if (typeof v === 'string' && allowedStatuses.has(v)) {
-        out.status = v;
+        out.status = v as Bean['status'];
       }
     }
 
-    if (Object.prototype.hasOwnProperty.call(updates, 'type')) {
-      const v = updates['type'];
+    if (Object.prototype.hasOwnProperty.call(upd, 'type')) {
+      const v = upd['type'];
       if (typeof v === 'string' && allowedTypes.has(v)) {
-        out.type = v;
+        out.type = v as Bean['type'];
       }
     }
 
-    if (Object.prototype.hasOwnProperty.call(updates, 'priority')) {
-      const v = updates['priority'];
+    if (Object.prototype.hasOwnProperty.call(upd, 'priority')) {
+      const v = upd['priority'];
       if (typeof v === 'string' && allowedPriorities.has(v)) {
-        out.priority = v === '' ? undefined : v;
+        out.priority = v === '' ? undefined : (v as Bean['priority']);
       }
     }
 
-    if (Object.prototype.hasOwnProperty.call(updates, 'title')) {
-      const v = updates['title'];
+    if (Object.prototype.hasOwnProperty.call(upd, 'title')) {
+      const v = upd['title'];
       if (typeof v === 'string' && v.trim().length > 0 && v.length <= 500) {
         out.title = v;
       }
     }
 
-    if (Object.prototype.hasOwnProperty.call(updates, 'body')) {
-      const v = updates['body'];
+    if (Object.prototype.hasOwnProperty.call(upd, 'body')) {
+      const v = upd['body'];
       if (typeof v === 'string') {
         out.body = v;
       }
