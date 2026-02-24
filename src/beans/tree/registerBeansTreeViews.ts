@@ -32,7 +32,10 @@ export function registerBeansTreeViews(
     search: 'Search',
   } as const;
 
-  const dragAndDropController = new BeansDragAndDropController(service);
+  const activeDragController = new BeansDragAndDropController(service, 'todo', ['todo', 'in-progress']);
+  const completedDragController = new BeansDragAndDropController(service, 'completed', ['completed']);
+  const scrappedDragController = new BeansDragAndDropController(service, 'scrapped', ['scrapped']);
+  const draftDragController = new BeansDragAndDropController(service, 'draft', ['draft']);
 
   const activeProvider = new ActiveBeansProvider(service);
   const completedProvider = new CompletedBeansProvider(service);
@@ -43,7 +46,7 @@ export function registerBeansTreeViews(
   const activeTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.active', {
     treeDataProvider: activeProvider,
     showCollapseAll: true,
-    dragAndDropController,
+    dragAndDropController: activeDragController,
   });
 
   const searchTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.search', {
@@ -54,19 +57,19 @@ export function registerBeansTreeViews(
   const completedTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.completed', {
     treeDataProvider: completedProvider,
     showCollapseAll: true,
-    dragAndDropController,
+    dragAndDropController: completedDragController,
   });
 
   const scrappedTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.scrapped', {
     treeDataProvider: scrappedProvider,
     showCollapseAll: true,
-    dragAndDropController,
+    dragAndDropController: scrappedDragController,
   });
 
   const draftTreeView = vscode.window.createTreeView<BeanTreeItem>('beans.draft', {
     treeDataProvider: draftProvider,
     showCollapseAll: true,
-    dragAndDropController,
+    dragAndDropController: draftDragController,
   });
 
   const shouldShowCounts = (): boolean => {

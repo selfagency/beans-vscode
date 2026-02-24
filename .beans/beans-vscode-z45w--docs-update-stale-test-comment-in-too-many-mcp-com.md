@@ -8,7 +8,7 @@ pr: https://github.com/selfagency/beans-vscode/pull/97
 type: task
 priority: low
 created_at: 2026-02-24T13:49:34Z
-updated_at: 2026-02-24T13:49:34Z
+updated_at: 2026-02-24T17:06:39Z
 ---
 
 ## Problem

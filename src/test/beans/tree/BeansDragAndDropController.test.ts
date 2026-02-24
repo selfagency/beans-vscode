@@ -76,7 +76,7 @@ describe('BeansDragAndDropController', () => {
   let controller: BeansDragAndDropController;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
 
     service = {
       updateBean: vi.fn(),
@@ -84,6 +84,185 @@ describe('BeansDragAndDropController', () => {
     };
 
     controller = new BeansDragAndDropController(service as any);
+  });
+
+  describe('cross-pane drop', () => {
+    let completedController: BeansDragAndDropController;
+
+    beforeEach(() => {
+      completedController = new BeansDragAndDropController(service as any, 'completed', ['completed']);
+    });
+
+    it('updates status when dropped on pane background and user confirms', async () => {
+      showInformationMessage.mockResolvedValueOnce('Set Status').mockResolvedValueOnce(undefined);
+
+      const dragged = createBean('bean-1', 'ABC', 'Dragged');
+      dragged.status = 'todo';
+      const vscode = await import('vscode');
+      const dataTransfer = new vscode.DataTransfer();
+      dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(dragged));
+
+      await completedController.handleDrop(undefined, dataTransfer as any, { isCancellationRequested: false } as any);
+
+      expect(service.updateBean).toHaveBeenCalledWith('bean-1', { status: 'completed' });
+    });
+
+    it('does nothing when background drop is cancelled', async () => {
+      showInformationMessage.mockResolvedValueOnce(undefined);
+
+      const dragged = createBean('bean-1', 'ABC', 'Dragged');
+      dragged.status = 'todo';
+      const vscode = await import('vscode');
+      const dataTransfer = new vscode.DataTransfer();
+      dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(dragged));
+
+      await completedController.handleDrop(undefined, dataTransfer as any, { isCancellationRequested: false } as any);
+
+      expect(service.updateBean).not.toHaveBeenCalled();
+    });
+
+    it('shows prompt when dropped on a bean and updates status only on "Change Status Only"', async () => {
+      showInformationMessage.mockResolvedValueOnce('Change Status Only').mockResolvedValueOnce(undefined);
+
+      const dragged = createBean('bean-1', 'ABC', 'Dragged');
+      dragged.status = 'todo';
+      const target = createBean('bean-2', 'DEF', 'Target');
+      const vscode = await import('vscode');
+      const dataTransfer = new vscode.DataTransfer();
+      dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(dragged));
+
+      const completedController = new BeansDragAndDropController(service as any, 'completed', ['completed']);
+      await completedController.handleDrop(
+        { bean: target } as any,
+        dataTransfer as any,
+        { isCancellationRequested: false } as any
+      );
+
+      expect(service.updateBean).toHaveBeenCalledWith('bean-1', { status: 'completed' });
+    });
+
+    it('shows prompt and updates status+parent on "Change Status & Move to"', async () => {
+      showInformationMessage.mockResolvedValueOnce('Change Status & Move to DEF').mockResolvedValueOnce(undefined);
+
+      const dragged = createBean('bean-1', 'ABC', 'Dragged');
+      dragged.status = 'todo';
+      const target = createBean('bean-2', 'DEF', 'Target', undefined, 'feature');
+      const vscode = await import('vscode');
+      const dataTransfer = new vscode.DataTransfer();
+      dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(dragged));
+
+      const completedController = new BeansDragAndDropController(service as any, 'completed', ['completed']);
+      await completedController.handleDrop(
+        { bean: target } as any,
+        dataTransfer as any,
+        { isCancellationRequested: false } as any
+      );
+
+      expect(service.updateBean).toHaveBeenCalledWith('bean-1', { status: 'completed', parent: 'bean-2' });
+    });
+
+    it('does nothing when prompt is cancelled', async () => {
+      showInformationMessage.mockResolvedValueOnce(undefined);
+
+      const dragged = createBean('bean-1', 'ABC', 'Dragged');
+      dragged.status = 'todo';
+      const target = createBean('bean-2', 'DEF', 'Target');
+      const vscode = await import('vscode');
+      const dataTransfer = new vscode.DataTransfer();
+      dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(dragged));
+
+      const completedController = new BeansDragAndDropController(service as any, 'completed', ['completed']);
+      await completedController.handleDrop(
+        { bean: target } as any,
+        dataTransfer as any,
+        { isCancellationRequested: false } as any
+      );
+
+      expect(service.updateBean).not.toHaveBeenCalled();
+    });
+
+    it('rejects cross-pane drop on self', async () => {
+      const dragged = createBean('bean-1', 'ABC', 'Fix login bug');
+      dragged.status = 'todo';
+      const vscode = await import('vscode');
+      const dataTransfer = new vscode.DataTransfer();
+      dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(dragged));
+
+      const completedController = new BeansDragAndDropController(service as any, 'completed', ['completed']);
+      await completedController.handleDrop(
+        { bean: dragged } as any,
+        dataTransfer as any,
+        { isCancellationRequested: false } as any
+      );
+
+      expect(showErrorMessage).toHaveBeenCalledWith('Cannot make a bean its own parent');
+      expect(service.updateBean).not.toHaveBeenCalled();
+    });
+
+    it('shows error and does not update when "Change Status & Move" fails type hierarchy validation', async () => {
+      showInformationMessage.mockResolvedValueOnce('Change Status & Move to DEF').mockResolvedValueOnce(undefined);
+
+      const dragged = createBean('bean-1', 'ABC', 'Dragged');
+      dragged.status = 'todo';
+      // dragged is a task
+      dragged.type = 'task' as any;
+      // target is also a task, which is an invalid parent for a task
+      const target = createBean('bean-2', 'DEF', 'Target', undefined, 'task');
+      const vscode = await import('vscode');
+      const dataTransfer = new vscode.DataTransfer();
+      dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(dragged));
+
+      const completedController = new BeansDragAndDropController(service as any, 'completed', ['completed']);
+      await completedController.handleDrop(
+        { bean: target } as any,
+        dataTransfer as any,
+        { isCancellationRequested: false } as any
+      );
+
+      expect(showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('A task cannot have a task as parent'));
+      expect(service.updateBean).not.toHaveBeenCalled();
+    });
+  });
+
+  it('intra-pane drop when targetStatus is null uses reparent behavior', async () => {
+    showInformationMessage.mockResolvedValueOnce('Move').mockResolvedValueOnce(undefined);
+
+    const dragged = createBean('bean-1', 'ABC', 'Dragged', undefined, 'task');
+    // status doesn't matter when targetStatus is null
+    dragged.status = 'completed' as any;
+    const target = createBean('bean-2', 'DEF', 'Target', undefined, 'feature');
+    const vscode = await import('vscode');
+    const dataTransfer = new vscode.DataTransfer();
+    dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(dragged));
+
+    await controller.handleDrop(
+      { bean: target } as any,
+      dataTransfer as any,
+      { isCancellationRequested: false } as any
+    );
+
+    expect(service.updateBean).toHaveBeenCalledWith('bean-1', { parent: 'bean-2' });
+  });
+
+  it('intra-pane drop when bean status is native to pane uses reparent behavior', async () => {
+    showInformationMessage.mockResolvedValueOnce('Move').mockResolvedValueOnce(undefined);
+
+    const dragged = createBean('bean-1', 'ABC', 'Dragged', undefined, 'task');
+    dragged.status = 'todo';
+    const target = createBean('bean-2', 'DEF', 'Target', undefined, 'feature');
+    const vscode = await import('vscode');
+    const dataTransfer = new vscode.DataTransfer();
+    dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(dragged));
+
+    // Active pane controller: 'todo' is native, so this is intra-pane
+    const activeController = new BeansDragAndDropController(service as any, 'todo', ['todo', 'in-progress']);
+    await activeController.handleDrop(
+      { bean: target } as any,
+      dataTransfer as any,
+      { isCancellationRequested: false } as any
+    );
+
+    expect(service.updateBean).toHaveBeenCalledWith('bean-1', { parent: 'bean-2' });
   });
 
   it('stores dragged bean in data transfer for single-item drags', async () => {
@@ -475,6 +654,61 @@ describe('BeansDragAndDropController', () => {
       );
 
       expect(service.updateBean).toHaveBeenCalledWith('bean-1', { clearParent: true });
+    });
+  });
+
+  describe('serialized transfer encodings', () => {
+    it('accepts JSON-serialized bean in application/vnd.code.tree.beans', async () => {
+      showInformationMessage.mockResolvedValueOnce('Set Status');
+
+      const dragged = createBean('bean-json', 'JID', 'JSON Bean');
+      dragged.status = 'todo';
+      const vscode = await import('vscode');
+      const dataTransfer = new vscode.DataTransfer();
+      // simulation: vnd payload is a JSON string
+      dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(JSON.stringify(dragged)));
+
+      const completedController = new BeansDragAndDropController(service as any, 'completed', ['completed']);
+      await completedController.handleDrop(undefined, dataTransfer as any, { isCancellationRequested: false } as any);
+
+      expect(service.updateBean).toHaveBeenCalledWith('bean-json', { status: 'completed' });
+    });
+
+    it('accepts plain id in text/plain payload', async () => {
+      showInformationMessage.mockResolvedValueOnce('Set Status');
+
+      const dragged = createBean('bean-id', 'TID', 'Text Bean');
+      dragged.status = 'todo';
+      // service.showBean should be called when only id is supplied
+      service.showBean.mockResolvedValueOnce(dragged);
+
+      const vscode = await import('vscode');
+      const dataTransfer = new vscode.DataTransfer();
+      dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(dragged.id));
+
+      const completedController = new BeansDragAndDropController(service as any, 'completed', ['completed']);
+      await completedController.handleDrop(undefined, dataTransfer as any, { isCancellationRequested: false } as any);
+
+      expect(service.showBean).toHaveBeenCalledWith('bean-id');
+      expect(service.updateBean).toHaveBeenCalledWith('bean-id', { status: 'completed' });
+    });
+
+    it('falls back to application/json when primary payload empty', async () => {
+      showInformationMessage.mockResolvedValueOnce('Set Status');
+
+      const dragged = createBean('bean-alt', 'AID', 'Alt Bean');
+      dragged.status = 'todo';
+      const vscode = await import('vscode');
+      const dataTransfer = new vscode.DataTransfer();
+      // primary vnd is empty string
+      dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(''));
+      // alternative application/json contains the bean JSON
+      dataTransfer.set('application/json', new vscode.DataTransferItem(JSON.stringify(dragged)));
+
+      const completedController = new BeansDragAndDropController(service as any, 'completed', ['completed']);
+      await completedController.handleDrop(undefined, dataTransfer as any, { isCancellationRequested: false } as any);
+
+      expect(service.updateBean).toHaveBeenCalledWith('bean-alt', { status: 'completed' });
     });
   });
 });
