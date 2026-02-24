@@ -153,6 +153,20 @@ function handleBeansError(error: unknown, context: string, showToUser: boolean =
 /**
  * Format a raw value (e.g., 'in-progress') to a human-readable label (e.g., 'In Progress')
  */
+/**
+ * Collect all descendants of a bean recursively, in bottom-up order (deepest first).
+ * This ensures leaves are deleted before their parents when doing cascading deletes.
+ */
+function collectAllDescendants(allBeans: Bean[], parentId: string): Bean[] {
+  const directChildren = allBeans.filter(b => b.parent === parentId);
+  const result: Bean[] = [];
+  for (const child of directChildren) {
+    result.push(...collectAllDescendants(allBeans, child.id));
+    result.push(child);
+  }
+  return result;
+}
+
 function formatLabel(value: string): string {
   return value
     .split('-')
@@ -1276,20 +1290,24 @@ export class BeansCommands {
 
       // Check whether this bean has children
       const allBeans = await this.service.listBeans();
-      const children = allBeans.filter(b => b.parent === bean!.id);
+      const directChildren = allBeans.filter(b => b.parent === bean!.id);
+      const allDescendants = collectAllDescendants(allBeans, bean!.id); // bottom-up order
 
-      let deleteChildren = false;
-      if (children.length > 0) {
+      let deleteDescendants = false;
+      if (directChildren.length > 0) {
+        const totalCount = allDescendants.length;
+        const noun = directChildren.length === 1 ? 'child bean' : 'child beans';
+        const extraInfo = totalCount > directChildren.length ? ` (${totalCount} total including descendants)` : '';
         const result = await vscode.window.showWarningMessage(
-          `${bean.code} has ${children.length} child bean${children.length === 1 ? '' : 's'}. What should happen to them?`,
+          `${bean.code} has ${directChildren.length} ${noun}${extraInfo}. What should happen to them?`,
           { modal: true },
           'Delete All',
-          'Delete Parent Only'
+          'Keep Children'
         );
         if (!result) {
           return;
         }
-        deleteChildren = result === 'Delete All';
+        deleteDescendants = result === 'Delete All';
       } else {
         const result = await vscode.window.showWarningMessage(
           `Delete bean ${bean.code}: ${bean.title}?`,
@@ -1301,27 +1319,27 @@ export class BeansCommands {
         }
       }
 
-      if (deleteChildren) {
+      if (deleteDescendants) {
         const failed: { id: string; code: string; message: string }[] = [];
-        for (const child of children) {
+        for (const descendant of allDescendants) {
           try {
-            await this.service.deleteBean(child.id);
-            logger.info(`Deleted child bean ${child.code}`);
+            await this.service.deleteBean(descendant.id);
+            logger.info(`Deleted descendant bean ${descendant.code}`);
           } catch (error) {
             const msg = (error as Error).message || String(error);
-            logger.warn(`Failed to delete child bean ${child.code}: ${msg}`);
-            failed.push({ id: child.id, code: child.code, message: msg });
+            logger.warn(`Failed to delete descendant bean ${descendant.code}: ${msg}`);
+            failed.push({ id: descendant.id, code: descendant.code, message: msg });
           }
         }
 
         if (failed.length > 0) {
-          // Abort parent delete if any child deletions failed to avoid leaving an inconsistent state.
+          // Abort parent delete if any descendant deletions failed to avoid leaving an inconsistent state.
           const codes = failed.map(f => f.code).join(', ');
           const detail = failed.map(f => `${f.code}: ${f.message}`).join('; ');
-          logger.error(`Aborting parent delete because ${failed.length} child deletions failed: ${detail}`);
+          logger.error(`Aborting parent delete because ${failed.length} descendant deletions failed: ${detail}`);
           vscode.window
             .showErrorMessage(
-              `Failed to delete child beans (${codes}). Parent delete aborted. See output for details.`,
+              `Failed to delete descendant beans (${codes}). Parent delete aborted. See output for details.`,
               'Show Output'
             )
             ?.then(selection => {
@@ -1331,10 +1349,11 @@ export class BeansCommands {
             });
           return;
         }
-      } else if (children.length > 0) {
-        // Orphan children by clearing their parent. Abort if any orphaning fails.
+      } else if (directChildren.length > 0) {
+        // Orphan only direct children by clearing their parent. Their own descendants remain intact
+        // beneath them. Abort if any orphaning fails.
         const failed: { id: string; code: string; message: string }[] = [];
-        for (const child of children) {
+        for (const child of directChildren) {
           try {
             await this.service.updateBean(child.id, { clearParent: true });
             logger.info(`Orphaned child bean ${child.code}`);
