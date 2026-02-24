@@ -131,7 +131,17 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
     // Check if bean has potentialAncestor in its parent chain
     let current: Bean | undefined = bean;
 
+    // Protect against corrupted parent chains / cycles by capping traversal depth.
+    let depth = 0;
+    const MAX_DEPTH = 50;
+
     while (current?.parent) {
+      // Bail out early if we suspect a cycle or excessively deep chain
+      if (++depth > MAX_DEPTH) {
+        logger.warn(`Parent chain exceeded max depth (${MAX_DEPTH}), aborting descendant check`);
+        return false;
+      }
+
       if (current.parent === potentialAncestor.id) {
         return true;
       }
