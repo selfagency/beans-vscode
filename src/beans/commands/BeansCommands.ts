@@ -16,7 +16,13 @@
  * - When adding commands, update `package.json` contributions and tests
  */
 import * as vscode from 'vscode';
-import { BeansConfigManager } from '../config';
+import {
+  BeansConfigManager,
+  buildBeansCopilotInstructions,
+  buildBeansCopilotSkill,
+  writeBeansCopilotInstructions,
+  writeBeansCopilotSkill,
+} from '../config';
 import { BeansDetailsViewProvider } from '../details';
 import { BeansOutput } from '../logging';
 import {
@@ -267,6 +273,9 @@ export class BeansCommands {
     // Documentation
     this.registerCommand('beans.openUserGuide', this.openUserGuide.bind(this));
     this.registerCommand('beans.openAiFeaturesGuide', this.openAiFeaturesGuide.bind(this));
+
+    // AI artifact management
+    this.registerCommand('beans.reinitializeCopilotArtifacts', this.reinitializeCopilotArtifacts.bind(this));
 
     logger.info('All Beans commands registered');
   }
@@ -1577,6 +1586,47 @@ export class BeansCommands {
         logger.error('Failed to open AI features guide URL', openError as Error);
         vscode.window.showErrorMessage('Failed to open AI features guide.');
       }
+    }
+  }
+
+  /**
+   * Reinitialize Copilot instruction and skill artifacts for this workspace.
+   * Prompts for confirmation before overwriting existing files.
+   */
+  private async reinitializeCopilotArtifacts(): Promise<void> {
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!workspaceRoot) {
+      vscode.window.showErrorMessage('No workspace folder is open.');
+      return;
+    }
+
+    const confirm = await vscode.window.showInformationMessage(
+      'This will overwrite any existing Copilot instructions and skill files for this workspace. Continue?',
+      'Reinitialize',
+      'Cancel'
+    );
+    if (confirm !== 'Reinitialize') {
+      logger.info('Copilot artifact reinitialization canceled by user');
+      return;
+    }
+
+    try {
+      logger.info('Reinitializing Copilot instructions and skills...');
+      const graphqlSchema = await this.service.graphqlSchema();
+
+      const instructionsContent = buildBeansCopilotInstructions(graphqlSchema);
+      const instructionsPath = await writeBeansCopilotInstructions(workspaceRoot, instructionsContent);
+      logger.info(`Regenerated Copilot instructions at ${instructionsPath}`);
+
+      const skillContent = buildBeansCopilotSkill(graphqlSchema);
+      const skillPath = await writeBeansCopilotSkill(workspaceRoot, skillContent);
+      logger.info(`Regenerated Copilot skill at ${skillPath}`);
+
+      vscode.window.showInformationMessage('Copilot instructions and skills regenerated successfully.');
+    } catch (error) {
+      const message = `Failed to regenerate Copilot artifacts: ${(error as Error).message}`;
+      logger.error(message, error as Error);
+      vscode.window.showErrorMessage(message);
     }
   }
 

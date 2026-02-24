@@ -278,6 +278,11 @@
         "when": "beans.initialized"
       },
       {
+        "command": "beans.reinitializeCopilotArtifacts",
+        "title": "Reinitialize Copilot Instructions & Skills",
+        "category": "Beans"
+      },
+      {
         "command": "beans.mcp.refreshDefinitions",
         "title": "MCP: Refresh Server Definitions",
         "category": "Beans"
