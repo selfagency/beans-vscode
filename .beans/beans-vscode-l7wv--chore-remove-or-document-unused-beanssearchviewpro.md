@@ -32,6 +32,7 @@ The inline comment at `src/extension.ts:184` explains: "NOTE: search previously 
 ## Recommendation
 
 If this class is genuinely superseded by the tree-based search:
+
 1. Delete `BeansSearchViewProvider.ts` and its test file
 2. Remove the export from `src/beans/search/index.ts`
 
