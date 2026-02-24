@@ -3,6 +3,24 @@ import * as vscode from 'vscode';
 import { BeansCommands } from '../../../beans/commands/BeansCommands';
 import { BeansCLINotFoundError, type Bean } from '../../../beans/model';
 
+const buildBeansCopilotInstructions = vi.hoisted(() => vi.fn(() => 'instructions content'));
+const writeBeansCopilotInstructions = vi.hoisted(() =>
+  vi.fn(async () => '/ws/.github/instructions/tasks.instructions.md')
+);
+const buildBeansCopilotSkill = vi.hoisted(() => vi.fn(() => 'skill content'));
+const writeBeansCopilotSkill = vi.hoisted(() => vi.fn(async () => '/ws/.github/skills/beans/SKILL.md'));
+
+vi.mock('../../../beans/config', () => ({
+  BeansConfigManager: vi.fn(() => ({ open: vi.fn(async () => undefined) })),
+  buildBeansCopilotInstructions,
+  writeBeansCopilotInstructions,
+  buildBeansCopilotSkill,
+  writeBeansCopilotSkill,
+  COPILOT_INSTRUCTIONS_RELATIVE_PATH: '.github/instructions/tasks.instructions.md',
+  COPILOT_SKILL_RELATIVE_PATH: '.github/skills/beans/SKILL.md',
+  removeBeansCopilotSkill: vi.fn(async () => undefined),
+}));
+
 // TODO(beans-vscode-v2n7): Deepen BeansCommands coverage with command-palette
 // integration flows, richer quick-pick interaction edge cases, and exhaustive
 // error-type branches across all command handlers.
@@ -36,6 +54,9 @@ vi.mock('vscode', () => {
       public query: string,
       public fragment: string
     ) {}
+    get fsPath(): string {
+      return this.path;
+    }
     static file(path: string): Uri {
       return new Uri('file', '', path, '', '');
     }
@@ -174,6 +195,7 @@ describe('BeansCommands', () => {
         types: ['milestone', 'epic', 'feature', 'bug', 'task'],
         priorities: ['critical', 'high', 'normal', 'low', 'deferred'],
       })),
+      graphqlSchema: vi.fn(async () => 'type Query { beans: [Bean] }'),
     };
 
     previewProvider = {
@@ -623,6 +645,50 @@ describe('BeansCommands', () => {
     expect(writeClipboardText).not.toHaveBeenCalled();
   });
 
+  describe('reinitializeCopilotArtifacts', () => {
+    it('registers the beans.reinitializeCopilotArtifacts command', () => {
+      commands.registerAll();
+      expect(commandHandlers.has('beans.reinitializeCopilotArtifacts')).toBe(true);
+    });
+
+    it('writes instruction and skill files after user confirms', async () => {
+      commands.registerAll();
+      showInformationMessage.mockResolvedValueOnce('Reinitialize');
+
+      await commandHandlers.get('beans.reinitializeCopilotArtifacts')!();
+
+      expect(service.graphqlSchema).toHaveBeenCalled();
+      expect(buildBeansCopilotInstructions).toHaveBeenCalledWith('type Query { beans: [Bean] }');
+      expect(writeBeansCopilotInstructions).toHaveBeenCalled();
+      expect(buildBeansCopilotSkill).toHaveBeenCalledWith('type Query { beans: [Bean] }');
+      expect(writeBeansCopilotSkill).toHaveBeenCalled();
+      expect(showInformationMessage).toHaveBeenLastCalledWith(
+        'Copilot instructions and skills regenerated successfully.'
+      );
+    });
+
+    it('does nothing when user cancels the confirmation dialog', async () => {
+      commands.registerAll();
+      showInformationMessage.mockResolvedValueOnce(undefined);
+
+      await commandHandlers.get('beans.reinitializeCopilotArtifacts')!();
+
+      expect(service.graphqlSchema).not.toHaveBeenCalled();
+      expect(writeBeansCopilotInstructions).not.toHaveBeenCalled();
+      expect(writeBeansCopilotSkill).not.toHaveBeenCalled();
+    });
+
+    it('shows an error notification when regeneration fails', async () => {
+      commands.registerAll();
+      showInformationMessage.mockResolvedValueOnce('Reinitialize');
+      service.graphqlSchema.mockRejectedValueOnce(new Error('CLI error'));
+
+      await commandHandlers.get('beans.reinitializeCopilotArtifacts')!();
+
+      expect(showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('Failed to regenerate Copilot artifacts'));
+    });
+  });
+    
   describe('setParent', () => {
     const milestone = makeBean({
       id: 'ms-1',
