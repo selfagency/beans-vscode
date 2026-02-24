@@ -10,6 +10,7 @@ import {
   BeansPermissionError,
   isBeansError,
   getUserMessage,
+  extractCliError,
 } from '../../../beans/model/errors';
 
 describe('Beans Error Classes', () => {
@@ -264,6 +265,38 @@ describe('Beans Error Classes', () => {
       expect(cliError instanceof BeansConfigMissingError).toBe(false);
       expect(configError instanceof BeansConfigMissingError).toBe(true);
       expect(configError instanceof BeansCLINotFoundError).toBe(false);
+    });
+  });
+
+  describe('extractCliError', () => {
+    it('extracts graphql error message from full CLI output', () => {
+      const raw =
+        'Command failed: beans graphql --json fragment BeanFields on Bean { id }\n' +
+        'Error: graphql: epic beans can only have milestone as parent, not epic\n' +
+        'Usage: beans graphql <query> [flags]\n' +
+        'Flags:\n  -h, --help  help for graphql';
+      expect(extractCliError(raw)).toBe('Epic beans can only have milestone as parent, not epic');
+    });
+
+    it('capitalises the first letter of the extracted message', () => {
+      expect(extractCliError('Command failed\nError: graphql: lower case message\nUsage: ...')).toBe(
+        'Lower case message'
+      );
+    });
+
+    it('capitalises and returns the message when no Error: pattern is found', () => {
+      expect(extractCliError('some generic error text')).toBe('Some generic error text');
+    });
+
+    it('handles Error: without graphql: prefix', () => {
+      expect(extractCliError('Error: bean not found\nUsage: ...')).toBe('Bean not found');
+    });
+
+    it('getUserMessage calls extractCliError for plain Error instances', () => {
+      const err = new Error(
+        'Command failed: beans graphql --json\nError: graphql: bug beans can only have milestone, epic, or feature as parent, not task\nUsage: beans graphql'
+      );
+      expect(getUserMessage(err)).toBe('Bug beans can only have milestone, epic, or feature as parent, not task');
     });
   });
 

@@ -111,6 +111,32 @@ export function isBeansError(error: unknown): error is BeansError {
 }
 
 /**
+ * Extract the human-readable portion of a CLI error message, stripping the
+ * command invocation, "Error: graphql: " prefixes, and the Usage/help block
+ * that the CLI appends after the error.
+ *
+ * Input:  "Command failed: beans graphql --json ...\nError: graphql: epic beans can only have milestone as parent, not epic\nUsage: beans graphql ..."
+ * Output: "Epic beans can only have milestone as parent, not epic"
+ */
+export function extractCliError(message: string): string {
+  // Match the text after "Error: " (optionally followed by "graphql: ") up to
+  // a newline or end of string, discarding any "Usage:" help block.
+  const match = /Error:\s+(?:graphql:\s+)?(.+?)(?:\nUsage:|\n|$)/s.exec(message);
+  if (!match) {
+    return capitalise(message);
+  }
+  const extracted = match[1].trim();
+  if (!extracted) {
+    return capitalise(message);
+  }
+  return capitalise(extracted);
+}
+
+function capitalise(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
  * Extract user-friendly error message from any error
  */
 export function getUserMessage(error: unknown): string {
@@ -119,7 +145,7 @@ export function getUserMessage(error: unknown): string {
   }
 
   if (error instanceof Error) {
-    return error.message;
+    return extractCliError(error.message);
   }
 
   return String(error);

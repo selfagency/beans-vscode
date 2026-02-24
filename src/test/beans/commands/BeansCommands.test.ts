@@ -634,4 +634,128 @@ describe('BeansCommands', () => {
     expect(executeCommand).not.toHaveBeenCalledWith('workbench.action.chat.open', expect.anything());
     expect(writeClipboardText).not.toHaveBeenCalled();
   });
+
+  describe('setParent', () => {
+    const milestone = makeBean({
+      id: 'ms-1',
+      code: 'ms-1',
+      type: 'milestone',
+      status: 'in-progress',
+      title: 'Milestone A',
+    });
+    const epic = makeBean({ id: 'ep-1', code: 'ep-1', type: 'epic', status: 'in-progress', title: 'Epic A' });
+    const feature = makeBean({ id: 'ft-1', code: 'ft-1', type: 'feature', status: 'in-progress', title: 'Feature A' });
+    const task = makeBean({ id: 'tk-1', code: 'tk-1', type: 'task', status: 'todo', title: 'Task A' });
+    const bug = makeBean({ id: 'bg-1', code: 'bg-1', type: 'bug', status: 'todo', title: 'Bug A' });
+    const allBeans = [milestone, epic, feature, task, bug];
+
+    async function runSetParentAndCaptureItems(bean: Bean, beans: Bean[]): Promise<vscode.QuickPickItem[]> {
+      service.listBeans.mockResolvedValueOnce(beans);
+      let capturedItems: vscode.QuickPickItem[] = [];
+      createQuickPickMock.mockImplementationOnce(() => {
+        const qp: any = {
+          title: '',
+          placeholder: '',
+          matchOnDescription: false,
+          _items: [] as vscode.QuickPickItem[],
+          get items() {
+            return this._items;
+          },
+          set items(v: vscode.QuickPickItem[]) {
+            this._items = v;
+            capturedItems = v;
+          },
+          buttons: [],
+          selectedItems: [],
+          onDidTriggerButton: vi.fn(),
+          onDidAccept: vi.fn(),
+          onDidHide: vi.fn((cb: () => void) => {
+            cb();
+          }),
+          show: vi.fn(),
+          dispose: vi.fn(),
+        };
+        return qp;
+      });
+      await (commands as any).setParent(bean);
+      return capturedItems;
+    }
+
+    beforeEach(() => {
+      commands.registerAll();
+    });
+
+    it('shows only milestone/epic/feature for a bug bean', async () => {
+      const items = await runSetParentAndCaptureItems(bug, allBeans);
+      const labels = items.map((i: any) => i.bean?.type ?? i.bean?.id);
+      expect(labels).toContain('milestone');
+      expect(labels).toContain('epic');
+      expect(labels).toContain('feature');
+      expect(labels).not.toContain('task');
+      expect(labels).not.toContain('bug');
+    });
+
+    it('shows only milestone/epic/feature for a task bean', async () => {
+      const items = await runSetParentAndCaptureItems(task, allBeans);
+      const labels = items.map((i: any) => i.bean?.type ?? i.bean?.id);
+      expect(labels).toContain('milestone');
+      expect(labels).toContain('epic');
+      expect(labels).toContain('feature');
+      expect(labels).not.toContain('task');
+      expect(labels).not.toContain('bug');
+    });
+
+    it('shows only milestone for an epic bean', async () => {
+      const items = await runSetParentAndCaptureItems(epic, allBeans);
+      const labels = items.map((i: any) => i.bean?.type ?? i.bean?.id);
+      expect(labels).toContain('milestone');
+      expect(labels).not.toContain('epic');
+      expect(labels).not.toContain('feature');
+      expect(labels).not.toContain('task');
+    });
+
+    it('shows a warning and no quick pick when no valid parents exist', async () => {
+      // Only beans of types that are invalid for an epic (non-milestone)
+      service.listBeans.mockResolvedValueOnce([epic, feature, task, bug]);
+      await (commands as any).setParent(epic);
+      expect(showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('epic can only be moved to: milestone'));
+      expect(createQuickPickMock).not.toHaveBeenCalled();
+    });
+
+    it('placeholder shows valid parent types', async () => {
+      service.listBeans.mockResolvedValueOnce(allBeans);
+      let capturedPlaceholder = '';
+      createQuickPickMock.mockImplementationOnce(() => {
+        const qp: any = {
+          title: '',
+          get placeholder() {
+            return capturedPlaceholder;
+          },
+          set placeholder(v: string) {
+            capturedPlaceholder = v;
+          },
+          matchOnDescription: false,
+          _items: [] as vscode.QuickPickItem[],
+          get items() {
+            return this._items;
+          },
+          set items(v: vscode.QuickPickItem[]) {
+            this._items = v;
+          },
+          buttons: [],
+          selectedItems: [],
+          onDidTriggerButton: vi.fn(),
+          onDidAccept: vi.fn(),
+          onDidHide: vi.fn((cb: () => void) => {
+            cb();
+          }),
+          show: vi.fn(),
+          dispose: vi.fn(),
+        };
+        return qp;
+      });
+      await (commands as any).setParent(bug);
+      expect(capturedPlaceholder).toMatch(/milestone.*epic.*feature/);
+    });
+  });
 });
