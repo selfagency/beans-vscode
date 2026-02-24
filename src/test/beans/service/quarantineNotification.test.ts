@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as vscode from 'vscode';
 import * as path from 'path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as vscode from 'vscode';
 import { BeansService } from '../../../../src/beans/service/BeansService';
 
 describe('BeansService.notifyMalformedBeanQuarantined', () => {
@@ -20,14 +20,14 @@ describe('BeansService.notifyMalformedBeanQuarantined', () => {
   it('shows concise filename-only notification when quarantinedPath provided', () => {
     const svc = new BeansService('/tmp');
     const rawBean: any = { path: '.beans/foobar.md', id: 'foobar' };
-    const quarantined = path.join('/tmp', '.beans', '.quarantine', 'foobar.md');
+    const quarantined = path.join('/tmp', '.beans', '.quarantine', 'foobar.md.fixme');
 
     (svc as any).notifyMalformedBeanQuarantined(rawBean, quarantined);
 
     expect(showWarningSpy).toHaveBeenCalled();
     const msg = showWarningSpy.mock.calls[0][0] as string;
     expect(msg).toContain('Bean file quarantined:');
-    expect(msg).toContain('foobar.md');
+    expect(msg).toContain('foobar.md.fixme');
     // Ensure the message does not include the full absolute path
     expect(msg).not.toContain('/tmp');
   });

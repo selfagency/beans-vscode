@@ -700,7 +700,10 @@ export class BeansService {
 
   private async quarantineMalformedBeanAbsolutePath(sourcePath: string): Promise<string | undefined> {
     const filename = path.basename(sourcePath);
-    const targetPath = path.join(this.quarantineDir, filename);
+    // Avoid quarantined files being re-detected as `.md` files: append a marker
+    // suffix so they no longer match `*.md` discovery patterns.
+    const quarantinedFilename = filename.toLowerCase().endsWith('.md') ? `${filename}.fixme` : filename;
+    const targetPath = path.join(this.quarantineDir, quarantinedFilename);
 
     try {
       await mkdir(this.quarantineDir, { recursive: true });
