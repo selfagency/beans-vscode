@@ -849,5 +849,8 @@ export function deactivate(): void {
   chatIntegration = undefined;
   aiArtifactSyncInProgress = false;
   initPromptDismissed = false;
+  // Clear the static singleton before disposing the current logger so that
+  // re-activation creates a fresh BeansOutput (avoids using a disposed OutputChannel).
+  BeansOutput.clearInstance?.();
   logger?.dispose();
 }
