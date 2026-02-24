@@ -205,8 +205,8 @@ describe('BeansDragAndDropController', () => {
     );
 
     expect(service.updateBean).toHaveBeenCalledWith('bean-1', { parent: 'bean-2' });
-    expect(showInformationMessage).toHaveBeenCalledWith(expect.stringContaining('re-parented to Target'));
-    expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('re-parented to Target'));
+    expect(showInformationMessage).toHaveBeenCalledWith(expect.stringContaining('moved to Target'));
+    expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('moved to Target'));
   });
 
   it('supports dropping to root (no parent)', async () => {
@@ -286,8 +286,8 @@ describe('BeansDragAndDropController', () => {
       { isCancellationRequested: false } as any
     );
 
-    expect(mockLogger.info).toHaveBeenCalledWith('Bean bean-1 re-parented to bean-2');
-    expect(showInformationMessage).toHaveBeenCalledWith('bean-1 re-parented to ');
+    expect(mockLogger.info).toHaveBeenCalledWith('Bean bean-1 moved to bean-2');
+    expect(showInformationMessage).toHaveBeenCalledWith('bean-1 moved to ');
   });
 
   it('ignores drops when cancelled or without transferable bean', async () => {

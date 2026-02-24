@@ -76,7 +76,7 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
       await this.reparentBean(draggedBean, targetBean);
       const draggedName = draggedBean.title || draggedBean.code || draggedBean.id;
       const targetName = targetBean ? targetBean.title : 'root';
-      vscode.window.showInformationMessage(`${draggedName} re-parented to ${targetName}`);
+      vscode.window.showInformationMessage(`${draggedName} moved to ${targetName}`);
     } catch (error) {
       const message = getUserMessage(error);
       logger.error(message, error as Error);
@@ -154,7 +154,7 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
     const draggedName = draggedBean.title || draggedBean.code || draggedBean.id;
     const targetName = targetBean ? targetBean.title : 'root (no parent)';
     const result = await vscode.window.showInformationMessage(
-      `Re-parent ${draggedName} to ${targetName}?`,
+      `Move ${draggedName} to ${targetName}?`,
       { modal: true },
       'Move'
     );
@@ -171,6 +171,6 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
 
     const beanName = bean.title || bean.code || bean.id;
     const parentName = newParent ? newParent.title || newParent.code || newParent.id : 'root';
-    logger.info(`Bean ${beanName} re-parented to ${parentName}`);
+    logger.info(`Bean ${beanName} moved to ${parentName}`);
   }
 }

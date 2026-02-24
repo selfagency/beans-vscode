@@ -718,9 +718,7 @@ describe('BeansCommands', () => {
       // Only beans of types that are invalid for an epic (non-milestone)
       service.listBeans.mockResolvedValueOnce([epic, feature, task, bug]);
       await (commands as any).setParent(epic);
-      expect(showWarningMessage).toHaveBeenCalledWith(
-        expect.stringContaining('epic can only be parented to: milestone')
-      );
+      expect(showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('epic can only be moved to: milestone'));
       expect(createQuickPickMock).not.toHaveBeenCalled();
     });
 

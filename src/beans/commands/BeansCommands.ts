@@ -886,7 +886,7 @@ export class BeansCommands {
     try {
       let bean = await this.resolveBeanAsync(arg);
       if (!bean) {
-        bean = await this.pickBean('Select bean to set parent');
+        bean = await this.pickBean('Select bean to move');
         if (!bean) {
           return;
         }
@@ -919,7 +919,7 @@ export class BeansCommands {
       if (potentialParents.length === 0) {
         const typeList = validParentTypes ? validParentTypes.join(', ') : 'any type';
         vscode.window.showWarningMessage(
-          `No valid parents found for ${bean.code}. A ${bean.type} can only be parented to: ${typeList}.`
+          `No valid destinations found for ${bean.code}. A ${bean.type} can only be moved to: ${typeList}.`
         );
         return;
       }
@@ -942,7 +942,7 @@ export class BeansCommands {
           : 'Select a parent';
 
       const qp = vscode.window.createQuickPick<ParentPickItem>();
-      qp.title = `Set Parent for ${bean.code}`;
+      qp.title = `Move ${bean.code} to…`;
       qp.placeholder = typeHint;
       qp.matchOnDescription = true;
       qp.items = toItems(potentialParents);
