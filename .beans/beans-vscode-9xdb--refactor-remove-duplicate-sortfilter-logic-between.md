@@ -6,7 +6,8 @@ branch: refactor/9xdb-remove-duplicate-sortfilter-logic
 type: task
 priority: high
 created_at: 2026-02-24T13:49:09Z
-updated_at: 2026-02-24T14:06:00Z
+updated_at: 2026-02-24T14:15:00Z
+pr_url: https://github.com/selfagency/beans-vscode/pull/93
 ---
 
 ## Problem
