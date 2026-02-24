@@ -5,6 +5,7 @@ status: in-progress
 type: bug
 priority: critical
 branch: fix/zreb-beans-init-fails
+pr: https://github.com/selfagency/beans-vscode/pull/72
 created_at: 2026-02-22T06:53:23Z
 updated_at: 2026-02-24T01:23:01Z
 ---
@@ -23,4 +24,5 @@ without `--json`. Fix: add `'--json'` to the args array in `init()`.
 - [x] Write failing test
 - [x] Add `--json` flag to `BeansService.init()`
 - [x] Verify test passes (82/82 green, compile clean)
-- [ ] Commit and push
+- [x] Commit and push
+- [x] Open draft PR #72
