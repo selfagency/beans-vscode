@@ -1,11 +1,12 @@
 ---
 # beans-vscode-42zk
 title: 'fix: simplify escapeHtml — remove misleading dead-object pattern and spurious as any cast'
-status: todo
+status: in-progress
 type: task
 priority: high
 created_at: 2026-02-24T13:49:13Z
 updated_at: 2026-02-24T13:49:13Z
+branch: fix/42zk-simplify-escapehtml
 ---
 
 ## Problem
