@@ -1,4 +1,9 @@
 import { marked } from 'marked';
+
+// Configure marked globally to avoid deprecation warnings about default
+// options (mangle/headerIds). Setting these here ensures tests and other
+// modules using `marked` see consistent behavior.
+marked.setOptions({ mangle: false, headerIds: false });
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
 import { Bean } from '../model';
