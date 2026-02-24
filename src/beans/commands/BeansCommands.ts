@@ -29,15 +29,14 @@ import {
   Bean,
   BeansCLINotFoundError,
   BeansConcurrencyError,
-  VALID_PARENT_TYPES,
   BeansConfigMissingError,
   BeansIntegrityCheckFailedError,
   BeansJSONParseError,
   BeansPermissionError,
   BeansTimeoutError,
   getUserMessage,
+  VALID_PARENT_TYPES,
 } from '../model';
-import { BeansPreviewProvider } from '../preview';
 import { BeansService } from '../service';
 import { BeansFilterManager, BeanTreeItem } from '../tree';
 
@@ -224,7 +223,6 @@ export class BeansCommands {
   constructor(
     private readonly service: BeansService,
     private readonly context: vscode.ExtensionContext,
-    private readonly previewProvider: BeansPreviewProvider,
     private readonly filterManager: BeansFilterManager,
     private readonly configManager: BeansConfigManager,
     private readonly detailsProvider?: BeansDetailsViewProvider
@@ -535,15 +533,13 @@ export class BeansCommands {
         }
       }
 
-      // Open bean in preview
-      const previewUri = this.previewProvider.getBeanPreviewUri(bean.id);
-      const doc = await vscode.workspace.openTextDocument(previewUri);
-      await vscode.window.showTextDocument(doc, {
-        preview: true,
-        preserveFocus: false,
-      });
+      // Load bean into details view and focus the panel
+      if (this.detailsProvider) {
+        await this.detailsProvider.showBean(bean);
+        await vscode.commands.executeCommand('beans.details.focus');
+      }
 
-      logger.info(`Viewed bean ${bean.code} in preview`);
+      logger.info(`Viewed bean ${bean.code} in details panel`);
     } catch (error) {
       handleBeansError(error, 'Failed to view bean');
     }

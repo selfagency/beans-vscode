@@ -34,7 +34,6 @@ const showTextDocument = vi.hoisted(() => vi.fn());
 const createQuickPickMock = vi.hoisted(() => vi.fn());
 const createWebviewPanel = vi.hoisted(() => vi.fn());
 const executeCommand = vi.hoisted(() => vi.fn());
-const openTextDocument = vi.hoisted(() => vi.fn());
 const openExternal = vi.hoisted(() => vi.fn());
 const writeClipboardText = vi.hoisted(() => vi.fn());
 const logger = vi.hoisted(() => ({
@@ -86,7 +85,6 @@ vi.mock('vscode', () => {
     },
     workspace: {
       workspaceFolders: [{ uri: Uri.file('/ws') }],
-      openTextDocument,
       getConfiguration: vi.fn(() => ({
         get: vi.fn((key: string, defaultValue?: unknown) => {
           if (key === 'hideClosedInQuickPick') {
@@ -143,7 +141,6 @@ function makeBean(overrides: Partial<Bean> = {}): Bean {
 
 describe('BeansCommands', () => {
   let service: any;
-  let previewProvider: any;
   let filterManager: any;
   let configManager: any;
   let detailsProvider: any;
@@ -198,10 +195,6 @@ describe('BeansCommands', () => {
       graphqlSchema: vi.fn(async () => 'type Query { beans: [Bean] }'),
     };
 
-    previewProvider = {
-      getBeanPreviewUri: vi.fn((id: string) => ({ path: `beans-preview:${id}`, query: id })),
-    };
-
     filterManager = {
       getFilter: vi.fn(() => undefined),
       showFilterUI: vi.fn(async () => ({ text: 'new' })),
@@ -209,13 +202,12 @@ describe('BeansCommands', () => {
     };
 
     configManager = { open: vi.fn(async () => undefined) };
-    detailsProvider = { currentBean: undefined };
+    detailsProvider = { currentBean: undefined, showBean: vi.fn(async () => undefined) };
     context = { subscriptions: [], extensionUri: { path: '/ext' } };
 
     commands = new BeansCommands(
       service,
       context as unknown as vscode.ExtensionContext,
-      previewProvider,
       filterManager,
       configManager,
       detailsProvider
@@ -231,21 +223,17 @@ describe('BeansCommands', () => {
     expect(context.subscriptions.length).toBeGreaterThan(5);
   });
 
-  it('views bean preview from direct bean argument', async () => {
+  it('loads bean into details panel from direct bean argument', async () => {
     const bean = makeBean();
-    openTextDocument.mockResolvedValueOnce({ uri: 'doc' });
 
     await (commands as any).viewBean(bean);
 
-    expect(previewProvider.getBeanPreviewUri).toHaveBeenCalledWith(bean.id);
-    expect(openTextDocument).toHaveBeenCalled();
-    expect(showTextDocument).toHaveBeenCalled();
+    expect(detailsProvider.showBean).toHaveBeenCalledWith(bean);
+    expect(executeCommand).toHaveBeenCalledWith('beans.details.focus');
   });
 
-  it('handles CLI-not-found errors through helper path', async () => {
-    previewProvider.getBeanPreviewUri.mockImplementationOnce(() => {
-      throw new BeansCLINotFoundError('missing cli');
-    });
+  it('handles CLI-not-found errors when viewing bean', async () => {
+    detailsProvider.showBean.mockRejectedValueOnce(new BeansCLINotFoundError('missing cli'));
     showErrorMessage.mockResolvedValueOnce('Install Instructions');
 
     await (commands as any).viewBean(makeBean({ id: 'abc' }));
@@ -688,7 +676,7 @@ describe('BeansCommands', () => {
       expect(showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('Failed to regenerate Copilot artifacts'));
     });
   });
-    
+
   describe('setParent', () => {
     const milestone = makeBean({
       id: 'ms-1',
