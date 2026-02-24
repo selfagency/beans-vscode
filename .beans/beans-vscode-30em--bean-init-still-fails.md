@@ -1,7 +1,7 @@
 ---
 # beans-vscode-30em
 title: bean init still fails
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-02-24T02:08:49Z

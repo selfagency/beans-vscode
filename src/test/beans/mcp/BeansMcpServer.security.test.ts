@@ -66,21 +66,23 @@ describe('BeansMcpServer security review', () => {
 
   describe('Path Traversal (MCP10)', () => {
     it('should reject read_bean_file with path outside .beans', async () => {
-      const readTool = toolHandlers.get('beans_vscode_read_bean_file')!;
+      const fileTool = toolHandlers.get('beans_vscode_bean_file')!;
       // MCP10-A: Should reject paths leading outside the .beans folder
       // Already implemented in resolveBeanFilePath
-      await expect(readTool({ path: '../../etc/passwd' })).rejects.toThrow('Path must stay within .beans directory');
+      await expect(fileTool({ operation: 'read', path: '../../etc/passwd' })).rejects.toThrow(
+        'Path must stay within .beans directory'
+      );
     });
 
     it('should reject read_output_log if BEANS_VSCODE_OUTPUT_LOG points outside allowed roots', async () => {
       const originalEnv = process.env.BEANS_VSCODE_OUTPUT_LOG;
       process.env.BEANS_VSCODE_OUTPUT_LOG = '/etc/passwd';
 
-      const readOutputTool = toolHandlers.get('beans_vscode_read_output')!;
+      const outputTool = toolHandlers.get('beans_vscode_output')!;
 
       try {
         // MCP10-B: Path Traversal via environment variables
-        await expect(readOutputTool({})).rejects.toThrow(
+        await expect(outputTool({ operation: 'read' })).rejects.toThrow(
           'Output log path must stay within the workspace or VS Code log directory'
         );
       } finally {
@@ -139,10 +141,10 @@ describe('BeansMcpServer security review', () => {
 
   describe('Token Exposure (MCP01)', () => {
     it('should NOT pass all environment variables to the CLI', async () => {
-      const refreshTool = toolHandlers.get('beans_vscode_refresh')!;
+      const refreshTool = toolHandlers.get('beans_vscode_query')!;
       process.env.SECRET_TOKEN = 'super-secret';
 
-      await refreshTool({});
+      await refreshTool({ operation: 'refresh' } as any);
 
       expect(execFileMock).toHaveBeenCalled();
       const call = execFileMock.mock.calls[0];

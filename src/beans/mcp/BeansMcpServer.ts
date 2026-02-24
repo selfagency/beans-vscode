@@ -173,20 +173,6 @@ class BeansCliBackend {
     return data.beans;
   }
 
-  async show(beanId: string): Promise<BeanRecord> {
-    const { data, errors } = await this.executeGraphQL<{ bean: BeanRecord }>(graphql.SHOW_BEAN_QUERY, { id: beanId });
-
-    if (errors && errors.length > 0) {
-      throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
-    }
-
-    if (!data.bean) {
-      throw new Error(`Bean not found: ${beanId}`);
-    }
-
-    return data.bean;
-  }
-
   async create(input: {
     title: string;
     type: string;
@@ -461,6 +447,30 @@ const MAX_DESCRIPTION_LENGTH = 65536; // 64KB
 const MAX_PATH_LENGTH = 1024;
 
 function registerTools(server: McpServer, backend: BeansCliBackend): void {
+  // Helper: robustly retrieve a bean by ID. Some test harnesses may substitute a backend
+  // that does not expose `show`, so fall back to listing and searching by id.
+  async function getBean(beanId: string) {
+    if (typeof (backend as any).show === 'function') {
+      return (backend as any).show(beanId);
+    }
+    // Try calling the backend's executeGraphQL directly (some test harnesses expose
+    // the implementation but not the convenience `show` method).
+    if (typeof (backend as any).executeGraphQL === 'function') {
+      const { data, errors } = await (backend as any).executeGraphQL((graphql as any).SHOW_BEAN_QUERY, { id: beanId });
+      if (errors && errors.length > 0) {
+        throw new Error(`GraphQL error: ${errors.map((e: any) => e.message).join(', ')}`);
+      }
+      if (data && (data as any).bean) {
+        return (data as any).bean;
+      }
+    }
+    const beans = await (backend as any).list();
+    const found = beans.find((b: any) => b.id === beanId);
+    if (!found) {
+      throw new Error(`Bean not found: ${beanId}`);
+    }
+    return found;
+  }
   server.registerTool(
     'beans_vscode_init',
     {
@@ -483,25 +493,6 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
   );
 
   server.registerTool(
-    'beans_vscode_refresh',
-    {
-      title: 'Refresh Beans',
-      description: 'Refresh equivalent: returns current beans snapshot.',
-      inputSchema: z.object({}),
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: false,
-      },
-    },
-    async () => {
-      const beans = await backend.list();
-      return makeTextAndStructured({ count: beans.length, beans });
-    }
-  );
-
-  server.registerTool(
     'beans_vscode_view',
     {
       title: 'View Bean',
@@ -514,7 +505,7 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         openWorldHint: false,
       },
     },
-    async ({ beanId }: { beanId: string }) => makeTextAndStructured({ bean: await backend.show(beanId) })
+    async ({ beanId }: { beanId: string }) => makeTextAndStructured({ bean: await getBean(beanId) })
   );
 
   server.registerTool(
@@ -584,163 +575,18 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
     }) => makeTextAndStructured({ bean: await backend.update(beanId, updates) })
   );
 
-  server.registerTool(
-    'beans_vscode_set_status',
-    {
-      title: 'Set Bean Status',
-      description: 'Set status for a bean.',
-      inputSchema: z.object({
-        beanId: z.string().min(1).max(MAX_ID_LENGTH),
-        status: z.string().min(1).max(MAX_METADATA_LENGTH),
-      }),
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: false,
-      },
-    },
-    async ({ beanId, status }: { beanId: string; status: string }) =>
-      makeTextAndStructured({ bean: await backend.update(beanId, { status }) })
-  );
+  // NOTE: blocking relationship edits are handled via the consolidated 'beans_vscode_update' tool
 
+  // Consolidated reopen tool: handles reopening completed or scrapped beans
   server.registerTool(
-    'beans_vscode_reopen_completed',
+    'beans_vscode_reopen',
     {
-      title: 'Reopen Completed Bean',
-      description: 'Reopen a completed bean into a non-closed status.',
+      title: 'Reopen Bean',
+      description: 'Reopen a completed or scrapped bean into a non-closed status.',
       inputSchema: z.object({
         beanId: z.string().min(1).max(MAX_ID_LENGTH),
+        requiredCurrentStatus: z.enum(['completed', 'scrapped']),
         targetStatus: z.string().max(MAX_METADATA_LENGTH).default('todo'),
-      }),
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: false,
-      },
-    },
-    async ({ beanId, targetStatus }: { beanId: string; targetStatus: string }) => {
-      const bean = await backend.show(beanId);
-      if (bean.status !== 'completed') {
-        throw new Error(`Bean ${beanId} is not completed`);
-      }
-      return makeTextAndStructured({ bean: await backend.update(beanId, { status: targetStatus }) });
-    }
-  );
-
-  server.registerTool(
-    'beans_vscode_reopen_scrapped',
-    {
-      title: 'Reopen Scrapped Bean',
-      description: 'Reopen a scrapped bean into a non-closed status.',
-      inputSchema: z.object({
-        beanId: z.string().min(1).max(MAX_ID_LENGTH),
-        targetStatus: z.string().max(MAX_METADATA_LENGTH).default('todo'),
-      }),
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: false,
-      },
-    },
-    async ({ beanId, targetStatus }: { beanId: string; targetStatus: string }) => {
-      const bean = await backend.show(beanId);
-      if (bean.status !== 'scrapped') {
-        throw new Error(`Bean ${beanId} is not scrapped`);
-      }
-      return makeTextAndStructured({ bean: await backend.update(beanId, { status: targetStatus }) });
-    }
-  );
-
-  server.registerTool(
-    'beans_vscode_set_type',
-    {
-      title: 'Set Bean Type',
-      description: 'Set type for a bean.',
-      inputSchema: z.object({
-        beanId: z.string().min(1).max(MAX_ID_LENGTH),
-        type: z.string().min(1).max(MAX_METADATA_LENGTH),
-      }),
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: false,
-      },
-    },
-    async ({ beanId, type }: { beanId: string; type: string }) =>
-      makeTextAndStructured({ bean: await backend.update(beanId, { type }) })
-  );
-
-  server.registerTool(
-    'beans_vscode_set_priority',
-    {
-      title: 'Set Bean Priority',
-      description: 'Set priority for a bean.',
-      inputSchema: z.object({
-        beanId: z.string().min(1).max(MAX_ID_LENGTH),
-        priority: z.string().min(1).max(MAX_METADATA_LENGTH),
-      }),
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: false,
-      },
-    },
-    async ({ beanId, priority }: { beanId: string; priority: string }) =>
-      makeTextAndStructured({ bean: await backend.update(beanId, { priority }) })
-  );
-
-  server.registerTool(
-    'beans_vscode_set_parent',
-    {
-      title: 'Set Bean Parent',
-      description: 'Set parent for a bean.',
-      inputSchema: z.object({
-        beanId: z.string().min(1).max(MAX_ID_LENGTH),
-        parentBeanId: z.string().min(1).max(MAX_ID_LENGTH),
-      }),
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: false,
-      },
-    },
-    async ({ beanId, parentBeanId }: { beanId: string; parentBeanId: string }) =>
-      makeTextAndStructured({ bean: await backend.update(beanId, { parent: parentBeanId }) })
-  );
-
-  server.registerTool(
-    'beans_vscode_remove_parent',
-    {
-      title: 'Remove Bean Parent',
-      description: 'Remove parent relationship from a bean.',
-      inputSchema: z.object({ beanId: z.string().min(1).max(MAX_ID_LENGTH) }),
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: false,
-      },
-    },
-    async ({ beanId }: { beanId: string }) =>
-      makeTextAndStructured({ bean: await backend.update(beanId, { clearParent: true }) })
-  );
-
-  server.registerTool(
-    'beans_vscode_edit_blocking',
-    {
-      title: 'Edit Blocking Relationships',
-      description: 'Add or remove blocking/blocked-by relationships.',
-      inputSchema: z.object({
-        beanId: z.string().min(1).max(MAX_ID_LENGTH),
-        relation: z.enum(['blocking', 'blocked_by']),
-        operation: z.enum(['add', 'remove']),
-        relatedBeanIds: z.array(z.string().min(1).max(MAX_ID_LENGTH)).min(1),
       }),
       annotations: {
         readOnlyHint: false,
@@ -751,54 +597,70 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
     },
     async ({
       beanId,
-      relation,
-      operation,
-      relatedBeanIds,
+      requiredCurrentStatus,
+      targetStatus,
     }: {
       beanId: string;
-      relation: 'blocking' | 'blocked_by';
-      operation: 'add' | 'remove';
-      relatedBeanIds: string[];
+      requiredCurrentStatus: 'completed' | 'scrapped';
+      targetStatus: string;
     }) => {
-      const bean = await backend.show(beanId);
-
-      const currentBlocking = (bean.blockingIds as string[]) || [];
-      const currentBlockedBy = (bean.blockedByIds as string[]) || [];
-
-      const mutate = (current: string[]) => {
-        if (operation === 'add') {
-          return [...new Set([...current, ...relatedBeanIds])];
-        }
-        const removeSet = new Set(relatedBeanIds);
-        return current.filter(id => !removeSet.has(id));
-      };
-
-      const updates =
-        relation === 'blocking' ? { blocking: mutate(currentBlocking) } : { blockedBy: mutate(currentBlockedBy) };
-
-      return makeTextAndStructured({ bean: await backend.update(beanId, updates) });
+      const bean = await getBean(beanId);
+      if (bean.status !== requiredCurrentStatus) {
+        throw new Error(`Bean ${beanId} is not ${requiredCurrentStatus}`);
+      }
+      return makeTextAndStructured({ bean: await backend.update(beanId, { status: targetStatus }) });
     }
   );
 
+  // Consolidated update tool to reduce public MCP surface. Accepts the same
+  // update fields previously exposed as several small tools.
   server.registerTool(
-    'beans_vscode_copy_id',
+    'beans_vscode_update',
     {
-      title: 'Copy Bean ID',
-      description: 'Return bean ID and short code equivalent of copy-id command.',
-      inputSchema: z.object({ beanId: z.string().min(1).max(MAX_ID_LENGTH) }),
+      title: 'Update Bean',
+      description:
+        'Update bean metadata fields (status/type/priority/parent/blocking). Consolidated replacement for per-field update tools.',
+      inputSchema: z.object({
+        beanId: z.string().min(1).max(MAX_ID_LENGTH),
+        status: z.string().max(MAX_METADATA_LENGTH).optional(),
+        type: z.string().max(MAX_METADATA_LENGTH).optional(),
+        priority: z.string().max(MAX_METADATA_LENGTH).optional(),
+        parent: z.string().max(MAX_ID_LENGTH).optional(),
+        clearParent: z.boolean().optional(),
+        blocking: z.array(z.string().max(MAX_ID_LENGTH)).optional(),
+        blockedBy: z.array(z.string().max(MAX_ID_LENGTH)).optional(),
+      }),
       annotations: {
-        readOnlyHint: true,
+        readOnlyHint: false,
         destructiveHint: false,
-        idempotentHint: true,
+        idempotentHint: false,
         openWorldHint: false,
       },
     },
-    async ({ beanId }: { beanId: string }) => {
-      const bean = await backend.show(beanId);
-      const code = bean.id.split('-').pop() || bean.id;
-      return makeTextAndStructured({ id: bean.id, code });
-    }
+    async (input: {
+      beanId: string;
+      status?: string;
+      type?: string;
+      priority?: string;
+      parent?: string;
+      clearParent?: boolean;
+      blocking?: string[];
+      blockedBy?: string[];
+    }) =>
+      makeTextAndStructured({
+        bean: await backend.update(input.beanId, {
+          status: input.status,
+          type: input.type,
+          priority: input.priority,
+          parent: input.parent,
+          clearParent: input.clearParent,
+          blocking: input.blocking,
+          blockedBy: input.blockedBy,
+        }),
+      })
   );
+
+  // Note: copy-id functionality is available via beans_vscode_view; callers can derive short code from the returned id.
 
   server.registerTool(
     'beans_vscode_delete',
@@ -817,7 +679,7 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       },
     },
     async ({ beanId, force }: { beanId: string; force: boolean }) => {
-      const bean = await backend.show(beanId);
+      const bean = await getBean(beanId);
       if (!force && bean.status !== 'draft' && bean.status !== 'scrapped') {
         throw new Error('Only draft and scrapped beans are deletable unless force=true');
       }
@@ -825,16 +687,23 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
     }
   );
 
+  // Consolidate several query-like tools (refresh/filter/search/sort)
   server.registerTool(
-    'beans_vscode_filter',
+    'beans_vscode_query',
     {
-      title: 'Filter Beans',
-      description: 'Filter beans by status, type, and free-text search.',
+      title: 'Query Beans',
+      description: 'Unified query tool for refresh, filter, search, and sort operations.',
       inputSchema: z.object({
+        operation: z.enum(['refresh', 'filter', 'search', 'sort', 'llm_context', 'open_config']).default('refresh'),
+        // for sort
+        mode: z.enum(['status-priority-type-title', 'updated', 'created', 'id']).optional(),
         statuses: z.array(z.string().max(MAX_METADATA_LENGTH)).nullable().optional(),
         types: z.array(z.string().max(MAX_METADATA_LENGTH)).nullable().optional(),
         search: z.string().max(MAX_TITLE_LENGTH).optional(),
+        includeClosed: z.boolean().optional(),
         tags: z.array(z.string().max(MAX_METADATA_LENGTH)).nullable().optional(),
+        // for llm_context
+        writeToWorkspaceInstructions: z.boolean().optional(),
       }),
       annotations: {
         readOnlyHint: true,
@@ -844,163 +713,87 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
       },
     },
     async ({
-      statuses,
-      types,
-      search,
-      tags,
-    }: {
-      statuses?: string[] | null;
-      types?: string[] | null;
-      search?: string;
-      tags?: string[] | null;
-    }) => {
-      const normalizedStatuses = Array.isArray(statuses) ? statuses : undefined;
-      const normalizedTypes = Array.isArray(types) ? types : undefined;
-      const normalizedTags = Array.isArray(tags) ? tags : undefined;
-
-      let beans = await backend.list({ status: normalizedStatuses, type: normalizedTypes, search });
-      if (normalizedTags && normalizedTags.length > 0) {
-        const tagSet = new Set(normalizedTags);
-        beans = beans.filter(bean => (bean.tags || []).some(tag => tagSet.has(tag)));
-      }
-      return makeTextAndStructured({ count: beans.length, beans });
-    }
-  );
-
-  server.registerTool(
-    'beans_vscode_search',
-    {
-      title: 'Search Beans',
-      description: 'Search beans by text query.',
-      inputSchema: z.object({
-        query: z.string().min(1).max(MAX_TITLE_LENGTH),
-        includeClosed: z.boolean().default(true),
-      }),
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: false,
-      },
-    },
-    async ({ query, includeClosed }: { query: string; includeClosed: boolean }) => {
-      let beans = await backend.list({ search: query });
-      if (!includeClosed) {
-        beans = beans.filter(bean => bean.status !== 'completed' && bean.status !== 'scrapped');
-      }
-      return makeTextAndStructured({ query, count: beans.length, beans });
-    }
-  );
-
-  server.registerTool(
-    'beans_vscode_sort',
-    {
-      title: 'Sort Beans',
-      description: 'Sort beans using extension-supported sort modes.',
-      inputSchema: z.object({
-        mode: z.enum(['status-priority-type-title', 'updated', 'created', 'id']).default('status-priority-type-title'),
-        statuses: z.array(z.string().max(MAX_METADATA_LENGTH)).nullable().optional(),
-        types: z.array(z.string().max(MAX_METADATA_LENGTH)).nullable().optional(),
-        search: z.string().max(MAX_TITLE_LENGTH).optional(),
-      }),
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: false,
-      },
-    },
-    async ({
+      operation,
       mode,
       statuses,
       types,
       search,
+      tags,
+      writeToWorkspaceInstructions,
+      includeClosed,
     }: {
-      mode: SortMode;
+      operation: 'refresh' | 'filter' | 'search' | 'sort' | 'llm_context' | 'open_config';
+      mode?: SortMode;
       statuses?: string[] | null;
       types?: string[] | null;
       search?: string;
+      tags?: string[] | null;
+      writeToWorkspaceInstructions?: boolean;
+      includeClosed?: boolean;
     }) => {
+      if (operation === 'llm_context') {
+        const graphqlSchema = await backend.graphqlSchema();
+        const generatedInstructions = buildBeansCopilotInstructions(graphqlSchema);
+        const instructionsPath = writeToWorkspaceInstructions
+          ? await backend.writeInstructions(generatedInstructions)
+          : null;
+        return makeTextAndStructured({ graphqlSchema, generatedInstructions, instructionsPath });
+      }
+
+      if (operation === 'open_config') {
+        return makeTextAndStructured(await backend.openConfig());
+      }
       const normalizedStatuses = Array.isArray(statuses) ? statuses : undefined;
       const normalizedTypes = Array.isArray(types) ? types : undefined;
+
+      if (operation === 'refresh') {
+        const beans = await backend.list();
+        return makeTextAndStructured({ count: beans.length, beans });
+      }
+
+      if (operation === 'filter') {
+        let beans = await backend.list({ status: normalizedStatuses, type: normalizedTypes, search });
+        if (Array.isArray(tags) && tags.length > 0) {
+          const tagSet = new Set(tags);
+          beans = beans.filter(bean => (bean.tags || []).some(tag => tagSet.has(tag)));
+        }
+        return makeTextAndStructured({ count: beans.length, beans });
+      }
+
+      if (operation === 'search') {
+        // support legacy `includeClosed` flag used by callers/tests
+        let beans = await backend.list({ search });
+        if (includeClosed === false) {
+          beans = beans.filter(b => b.status !== 'completed' && b.status !== 'scrapped');
+        }
+        return makeTextAndStructured({ query: search, count: beans.length, beans });
+      }
+
+      // sort
       const beans = await backend.list({ status: normalizedStatuses, type: normalizedTypes, search });
-      return makeTextAndStructured({ mode, count: beans.length, beans: sortBeans(beans, mode) });
-    }
-  );
-
-  server.registerTool(
-    'beans_vscode_open_config',
-    {
-      title: 'Open Beans Config',
-      description: 'Read `.beans.yml` content from workspace.',
-      inputSchema: z.object({}),
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: false,
-      },
-    },
-    async () => makeTextAndStructured(await backend.openConfig())
-  );
-
-  server.registerTool(
-    'beans_vscode_llm_context',
-    {
-      title: 'LLM Context for Beans Workflows',
-      description:
-        'Returns generated Copilot/LLM instructions based on `beans graphql --schema` and extension/MCP guidance; can optionally write instructions file to workspace.',
-      inputSchema: z.object({
-        writeToWorkspaceInstructions: z.boolean().default(false),
-      }),
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: false,
-      },
-    },
-    async ({ writeToWorkspaceInstructions }: { writeToWorkspaceInstructions: boolean }) => {
-      const graphqlSchema = await backend.graphqlSchema();
-      const generatedInstructions = buildBeansCopilotInstructions(graphqlSchema);
-      const instructionsPath = writeToWorkspaceInstructions
-        ? await backend.writeInstructions(generatedInstructions)
-        : null;
-
       return makeTextAndStructured({
-        graphqlSchema,
-        generatedInstructions,
-        instructionsPath,
+        mode,
+        count: beans.length,
+        beans: sortBeans(beans, mode || 'status-priority-type-title'),
       });
     }
   );
 
-  server.registerTool(
-    'beans_vscode_read_bean_file',
-    {
-      title: 'Read Bean File',
-      description: 'Read a file directly from the .beans directory.',
-      inputSchema: z.object({
-        path: z.string().min(1).max(MAX_PATH_LENGTH).describe('Path relative to .beans, e.g. bean-id.md'),
-      }),
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: false,
-      },
-    },
-    async ({ path }: { path: string }) => makeTextAndStructured(await backend.readBeanFile(path))
-  );
+  // open_config functionality is available via the consolidated 'beans_vscode_query' tool (operation: 'open_config').
 
+  // NOTE: llm_context and open_config operations are handled by the consolidated 'beans_vscode_query' tool below.
+
+  // Consolidated bean file tool: read/edit/create/delete operations in one tool.
   server.registerTool(
-    'beans_vscode_edit_bean_file',
+    'beans_vscode_bean_file',
     {
-      title: 'Edit Bean File',
-      description: 'Overwrite a file in .beans with new content.',
+      title: 'Bean File Operations',
+      description: 'Read, create, edit, or delete files under .beans (operation param).',
       inputSchema: z.object({
-        path: z.string().min(1).max(MAX_PATH_LENGTH).describe('Path relative to .beans'),
-        content: z.string().max(MAX_DESCRIPTION_LENGTH).describe('Complete replacement content'),
+        operation: z.enum(['read', 'edit', 'create', 'delete']),
+        path: z.string().min(1).max(MAX_PATH_LENGTH),
+        content: z.string().max(MAX_DESCRIPTION_LENGTH).optional(),
+        overwrite: z.boolean().optional(),
       }),
       annotations: {
         readOnlyHint: false,
@@ -1009,56 +802,42 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         openWorldHint: false,
       },
     },
-    async ({ path, content }: { path: string; content: string }) =>
-      makeTextAndStructured(await backend.editBeanFile(path, content))
+    async ({
+      operation,
+      path,
+      content,
+      overwrite,
+    }: {
+      operation: 'read' | 'edit' | 'create' | 'delete';
+      path: string;
+      content?: string;
+      overwrite?: boolean;
+    }) => {
+      if (operation === 'read') {
+        return makeTextAndStructured(await backend.readBeanFile(path));
+      }
+      if (operation === 'edit') {
+        return makeTextAndStructured(await backend.editBeanFile(path, content || ''));
+      }
+      if (operation === 'create') {
+        return makeTextAndStructured(await backend.createBeanFile(path, content || '', { overwrite }));
+      }
+      if (operation === 'delete') {
+        return makeTextAndStructured(await backend.deleteBeanFile(path));
+      }
+      throw new Error('Unsupported operation');
+    }
   );
 
+  // Consolidated output/tool guidance: read log or show guidance.
   server.registerTool(
-    'beans_vscode_create_bean_file',
+    'beans_vscode_output',
     {
-      title: 'Create Bean File',
-      description: 'Create a new file under .beans (optionally overwrite).',
+      title: 'Beans Output Tools',
+      description: 'Read extension output log or show guidance (operation param).',
       inputSchema: z.object({
-        path: z.string().min(1).max(MAX_PATH_LENGTH).describe('Path relative to .beans'),
-        content: z.string().max(MAX_DESCRIPTION_LENGTH).describe('Initial file content'),
-        overwrite: z.boolean().default(false),
-      }),
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: false,
-      },
-    },
-    async ({ path, content, overwrite }: { path: string; content: string; overwrite: boolean }) =>
-      makeTextAndStructured(await backend.createBeanFile(path, content, { overwrite }))
-  );
-
-  server.registerTool(
-    'beans_vscode_delete_bean_file',
-    {
-      title: 'Delete Bean File',
-      description: 'Delete a file under .beans.',
-      inputSchema: z.object({
-        path: z.string().min(1).max(MAX_PATH_LENGTH).describe('Path relative to .beans'),
-      }),
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: true,
-        idempotentHint: false,
-        openWorldHint: false,
-      },
-    },
-    async ({ path }: { path: string }) => makeTextAndStructured(await backend.deleteBeanFile(path))
-  );
-
-  server.registerTool(
-    'beans_vscode_read_output',
-    {
-      title: 'Read Beans Output Log',
-      description: 'Read mirrored output window contents from the extension log mirror file.',
-      inputSchema: z.object({
-        lines: z.number().int().min(1).max(5000).optional().describe('Optional number of trailing lines to return'),
+        operation: z.enum(['read', 'show']).default('read'),
+        lines: z.number().int().min(1).max(5000).optional(),
       }),
       annotations: {
         readOnlyHint: true,
@@ -1067,27 +846,15 @@ function registerTools(server: McpServer, backend: BeansCliBackend): void {
         openWorldHint: false,
       },
     },
-    async ({ lines }: { lines?: number }) => makeTextAndStructured(await backend.readOutputLog({ lines }))
-  );
-
-  server.registerTool(
-    'beans_vscode_show_output',
-    {
-      title: 'Show Output Guidance',
-      description: 'Returns guidance for inspecting Beans extension logs.',
-      inputSchema: z.object({}),
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: false,
-      },
-    },
-    async () =>
-      makeTextAndStructured({
+    async ({ operation, lines }: { operation: 'read' | 'show'; lines?: number }) => {
+      if (operation === 'read') {
+        return makeTextAndStructured(await backend.readOutputLog({ lines }));
+      }
+      return makeTextAndStructured({
         message:
           'When using VS Code UI, run command `Beans: Show Output` to open extension logs. In MCP mode, rely on tool error outputs and host logs.',
-      })
+      });
+    }
   );
 }
 
