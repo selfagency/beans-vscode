@@ -26,7 +26,10 @@ describe('BeansSearchViewProvider branch coverage', () => {
 
   beforeEach(() => {
     service = { listBeans: vi.fn(), showBean: vi.fn() };
-    provider = new BeansSearchViewProvider(vscodeMock.Uri.file('/tmp'), service as any);
+    provider = new BeansSearchViewProvider(
+      vscodeMock.Uri.file('/tmp') as unknown as import('vscode').Uri,
+      service as any
+    );
     fakeWebview = {
       webview: {
         options: {},

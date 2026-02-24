@@ -19,7 +19,7 @@ function makeBean(overrides: any = {}) {
 describe('BeansSearchViewProvider additional coverage', () => {
   it('matchesQuery across fields', () => {
     const svc: any = {};
-    const prov = new BeansSearchViewProvider(vscode.Uri.file('/'), svc as any);
+    const prov = new BeansSearchViewProvider(vscode.Uri.file('/') as unknown as import('vscode').Uri, svc as any);
     const b = makeBean({ id: 'ABC-123', title: 'Find Me', body: 'hello world', tags: ['zxy'] });
     expect((prov as any).matchesQuery(b, 'abc')).toBe(true);
     expect((prov as any).matchesQuery(b, 'find')).toBe(true);
@@ -30,7 +30,7 @@ describe('BeansSearchViewProvider additional coverage', () => {
 
   it('scoreRelevance gives precedence to id/code and title', () => {
     const svc: any = {};
-    const prov = new BeansSearchViewProvider(vscode.Uri.file('/'), svc as any);
+    const prov = new BeansSearchViewProvider(vscode.Uri.file('/') as unknown as import('vscode').Uri, svc as any);
     const exact = makeBean({ id: 'match' });
     const titleOnly = makeBean({ id: 'x', title: 'match' });
     const bodyOnly = makeBean({ id: 'x', title: 'y', body: 'match' });
@@ -45,7 +45,7 @@ describe('BeansSearchViewProvider additional coverage', () => {
 
   it('sortByRelevance sorts by score then status/priority/title', () => {
     const svc: any = {};
-    const prov = new BeansSearchViewProvider(vscode.Uri.file('/'), svc as any);
+    const prov = new BeansSearchViewProvider(vscode.Uri.file('/') as unknown as import('vscode').Uri, svc as any);
     const a = makeBean({ id: 'a', title: 'A', status: 'in-progress', priority: 'normal' });
     const b = makeBean({ id: 'b', title: 'B', status: 'todo', priority: 'critical' });
     const c = makeBean({ id: 'c', title: 'C', status: 'todo', priority: 'normal' });
@@ -61,7 +61,7 @@ describe('BeansSearchViewProvider additional coverage', () => {
 
   it('beanToResult falls back for unknown icons', () => {
     const svc: any = {};
-    const prov = new BeansSearchViewProvider(vscode.Uri.file('/'), svc as any);
+    const prov = new BeansSearchViewProvider(vscode.Uri.file('/') as unknown as import('vscode').Uri, svc as any);
     const b = makeBean({ status: 'wxyz', type: 'unknown', priority: undefined });
     const r = (prov as any).beanToResult(b);
     expect(r.statusIcon).toBe('');
