@@ -2208,10 +2208,25 @@ describe('BeansService', () => {
   });
 
   describe('init', () => {
+    it('passes --json flag so output can be parsed as JSON', async () => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        expect(args).toContain('--json');
+        callback(null, {
+          stdout: JSON.stringify({ success: true, message: 'Initialized .beans directory', path: '/test/.beans' }),
+          stderr: '',
+        });
+      });
+
+      await service.init();
+    });
+
     it('initializes workspace without options', async () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('init');
-        callback(null, { stdout: '{}', stderr: '' });
+        callback(null, {
+          stdout: JSON.stringify({ success: true, message: 'Initialized .beans directory', path: '/test/.beans' }),
+          stderr: '',
+        });
       });
 
       await service.init();
@@ -2223,7 +2238,10 @@ describe('BeansService', () => {
         expect(args).toContain('custom');
         expect(args).toContain('--default-type');
         expect(args).toContain('bug');
-        callback(null, { stdout: '{}', stderr: '' });
+        callback(null, {
+          stdout: JSON.stringify({ success: true, message: 'Initialized .beans directory', path: '/test/.beans' }),
+          stderr: '',
+        });
       });
 
       await service.init({ prefix: 'custom', defaultType: 'bug' });
