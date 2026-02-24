@@ -9,6 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-02-24
+
+## What's Changed
+* fix(zreb): pass --json to beans init to enable JSON parsing by @selfagency in https://github.com/selfagency/beans-vscode/pull/72
+* chore(ci)(deps): bump actions/upload-artifact from 4 to 6 by @dependabot[bot] in https://github.com/selfagency/beans-vscode/pull/69
+* chore(ci)(deps): bump actions/setup-go from 5 to 6 by @dependabot[bot] in https://github.com/selfagency/beans-vscode/pull/70
+* chore(ci)(deps): bump actions/github-script from 7 to 8 by @dependabot[bot] in https://github.com/selfagency/beans-vscode/pull/71
+* fix(o8ml): prevent invalid parent type drops and clean up CLI error messages by @selfagency in https://github.com/selfagency/beans-vscode/pull/73
+* feat(p7rq): Reinitialize Copilot Instructions & Skills command by @selfagency in https://github.com/selfagency/beans-vscode/pull/74
+* fix(iu27): remove redundant Cancel button from delete confirmation dialogs by @selfagency in https://github.com/selfagency/beans-vscode/pull/75
+* feat(emh8): viewBean loads bean into details panel instead of preview document by @selfagency in https://github.com/selfagency/beans-vscode/pull/76
+* feat(zzcl): add Copilot Start Work to tree and search panel context menus by @selfagency in https://github.com/selfagency/beans-vscode/pull/77
+* fix(30em): resolve conflict between enableOnlyIfInitialized and init prompt by @selfagency in https://github.com/selfagency/beans-vscode/pull/78
+* refactor(mcp): consolidate MCP tools — reduce MCP public surface by @selfagency in https://github.com/selfagency/beans-vscode/pull/79
+* fix(k2bx): prompt to reinitialize Copilot instructions & skill after extension update by @selfagency in https://github.com/selfagency/beans-vscode/pull/80
+* fix: BeansOutput singleton not cleared on deactivate (beans-vscode-i4iz) by @selfagency in https://github.com/selfagency/beans-vscode/pull/81
+* fix: simplify escapeHtml — remove dead-object pattern (beans-vscode-42zk) by @selfagency in https://github.com/selfagency/beans-vscode/pull/83
+* fix: Dispose BeansTreeDataProvider EventEmitter to prevent memory leak (beans-vscode-gamf) by @selfagency in https://github.com/selfagency/beans-vscode/pull/82
+* fix: validate webview message payload before passing to service (beans-vscode-n2u0) by @selfagency in https://github.com/selfagency/beans-vscode/pull/84
+* fix: quarantine notifcation failure (beans-vscode-af9s) by @selfagency in https://github.com/selfagency/beans-vscode/pull/85
+* perf: cache BeansConfigManager as instance field (beans-vscode-ryj0) by @selfagency in https://github.com/selfagency/beans-vscode/pull/86
+* fix(t1qv): add depth limit to isDescendantOf to avoid infinite loops on corrupt cycles by @selfagency in https://github.com/selfagency/beans-vscode/pull/87
+* fix(67hz): render markdown with marked; preserve lists, sanitize links, checklist handling by @selfagency in https://github.com/selfagency/beans-vscode/pull/89
+* fix(cxwb): add configurable periodic pane refresh (beans.view.refreshIntervalMs) and scheduling by @selfagency in https://github.com/selfagency/beans-vscode/pull/88
+* fix(wwj3): replace external shields.io badge requests with local inline badges by @selfagency in https://github.com/selfagency/beans-vscode/pull/90
+* refactor(n5pl): eliminate unjustified any types; add GraphQLError (6tt3) by @selfagency in https://github.com/selfagency/beans-vscode/pull/91
+* chore(beans): enforce branch + bean usage for agents in copilot templates by @selfagency in https://github.com/selfagency/beans-vscode/pull/92
+* refactor: remove duplicate sort/filter logic between BeansMcpServer and queryHelpers (beans-vscode-9xdb) by @selfagency in https://github.com/selfagency/beans-vscode/pull/93
+* chore: preserve and document unused BeansSearchViewProvider (beans-vscode-l7wv) by @selfagency in https://github.com/selfagency/beans-vscode/pull/94
+* chore: remove redundant marked declaration (types included in package) by @selfagency in https://github.com/selfagency/beans-vscode/pull/95
+* fix(beans-vscode-pk4r): fix delete parent/children dialog UX and recursive deletion by @selfagency in https://github.com/selfagency/beans-vscode/pull/96
+* docs: update stale test comment in too-many-mcp-commands.test.ts (beans-vscode-z45w) by @selfagency in https://github.com/selfagency/beans-vscode/pull/97
+* test: reset BeansOutput singleton between tests (beans-vscode-jml4) by @selfagency in https://github.com/selfagency/beans-vscode/pull/98
+* feat: cross-pane drag-to-change-status (beans-vscode-0b3q) by @selfagency in https://github.com/selfagency/beans-vscode/pull/99
+* task: improve test coverage by @selfagency in https://github.com/selfagency/beans-vscode/pull/100
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.3.4...v1.4.0
+
+_Source: changes from v1.3.4 to v1.4.0._
+
+
 ## [1.3.4] - 2026-02-20
 
 **Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.3.3...v1.3.4
