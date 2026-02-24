@@ -97,13 +97,29 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   /**
    * Handle bean update from webview
    */
-  private async handleBeanUpdate(updates: any): Promise<void> {
+  private async handleBeanUpdate(updates: unknown): Promise<void> {
     if (!this._currentBean) {
       return;
     }
 
     try {
-      const updatedBean = await this.service.updateBean(this._currentBean.id, updates);
+      // Basic defence-in-depth: validate and sanitize payload from webview
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        // Ignore malformed payloads
+        return;
+      }
+
+      const allowed = ['status', 'type', 'priority', 'title', 'body'];
+      const sanitized = Object.fromEntries(
+        Object.entries(updates as Record<string, unknown>).filter(([k]) => allowed.includes(k))
+      );
+
+      if (Object.keys(sanitized).length === 0) {
+        // Nothing to update after sanitization
+        return;
+      }
+
+      const updatedBean = await this.service.updateBean(this._currentBean.id, sanitized);
       this._currentBean = updatedBean;
       this.updateView(updatedBean);
 
