@@ -15,6 +15,7 @@ Several production files use `any` types without justification, violating the pr
 ### `src/beans/mcp/internal/queryHelpers.ts`
 
 The entire file is typed with `any`:
+
 - Line 3: `function sortBeansInternal(beans: any[], mode: SortMode): any[]`
 - Line 64: `backend: any`
 - Lines 112, 125, 133, 143: multiple `any` annotations in callbacks
