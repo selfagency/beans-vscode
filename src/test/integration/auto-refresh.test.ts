@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
-import { registerBeansTreeViews } from '../../../src/beans/tree/registerBeansTreeViews';
-import { BeansService } from '../../../src/beans/service';
-import { BeansFilterManager } from '../../../src/beans/tree';
 import { BeansDetailsViewProvider } from '../../../src/beans/details';
 import { BeansOutput } from '../../../src/beans/logging';
+import { BeansService } from '../../../src/beans/service';
+import { BeansFilterManager } from '../../../src/beans/tree';
+import { registerBeansTreeViews } from '../../../src/beans/tree/registerBeansTreeViews';
 
 describe('Periodic pane refresh', () => {
   let mockContext: vscode.ExtensionContext;
@@ -51,13 +51,13 @@ describe('Periodic pane refresh', () => {
     };
 
     // Mock configuration to enable periodic refresh
-    vi.spyOn(vscode.workspace, 'getConfiguration').mockImplementation((section?: string) => {
+    vi.spyOn(vscode.workspace, 'getConfiguration').mockImplementation(() => {
       return {
         get: (key: string, defaultVal: any) => {
-          if (key === 'refreshIntervalMs') {
+          if (key === 'view.refreshIntervalMs') {
             return 100;
           }
-          if (key === 'showCounts') {
+          if (key === 'view.showCounts') {
             return true;
           }
           return defaultVal;
