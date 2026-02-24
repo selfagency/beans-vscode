@@ -1,7 +1,7 @@
 ---
 # beans-vscode-n2u0
 title: 'fix: validate webview message payload before passing to service in handleBeanUpdate'
-status: todo
+status: completed
 type: bug
 priority: high
 created_at: 2026-02-24T13:49:05Z
