@@ -70,14 +70,34 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
     let draggedBean: Bean;
 
     if (typeof raw === 'string') {
+      if (raw.trim() === '') {
+        // Avoid calling showBean with empty id — surface helpful message and abort
+        logger.error('Dragged payload is empty');
+        vscode.window.showErrorMessage('Dragged bean data is empty; cannot complete drop');
+        return;
+      }
       // The string payload can be either a serialized Bean (JSON) or an id.
       // Try to parse JSON first; if parsing fails, treat as id and fetch.
       try {
         const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object' && parsed.id) {
-          draggedBean = parsed as Bean;
+        if (parsed && typeof parsed === 'object') {
+          // Prefer explicit id, fall back to slug/code if present
+          const candidateId = (parsed.id || parsed.slug || parsed.code) as string | undefined;
+          if (candidateId && String(candidateId).trim() !== '') {
+            // If parsed contains full bean fields, use it directly; otherwise
+            // fetch the canonical bean by id/slug/code to ensure fresh data.
+            if (parsed.id && String(parsed.id).trim() !== '') {
+              draggedBean = parsed as Bean;
+            } else {
+              draggedBean = await this.service.showBean(candidateId);
+            }
+          } else {
+            logger.error('Dragged payload JSON missing id/slug/code');
+            vscode.window.showErrorMessage('Dragged bean data is missing an id; cannot complete drop');
+            return;
+          }
         } else {
-          // Not a bean JSON, treat as id
+          // Not an object – treat as id string
           draggedBean = await this.service.showBean(raw);
         }
       } catch (err) {
