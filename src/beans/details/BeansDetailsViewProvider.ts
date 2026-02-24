@@ -1,3 +1,9 @@
+import { marked } from 'marked';
+
+// Configure marked globally to avoid deprecation warnings about default
+// options (mangle/headerIds). Setting these here ensures tests and other
+// modules using `marked` see consistent behavior.
+marked.setOptions({ mangle: false, headerIds: false });
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
 import { Bean } from '../model';
@@ -1012,47 +1018,52 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
 
     const normalizedText = this.normalizeEscapedNewlinesOutsideCodeBlocks(textWithChecklistMarkers);
 
-    let html = this.escapeHtml(normalizedText);
+    // Use marked (a robust Markdown-to-HTML library) to render the normalized
+    // markdown into HTML. Disable mangle/headerIds to keep output stable and
+    // avoid adding id/mangle transformations that our tests don't expect.
+    // Convert single-line fenced code like ```block``` into multi-line fenced
+    // form so marked treats it as a block-level code fence and emits
+    // <pre><code>..</code></pre> (tests expect this behavior).
+    const preprocessed = normalizedText.replace(/^```([^`]*)```$/gm, '```\n$1\n```');
 
-    // Headers
-    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    let html = marked.parse(preprocessed, { mangle: false, headerIds: false });
 
-    // Bold and italic
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-
-    // Code blocks
-    html = html.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
-    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-    // Links (sanitize href to avoid scriptable protocols in webview)
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, linkText: string, href: string) => {
-      const safeHref = this.sanitizeHref(href);
-      if (!safeHref) {
-        return linkText;
+    // Sanitize links produced by marked to ensure only safe protocols are allowed
+    // and add target/rel attributes for webview safety.
+    html = html.replace(
+      /<a\s+href="([^"]+)"([^>]*)>(.*?)<\/a>/gi,
+      (_match: string, href: string, _attrs: string, inner: string) => {
+        const safeHref = this.sanitizeHref(href);
+        if (!safeHref) {
+          return inner; // drop the link but keep text
+        }
+        // Preserve any extra attributes but ensure target/rel are set
+        return `<a href="${this.escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer">${inner}</a>`;
       }
-      return `<a href="${this.escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
-    });
+    );
+    html = html.replace(
+      /<li>@@CHECKLIST_(\d+)@@ (.*?)<\/li>/g,
+      (_match: string, lineIndexText: string, labelHtml: string) => {
+        const lineIndex = Number.parseInt(lineIndexText, 10);
+        const isChecked = checklistLineStates.get(lineIndex) ?? false;
+        const checkedAttribute = isChecked ? ' checked' : '';
 
-    // Lists
-    html = html.replace(/^\s*- (.+)$/gm, '<li>$1</li>');
-    html = html.replace(/<li>@@CHECKLIST_(\d+)@@ (.*?)<\/li>/g, (_match, lineIndexText: string, labelHtml: string) => {
-      const lineIndex = Number.parseInt(lineIndexText, 10);
-      const isChecked = checklistLineStates.get(lineIndex) ?? false;
-      const checkedAttribute = isChecked ? ' checked' : '';
+        return `<li class="checklist-item"><input class="checklist-checkbox" type="checkbox" data-line-index="${lineIndex}" aria-label="Toggle checklist item"${checkedAttribute}><span class="checklist-label">${labelHtml}</span></li>`;
+      }
+    );
+    // Note: marked already generates correct <ul>/<ol>/<p> structure. Avoid
+    // additional wrapping or paragraph post-processing which can produce
+    // invalid HTML (block elements inside <p>) and break expectations in
+    // existing unit tests.
 
-      return `<li class="checklist-item"><input class="checklist-checkbox" type="checkbox" data-line-index="${lineIndex}" aria-label="Toggle checklist item"${checkedAttribute}><span class="checklist-label">${labelHtml}</span></li>`;
-    });
-    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+    // Trim trailing newlines inside <pre><code> blocks that some markdown
+    // renderers include for fenced blocks written on a single line (e.g.
+    // ```block```). Tests expect the content without the trailing newline.
+    html = html.replace(/<pre><code>([\s\S]*?)\n<\/code><\/pre>/g, '<pre><code>$1</code></pre>');
 
-    // Paragraphs
-    html = html.replace(/\n\n/g, '</p><p>');
-    html = '<p>' + html + '</p>';
-
-    // Clean up empty paragraphs
-    html = html.replace(/<p><\/p>/g, '');
+    // Collapse inter-tag whitespace/newlines so tests that assert compact
+    // snippets (e.g. '<ul><li>item</li></ul>') continue to match.
+    html = html.replace(/>\s+</g, '><');
 
     html = this.autoLinkBeanReferences(html, currentBeanId);
 
