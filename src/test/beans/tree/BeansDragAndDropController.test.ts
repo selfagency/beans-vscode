@@ -656,4 +656,59 @@ describe('BeansDragAndDropController', () => {
       expect(service.updateBean).toHaveBeenCalledWith('bean-1', { clearParent: true });
     });
   });
+
+  describe('serialized transfer encodings', () => {
+    it('accepts JSON-serialized bean in application/vnd.code.tree.beans', async () => {
+      showInformationMessage.mockResolvedValueOnce('Set Status');
+
+      const dragged = createBean('bean-json', 'JID', 'JSON Bean');
+      dragged.status = 'todo';
+      const vscode = await import('vscode');
+      const dataTransfer = new vscode.DataTransfer();
+      // simulation: vnd payload is a JSON string
+      dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(JSON.stringify(dragged)));
+
+      const completedController = new BeansDragAndDropController(service as any, 'completed', ['completed']);
+      await completedController.handleDrop(undefined, dataTransfer as any, { isCancellationRequested: false } as any);
+
+      expect(service.updateBean).toHaveBeenCalledWith('bean-json', { status: 'completed' });
+    });
+
+    it('accepts plain id in text/plain payload', async () => {
+      showInformationMessage.mockResolvedValueOnce('Set Status');
+
+      const dragged = createBean('bean-id', 'TID', 'Text Bean');
+      dragged.status = 'todo';
+      // service.showBean should be called when only id is supplied
+      service.showBean.mockResolvedValueOnce(dragged);
+
+      const vscode = await import('vscode');
+      const dataTransfer = new vscode.DataTransfer();
+      dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(dragged.id));
+
+      const completedController = new BeansDragAndDropController(service as any, 'completed', ['completed']);
+      await completedController.handleDrop(undefined, dataTransfer as any, { isCancellationRequested: false } as any);
+
+      expect(service.showBean).toHaveBeenCalledWith('bean-id');
+      expect(service.updateBean).toHaveBeenCalledWith('bean-id', { status: 'completed' });
+    });
+
+    it('falls back to application/json when primary payload empty', async () => {
+      showInformationMessage.mockResolvedValueOnce('Set Status');
+
+      const dragged = createBean('bean-alt', 'AID', 'Alt Bean');
+      dragged.status = 'todo';
+      const vscode = await import('vscode');
+      const dataTransfer = new vscode.DataTransfer();
+      // primary vnd is empty string
+      dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(''));
+      // alternative application/json contains the bean JSON
+      dataTransfer.set('application/json', new vscode.DataTransferItem(JSON.stringify(dragged)));
+
+      const completedController = new BeansDragAndDropController(service as any, 'completed', ['completed']);
+      await completedController.handleDrop(undefined, dataTransfer as any, { isCancellationRequested: false } as any);
+
+      expect(service.updateBean).toHaveBeenCalledWith('bean-alt', { status: 'completed' });
+    });
+  });
 });
