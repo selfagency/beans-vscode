@@ -717,7 +717,10 @@ export class BeansService {
 
   private async quarantineMalformedBeanAbsolutePath(sourcePath: string): Promise<string | undefined> {
     const filename = path.basename(sourcePath);
-    const targetPath = path.join(this.quarantineDir, filename);
+    // Avoid quarantined files being re-detected as `.md` files: append a marker
+    // suffix so they no longer match `*.md` discovery patterns.
+    const quarantinedFilename = filename.toLowerCase().endsWith('.md') ? `${filename}.fixme` : filename;
+    const targetPath = path.join(this.quarantineDir, quarantinedFilename);
 
     try {
       await mkdir(this.quarantineDir, { recursive: true });
@@ -1304,8 +1307,10 @@ export class BeansService {
     }
     this.malformedWarningPaths.add(warningKey);
 
-    const fileLabel = quarantinedPath ? path.basename(quarantinedPath) : rawBean.path || rawBean.id;
-    const message = `Malformed bean could not be auto-fixed and was quarantined: \`${fileLabel}\``;
+    const fileLabel = quarantinedPath
+      ? path.basename(quarantinedPath)
+      : path.basename(rawBean.path || String(rawBean.id));
+    const message = `Bean file quarantined: ${fileLabel}. Open the .beans/.quarantine folder to inspect or restore the file.`;
 
     if (!quarantinedPath) {
       void vscode.window.showWarningMessage(message);
