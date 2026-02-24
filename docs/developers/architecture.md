@@ -121,6 +121,12 @@ The Beans VS Code extension follows a layered architecture with clear separation
 - **Responsibility**: WebView for advanced search and filtering
 - **Features**: Full-text search, multi-field filtering, saved searches
 
+> NOTE: The legacy webview-based `BeansSearchViewProvider` is preserved in
+> source for reference but is not currently exported or instantiated by the
+> extension activation path. The tree-based search (`BeansSearchTreeProvider`)
+> supersedes it. If you plan to re-activate the webview provider in the
+> future, see the decision record in bean `beans-vscode-l7wv` (file: `.beans/beans-vscode-l7wv--chore-remove-or-document-unused-beanssearchviewpro.md`).
+
 #### 4. **AI Layer** (`src/beans/chat/`, `src/beans/mcp/`)
 
 ##### Chat Integration (`src/beans/chat/`)

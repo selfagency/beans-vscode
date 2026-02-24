@@ -64,7 +64,11 @@ function bean(partial: Partial<Bean> & Pick<Bean, 'id' | 'title' | 'status' | 't
   } as Bean;
 }
 
-describe('BeansSearchViewProvider', () => {
+// Tests for the legacy webview-based search provider are intentionally skipped
+// while the tree-based search implementation is the active UI. These tests
+// are kept for reference; re-enable by removing `.skip` when re-activating
+// the provider.
+describe.skip('BeansSearchViewProvider', () => {
   let service: { listBeans: ReturnType<typeof vi.fn>; showBean: ReturnType<typeof vi.fn> };
   let provider: BeansSearchViewProvider;
   let postMessage: ReturnType<typeof vi.fn>;
