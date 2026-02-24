@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Minimal harness: capture registered MCP tools and assert the public surface is
-// larger than an allowed target (this test is expected to FAIL prior to refactor).
+// within an allowed maximum. This test is a regression guard that ensures the
+// MCP public tool count does not exceed `allowedMax` and prevents accidental
+// growth of the public tool surface.
 const toolHandlers = vi.hoisted(() => new Map<string, (...args: any[]) => any>());
 const connectSpy = vi.hoisted(() => vi.fn(async () => {}));
 const execFileMock = vi.hoisted(() => vi.fn());
@@ -66,7 +68,7 @@ function setupExecFileMock(): void {
   });
 }
 
-describe('MCP tool surface size (red test)', () => {
+describe('MCP tool surface size (regression guard)', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     toolHandlers.clear();
@@ -86,8 +88,8 @@ describe('MCP tool surface size (red test)', () => {
     await mod.startBeansMcpServer(['--workspace', '/ws', '--cli-path', '/custom/beans']);
   });
 
-  it('fails because the MCP public tool surface is larger than our allowed target', () => {
-    const allowedMax = 10; // target: reduce to 10 or fewer public tools
+  it('enforces the maximum allowed MCP public tool count', () => {
+    const allowedMax = 10; // target: 10 or fewer public tools
     expect(toolHandlers.size).toBeLessThanOrEqual(allowedMax);
   });
 });
