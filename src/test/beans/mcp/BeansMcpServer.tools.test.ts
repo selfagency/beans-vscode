@@ -176,21 +176,18 @@ describe('BeansMcpServer tool handlers', () => {
 
   it('registers and connects MCP server', () => {
     expect(connectSpy).toHaveBeenCalledTimes(1);
-    expect(toolHandlers.size).toBeGreaterThan(10);
-    expect(toolHandlers.has('beans_vscode_refresh')).toBe(true);
-    expect(toolHandlers.has('beans_vscode_llm_context')).toBe(true);
+    expect(toolHandlers.size).toBeLessThanOrEqual(10);
+    expect(toolHandlers.has('beans_vscode_query')).toBe(true);
   });
 
   it('runs refresh/filter/search/sort handlers', async () => {
-    const refresh = toolHandlers.get('beans_vscode_refresh')!;
-    const filter = toolHandlers.get('beans_vscode_filter')!;
-    const search = toolHandlers.get('beans_vscode_search')!;
-    const sort = toolHandlers.get('beans_vscode_sort')!;
+    const query = toolHandlers.get('beans_vscode_query')!;
 
-    const refreshResult = await refresh({});
+    const refreshResult = await query({ operation: 'refresh' });
     expect(refreshResult.structuredContent.count).toBe(3);
 
-    const filterResult = await filter({
+    const filterResult = await query({
+      operation: 'filter',
       statuses: ['todo'],
       types: ['task'],
       search: 'bean',
@@ -201,35 +198,45 @@ describe('BeansMcpServer tool handlers', () => {
       expect.arrayContaining(['bean-active', 'bean-scrap'])
     );
 
-    const searchResult = await search({ query: 'bean', includeClosed: false });
+    const searchResult = await query({ operation: 'search', search: 'bean', includeClosed: false } as any);
     expect(searchResult.structuredContent.count).toBe(1);
     expect(searchResult.structuredContent.beans[0].status).toBe('todo');
 
-    const sortResult = await sort({ mode: 'id', statuses: [], types: [], search: '' });
+    const sortResult = await query({ operation: 'sort', mode: 'id', statuses: [], types: [], search: '' } as any);
     expect(sortResult.structuredContent.mode).toBe('id');
 
-    const filterWithNulls = await filter({
+    const filterWithNulls = await query({
+      operation: 'filter',
       statuses: null,
       types: ['task'],
       search: 'bean',
       tags: null,
-    });
+    } as any);
     expect(filterWithNulls.structuredContent.count).toBeGreaterThanOrEqual(1);
 
-    const sortWithNulls = await sort({ mode: 'id', statuses: null, types: null, search: '' });
+    const sortWithNulls = await query({
+      operation: 'sort',
+      mode: 'id',
+      statuses: null,
+      types: null,
+      search: '',
+    } as any);
     expect(sortWithNulls.structuredContent.mode).toBe('id');
   });
 
   it('handles reopen and delete guard branches', async () => {
-    const reopenCompleted = toolHandlers.get('beans_vscode_reopen_completed')!;
-    const reopenScrapped = toolHandlers.get('beans_vscode_reopen_scrapped')!;
+    const reopen = toolHandlers.get('beans_vscode_reopen')!;
     const del = toolHandlers.get('beans_vscode_delete')!;
 
-    await expect(reopenCompleted({ beanId: 'active-1', targetStatus: 'todo' })).rejects.toThrow('not completed');
-    await expect(reopenScrapped({ beanId: 'active-1', targetStatus: 'todo' })).rejects.toThrow('not scrapped');
+    await expect(
+      reopen({ beanId: 'active-1', requiredCurrentStatus: 'completed', targetStatus: 'todo' })
+    ).rejects.toThrow('not completed');
+    await expect(
+      reopen({ beanId: 'active-1', requiredCurrentStatus: 'scrapped', targetStatus: 'todo' })
+    ).rejects.toThrow('not scrapped');
     await expect(del({ beanId: 'active-1', force: false })).rejects.toThrow('Only draft and scrapped');
 
-    const reopenOk = await reopenCompleted({ beanId: 'completed-1', targetStatus: 'todo' });
+    const reopenOk = await reopen({ beanId: 'completed-1', requiredCurrentStatus: 'completed', targetStatus: 'todo' });
     expect(reopenOk.structuredContent.bean.id).toBe('completed-1');
 
     const deleteOk = await del({ beanId: 'scrapped-1', force: false });
@@ -237,47 +244,43 @@ describe('BeansMcpServer tool handlers', () => {
   });
 
   it('handles relationship, copy-id, and llm-context tools', async () => {
-    const editBlocking = toolHandlers.get('beans_vscode_edit_blocking')!;
-    const copyId = toolHandlers.get('beans_vscode_copy_id')!;
-    const llmContext = toolHandlers.get('beans_vscode_llm_context')!;
+    const update = toolHandlers.get('beans_vscode_update')!;
+    const view = toolHandlers.get('beans_vscode_view')!;
+    const queryTool = toolHandlers.get('beans_vscode_query')!;
 
-    const blockingResult = await editBlocking({
-      beanId: 'block-1',
-      relation: 'blocking',
-      operation: 'remove',
-      relatedBeanIds: ['x'],
-    });
+    const blockingResult = await update({ beanId: 'block-1', blocking: [] });
     expect(blockingResult.structuredContent.bean.id).toBe('block-1');
 
-    const copyResult = await copyId({ beanId: 'bean-1234' });
-    expect(copyResult.structuredContent.id).toBe('bean-1234');
-    expect(copyResult.structuredContent.code).toBe('1234');
+    const viewResult = await view({ beanId: 'bean-1234' });
+    const id = viewResult.structuredContent.bean.id;
+    const code = id.split('-').pop();
+    expect(id).toBe('bean-1234');
+    expect(code).toBe('1234');
 
-    const llmResult = await llmContext({ writeToWorkspaceInstructions: true });
+    const llmResult = await queryTool({ operation: 'llm_context', writeToWorkspaceInstructions: true } as any);
     expect(buildInstructionsMock).toHaveBeenCalledWith('prime output');
     expect(writeInstructionsMock).toHaveBeenCalled();
     expect(llmResult.structuredContent.instructionsPath).toContain('.github/instructions');
   });
 
   it('handles bean file and output log tools including path guard', async () => {
-    const readFileTool = toolHandlers.get('beans_vscode_read_bean_file')!;
-    const editFileTool = toolHandlers.get('beans_vscode_edit_bean_file')!;
-    const createFileTool = toolHandlers.get('beans_vscode_create_bean_file')!;
-    const deleteFileTool = toolHandlers.get('beans_vscode_delete_bean_file')!;
-    const readOutputTool = toolHandlers.get('beans_vscode_read_output')!;
+    const fileTool = toolHandlers.get('beans_vscode_bean_file')!;
+    const outputTool = toolHandlers.get('beans_vscode_output')!;
 
-    await expect(readFileTool({ path: '../outside.md' })).rejects.toThrow('Path must stay within .beans directory');
+    await expect(fileTool({ operation: 'read', path: '../outside.md' })).rejects.toThrow(
+      'Path must stay within .beans directory'
+    );
 
-    await readFileTool({ path: 'bean.md' });
-    await editFileTool({ path: 'folder/bean.md', content: 'hello' });
-    await createFileTool({ path: 'new.md', content: 'new', overwrite: true });
-    await deleteFileTool({ path: 'new.md' });
+    await fileTool({ operation: 'read', path: 'bean.md' });
+    await fileTool({ operation: 'edit', path: 'folder/bean.md', content: 'hello' });
+    await fileTool({ operation: 'create', path: 'new.md', content: 'new', overwrite: true });
+    await fileTool({ operation: 'delete', path: 'new.md' });
 
     expect(mkdirMock).toHaveBeenCalled();
     expect(writeFileMock).toHaveBeenCalled();
     expect(rmMock).toHaveBeenCalled();
 
-    const output = await readOutputTool({ lines: 2 });
+    const output = await outputTool({ operation: 'read', lines: 2 });
     expect(output.structuredContent.linesReturned).toBe(2);
     expect(output.structuredContent.content).toBe('line2\nline3');
   });
