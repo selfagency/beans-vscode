@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: Check if commenter is maintainer
         id: check-permission
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
@@ -76,7 +76,7 @@ jobs:
       - name: Create bean from issue
         if: steps.check-permission.outputs.has-permission == 'true'
         id: create-bean
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
@@ -160,7 +160,7 @@ jobs:
 
       - name: Comment on issue with bean ID
         if: steps.check-permission.outputs.has-permission == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const beanId = '${{ steps.create-bean.outputs.bean-id }}';
@@ -193,7 +193,7 @@ jobs:
 
       - name: Handle errors
         if: failure() && steps.check-permission.outputs.has-permission == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             await github.rest.issues.createComment({
