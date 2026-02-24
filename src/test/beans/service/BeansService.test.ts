@@ -2316,6 +2316,43 @@ describe('BeansService', () => {
       }
     });
 
+    it('extracts clean error message from CLI non-zero exit (strips command boilerplate)', async () => {
+      const stderr =
+        'Error: graphql: feature beans can only have milestone or epic as parent, not feature\n' +
+        'Usage: beans graphql <query> [flags]\n' +
+        'Aliases: graphql, query\n' +
+        'Flags:\n' +
+        '  -h, --help   help for graphql';
+      const cliError = Object.assign(
+        new Error(`Command failed: beans graphql --json fragment BeanFields on Bean {...}\n${stderr}`),
+        { code: 1, stderr, stdout: '' }
+      );
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(cliError as any, null);
+      });
+
+      await expect(service.updateBean('test-abc1', { parent: 'other-abc1' })).rejects.toMatchObject({
+        message: 'graphql: feature beans can only have milestone or epic as parent, not feature',
+      });
+    });
+
+    it('falls back to raw message when CLI error has no parseable stderr line', async () => {
+      const cliError = Object.assign(new Error('Command failed: beans graphql --json some-query'), {
+        code: 1,
+        stderr: '',
+        stdout: '',
+      });
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(cliError as any, null);
+      });
+
+      await expect(service.updateBean('test-abc1', { parent: 'other-abc1' })).rejects.toMatchObject({
+        message: expect.stringContaining('Command failed'),
+      });
+    });
+
     it('accepts partial list payloads from CLI and applies safe defaults', async () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         if (Array.isArray(args) && args.includes('graphql')) {

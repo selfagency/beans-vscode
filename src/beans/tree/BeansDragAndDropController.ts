@@ -7,6 +7,17 @@ import { BeanTreeItem } from './BeanTreeItem';
 const logger = BeansOutput.getInstance();
 
 /**
+ * Defines which bean types are valid parents for each child type.
+ * Mirrors the CLI's internal ValidateParent rule: milestone → epic → feature → task/bug.
+ */
+const VALID_PARENT_TYPES: Readonly<Record<string, readonly string[]>> = {
+  epic: ['milestone'],
+  feature: ['milestone', 'epic'],
+  task: ['milestone', 'epic', 'feature'],
+  bug: ['milestone', 'epic', 'feature'],
+};
+
+/**
  * Drag and drop controller for re-parenting beans via tree view drag/drop
  */
 export class BeansDragAndDropController implements vscode.TreeDragAndDropController<BeanTreeItem> {
@@ -99,6 +110,16 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
     // If dropping on root (no target), always valid
     if (!targetBean) {
       return { valid: true };
+    }
+
+    // Validate type hierarchy: check whether targetBean's type is a valid parent
+    // for the dragged bean's type. Unknown types (custom configs) are allowed through.
+    const allowedParents = VALID_PARENT_TYPES[draggedBean.type];
+    if (allowedParents && !allowedParents.includes(targetBean.type)) {
+      return {
+        valid: false,
+        reason: `A ${draggedBean.type} cannot have a ${targetBean.type} as parent. Allowed parent types: ${allowedParents.join(', ')}.`,
+      };
     }
 
     // Prevent cycles: target bean cannot be a descendant of dragged bean

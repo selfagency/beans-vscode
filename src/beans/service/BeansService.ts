@@ -432,6 +432,21 @@ export class BeansService {
           throw new BeansTimeoutError('Beans CLI operation timed out');
         }
 
+        // When the CLI exits with a non-zero code, `execFileAsync` wraps the
+        // full command + stderr into Error.message. Extract just the first
+        // meaningful "Error: ..." line from stderr so the user sees a clean
+        // message instead of the raw command boilerplate and usage text.
+        const cliStderr: string = (err as any).stderr ?? '';
+        if (cliStderr) {
+          const meaningfulLine = cliStderr
+            .split('\n')
+            .map(l => l.trim())
+            .find(l => l.startsWith('Error: '));
+          if (meaningfulLine) {
+            throw new Error(meaningfulLine.replace(/^Error:\s*/, ''));
+          }
+        }
+
         throw error;
       } finally {
         // Remove from in-flight map when complete (success or failure)
