@@ -529,8 +529,11 @@
         {
           "command": "beans.delete",
           "when": "view =~ /^beans\\./ && viewItem =~ /deletable/",
-          "group": "5_danger"
-        }
+          "group": "5_danger"        },
+        {
+          "command": "beans.copilotStartWork",
+          "when": "view =~ /^beans\\./ && viewItem =~ /^bean/ && beans.aiEnabled",
+          "group": "6_ai"        }
       ],
       "webview/context": [
         {
@@ -577,6 +580,11 @@
           "command": "beans.delete",
           "when": "webviewId == 'beans.search' && webviewSection == 'searchResult'",
           "group": "5_danger"
+        },
+        {
+          "command": "beans.copilotStartWork",
+          "when": "webviewId == 'beans.search' && webviewSection == 'searchResult' && beans.aiEnabled",
+          "group": "6_ai"
         }
       ]
     },
