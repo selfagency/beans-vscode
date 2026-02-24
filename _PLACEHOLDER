@@ -1,0 +1,16 @@
+chore(beans): enforce branch + bean usage in Copilot templates
+
+This draft PR updates the Copilot instruction and skill templates to require agents to:
+
+- create or switch to the bean's branch before editing code or files
+- keep all progress and subtasks inside the bean's `## Todo` checklist (no internal agent todo lists)
+- always use the MCP or extension for bean creation/edits and not write bean files directly
+- only set `branch` and `pr` frontmatter keys from agent automation
+
+Files changed:
+- src/beans/config/templates/copilot-instructions.template.md
+- src/beans/config/templates/copilot-skill.template.md
+
+Bean: beans-vscode-kcff
+
+This is a draft PR for review.
