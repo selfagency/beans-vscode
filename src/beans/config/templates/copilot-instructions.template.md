@@ -40,6 +40,7 @@ description: Generated Copilot instructions for Beans workflows in this workspac
 </CRITICALLY_IMPORTANT>
 
 <!-- Agent-specific constraints: enforce by Copilot/skills -->
+
 1. **Agent MUST create or switch to the issue branch before making any edits.**
    - If the bean already has an existing branch, checkout that branch; otherwise create a new branch and push it immediately.
    - Branch names must follow the repository convention and be recorded in the bean frontmatter as shown above.
