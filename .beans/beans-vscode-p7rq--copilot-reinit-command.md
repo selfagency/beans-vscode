@@ -1,7 +1,10 @@
 ---
 branch: feat/p7rq-copilot-reinit-command
+id: beans-vscode-p7rq
+title: 'Command palette: Reinitialize Copilot instructions & skills'
+status: todo
+type: task
 ---
-
 Add a command to the command palette that reinitializes the Copilot instructions and skills artifacts (regenerates/writes the copilot instruction files and skill files into the workspace). The command should:
 
 - Be discoverable via command palette (e.g., "Beans: Reinitialize Copilot Instructions & Skills").
