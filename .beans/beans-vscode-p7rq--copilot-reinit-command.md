@@ -10,8 +10,8 @@ Add a command to the command palette that reinitializes the Copilot instructions
 
 ## Todo
 
-- [ ] Write failing test for `reinitializeCopilotArtifacts` command handler
-- [ ] Register `beans.reinitializeCopilotArtifacts` in `package.json` commands
-- [ ] Add command handler in `BeansCommands.ts` (confirm → write → notify)
-- [ ] Register command in `extension.ts`
-- [ ] Validate: compile passes, test passes
+- [x] Write failing test for `reinitializeCopilotArtifacts` command handler
+- [x] Register `beans.reinitializeCopilotArtifacts` in `package.json` commands
+- [x] Add command handler in `BeansCommands.ts` (confirm → write → notify)
+- [x] Register command in `extension.ts` (wired via `registerAll()`)
+- [x] Validate: compile passes, all 544 tests pass
