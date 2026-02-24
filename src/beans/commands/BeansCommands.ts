@@ -1012,7 +1012,7 @@ export class BeansCommands {
       // Refresh trees
       await vscode.commands.executeCommand('beans.refreshAll');
     } catch (error) {
-      const message = `Failed to remove parent: ${(error as Error).message}`;
+      const message = getUserMessage(error);
       logger.error(message, error as Error);
       vscode.window.showErrorMessage(message);
     }

@@ -128,7 +128,7 @@ describe('BeansDragAndDropController', () => {
 
     await controller.handleDrop({ bean } as any, dataTransfer as any, { isCancellationRequested: false } as any);
 
-    expect(showWarningMessage).toHaveBeenCalledWith('Cannot make a bean its own parent');
+    expect(showErrorMessage).toHaveBeenCalledWith('Cannot make a bean its own parent');
     expect(service.updateBean).not.toHaveBeenCalled();
   });
 
@@ -147,7 +147,7 @@ describe('BeansDragAndDropController', () => {
       { isCancellationRequested: false } as any
     );
 
-    expect(showWarningMessage).toHaveBeenCalledWith('Invalid drop operation');
+    expect(showErrorMessage).toHaveBeenCalledWith('Invalid drop operation');
     expect(service.updateBean).not.toHaveBeenCalled();
   });
 
@@ -167,7 +167,7 @@ describe('BeansDragAndDropController', () => {
       { isCancellationRequested: false } as any
     );
 
-    expect(showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('Cannot create cycle'));
+    expect(showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('Cannot create cycle'));
     expect(service.updateBean).not.toHaveBeenCalled();
   });
 
@@ -298,7 +298,7 @@ describe('BeansDragAndDropController', () => {
     await controller.handleDrop(undefined, dataTransfer as any, { isCancellationRequested: false } as any);
 
     expect(service.updateBean).not.toHaveBeenCalled();
-    expect(showWarningMessage).not.toHaveBeenCalled();
+    expect(showErrorMessage).not.toHaveBeenCalled();
   });
 
   describe('parent type hierarchy validation', () => {
@@ -317,7 +317,7 @@ describe('BeansDragAndDropController', () => {
         } as any
       );
 
-      expect(showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('feature'));
+      expect(showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('feature'));
       expect(service.updateBean).not.toHaveBeenCalled();
     });
 
@@ -336,7 +336,7 @@ describe('BeansDragAndDropController', () => {
         } as any
       );
 
-      expect(showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('task'));
+      expect(showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('task'));
       expect(service.updateBean).not.toHaveBeenCalled();
     });
 
@@ -355,7 +355,7 @@ describe('BeansDragAndDropController', () => {
         } as any
       );
 
-      expect(showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('bug'));
+      expect(showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('bug'));
       expect(service.updateBean).not.toHaveBeenCalled();
     });
 
@@ -374,7 +374,7 @@ describe('BeansDragAndDropController', () => {
         } as any
       );
 
-      expect(showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('feature'));
+      expect(showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('feature'));
       expect(service.updateBean).not.toHaveBeenCalled();
     });
 

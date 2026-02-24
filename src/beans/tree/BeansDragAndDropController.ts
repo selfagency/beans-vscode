@@ -61,7 +61,7 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
     // Validate drop
     const validation = await this.validateDrop(draggedBean, targetBean);
     if (!validation.valid) {
-      vscode.window.showWarningMessage(validation.reason || 'Invalid drop operation');
+      vscode.window.showErrorMessage(validation.reason || 'Invalid drop operation');
       return;
     }
 
@@ -77,6 +77,7 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
       const draggedName = draggedBean.title || draggedBean.code || draggedBean.id;
       const targetName = targetBean ? targetBean.title : 'root';
       vscode.window.showInformationMessage(`${draggedName} moved to ${targetName}`);
+      await vscode.commands.executeCommand('beans.refreshAll');
     } catch (error) {
       const message = getUserMessage(error);
       logger.error(message, error as Error);
