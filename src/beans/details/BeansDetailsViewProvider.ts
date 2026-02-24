@@ -1,9 +1,5 @@
 import { marked } from 'marked';
 
-// Configure marked globally to avoid deprecation warnings about default
-// options (mangle/headerIds). Setting these here ensures tests and other
-// modules using `marked` see consistent behavior.
-marked.setOptions({ mangle: false, headerIds: false });
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
 import { Bean } from '../model';
@@ -1040,7 +1036,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     // <pre><code>..</code></pre> (tests expect this behavior).
     const preprocessed = normalizedText.replace(/^```([^`]*)```$/gm, '```\n$1\n```');
 
-    let html = marked.parse(preprocessed, { mangle: false, headerIds: false });
+    let html = marked.parse(preprocessed) as string;
 
     // Sanitize links produced by marked to ensure only safe protocols are allowed
     // and add target/rel attributes for webview safety.
