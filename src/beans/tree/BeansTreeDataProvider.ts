@@ -34,7 +34,7 @@ export interface TreeFilterOptions {
 /**
  * Tree data provider for beans with hierarchical display and sorting
  */
-export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeItem> {
+export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeItem>, vscode.Disposable {
   private _onDidChangeTreeData: vscode.EventEmitter<BeanTreeItem | undefined | null | void> = new vscode.EventEmitter<
     BeanTreeItem | undefined | null | void
   >();
@@ -448,5 +448,16 @@ export class BeansTreeDataProvider implements vscode.TreeDataProvider<BeanTreeIt
     }
 
     return this.createTreeItem(parentBean);
+  }
+
+  /**
+   * Dispose resources held by this provider
+   */
+  dispose(): void {
+    try {
+      this._onDidChangeTreeData.dispose();
+    } catch {
+      // ignore disposal errors
+    }
   }
 }

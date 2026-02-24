@@ -234,7 +234,20 @@ export function registerBeansTreeViews(
     })
   );
 
-  context.subscriptions.push(activeTreeView, completedTreeView, scrappedTreeView, draftTreeView, searchTreeView);
+  context.subscriptions.push(
+    activeTreeView,
+    completedTreeView,
+    scrappedTreeView,
+    draftTreeView,
+    searchTreeView,
+    // Ensure providers are disposed when the extension is deactivated so
+    // their EventEmitters and any listeners are released.
+    activeProvider,
+    completedProvider,
+    scrappedProvider,
+    draftProvider,
+    searchProvider
+  );
 
   // Fetch counts for all panes on startup, regardless of visibility,
   // so that collapsed pane headers show accurate numbers immediately.
