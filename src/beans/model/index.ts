@@ -22,6 +22,7 @@ export {
   BeansJSONParseError,
   BeansPermissionError,
   BeansTimeoutError,
+  extractCliError,
   getUserMessage,
   isBeansError,
 } from './errors';

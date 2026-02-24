@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
-import { Bean, VALID_PARENT_TYPES } from '../model';
+import { Bean, VALID_PARENT_TYPES, getUserMessage } from '../model';
 import { BeansService } from '../service';
 import { BeanTreeItem } from './BeanTreeItem';
 
@@ -78,7 +78,7 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
       const targetName = targetBean ? targetBean.title : 'root';
       vscode.window.showInformationMessage(`${draggedName} re-parented to ${targetName}`);
     } catch (error) {
-      const message = `Failed to re-parent bean: ${(error as Error).message}`;
+      const message = getUserMessage(error);
       logger.error(message, error as Error);
       vscode.window.showErrorMessage(message);
     }

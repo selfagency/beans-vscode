@@ -259,8 +259,8 @@ describe('BeansDragAndDropController', () => {
       { isCancellationRequested: false } as any
     );
 
-    expect(showErrorMessage).toHaveBeenCalledWith('Failed to re-parent bean: update failed');
-    expect(mockLogger.error).toHaveBeenCalledWith('Failed to re-parent bean: update failed', expect.any(Error));
+    expect(showErrorMessage).toHaveBeenCalledWith('Update failed');
+    expect(mockLogger.error).toHaveBeenCalledWith('Update failed', expect.any(Error));
   });
 
   it('falls back to code/id names in re-parent logging and notifications', async () => {
