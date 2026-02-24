@@ -429,26 +429,15 @@ describe('BeansCommands', () => {
     expect(service.deleteBean).not.toHaveBeenCalledWith('parent-4');
   });
 
-  it('cancels child handling prompt without deleting parent', async () => {
+  it('cancels child handling prompt when modal is dismissed', async () => {
     const parent = makeBean({ id: 'parent-5', code: 'P5', status: 'draft', title: 'Parent' });
     const child = makeBean({ id: 'child-7', code: 'C7', parent: 'parent-5', status: 'todo' });
-    service.listBeans.mockResolvedValueOnce([parent, child]);
-    showWarningMessage.mockResolvedValueOnce('Cancel');
-
-    await (commands as any).deleteBean(parent);
-
-    expect(service.deleteBean).not.toHaveBeenCalledWith('parent-5');
-  });
-
-  it('cancels when child handling prompt is dismissed', async () => {
-    const parent = makeBean({ id: 'parent-6', code: 'P6', status: 'draft', title: 'Parent' });
-    const child = makeBean({ id: 'child-8', code: 'C8', parent: 'parent-6', status: 'todo' });
     service.listBeans.mockResolvedValueOnce([parent, child]);
     showWarningMessage.mockResolvedValueOnce(undefined);
 
     await (commands as any).deleteBean(parent);
 
-    expect(service.deleteBean).not.toHaveBeenCalledWith('parent-6');
+    expect(service.deleteBean).not.toHaveBeenCalledWith('parent-5');
   });
 
   it('uses delete confirmation flow when bean has no children', async () => {
@@ -461,16 +450,15 @@ describe('BeansCommands', () => {
     expect(showWarningMessage).toHaveBeenCalledWith(
       expect.stringContaining('Delete bean P7: No Children Parent?'),
       { modal: true },
-      'Delete',
-      'Cancel'
+      'Delete'
     );
     expect(service.deleteBean).toHaveBeenCalledWith('parent-7');
   });
 
-  it('aborts no-children delete when confirmation is not Delete', async () => {
+  it('aborts no-children delete when modal is dismissed', async () => {
     const parent = makeBean({ id: 'parent-8', code: 'P8', status: 'scrapped', title: 'No Children Parent' });
     service.listBeans.mockResolvedValueOnce([parent]);
-    showWarningMessage.mockResolvedValueOnce('Cancel');
+    showWarningMessage.mockResolvedValueOnce(undefined);
 
     await (commands as any).deleteBean(parent);
 
