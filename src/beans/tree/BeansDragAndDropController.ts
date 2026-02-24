@@ -41,7 +41,17 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
     }
 
     const bean = source[0].bean;
+    // Set multiple mime types so the payload survives view/process boundaries.
     dataTransfer.set('application/vnd.code.tree.beans', new vscode.DataTransferItem(bean));
+    try {
+      dataTransfer.set('application/json', new vscode.DataTransferItem(JSON.stringify(bean)));
+    } catch (e) {
+      // JSON serialization may fail for circular structures; ignore and continue
+    }
+    // Also include id as plain text for the simplest cross-process lookup
+    if (bean.id) {
+      dataTransfer.set('text/plain', new vscode.DataTransferItem(bean.id));
+    }
 
     logger.debug(`Drag started for bean ${bean.code}`);
   }
@@ -66,20 +76,45 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
     // The transfer payload may be either the full Bean object (in-process) or
     // a string id (when crossing views / processes). Normalize to a full
     // Bean by loading from the service when an id is provided.
-    const raw = transferItem.value as unknown;
+    let raw = transferItem.value as unknown;
     let draggedBean: Bean;
 
     if (typeof raw === 'string') {
       if (raw.trim() === '') {
-        // Avoid calling showBean with empty id — surface helpful message and abort
-        logger.error('Dragged payload is empty');
-        vscode.window.showErrorMessage('Dragged bean data is empty; cannot complete drop');
-        return;
+        // Some environments serialize complex objects to an empty string. Try
+        // alternative common mime types before bailing.
+        const altTypes = ['application/json', 'text/plain', 'text'];
+        let found: string | undefined;
+        for (const t of altTypes) {
+          const alt = dataTransfer.get(t);
+          if (!alt) {
+            continue;
+          }
+          const v = alt.value as any;
+          if (typeof v === 'string' && v.trim() !== '') {
+            found = v;
+            break;
+          }
+          if (v && typeof v.value === 'string' && v.value.trim() !== '') {
+            found = v.value;
+            break;
+          }
+        }
+
+        if (found) {
+          // Use the found alternative payload
+          raw = found;
+        } else {
+          // Avoid calling showBean with empty id — surface helpful message and abort
+          logger.error('Dragged payload is empty');
+          vscode.window.showErrorMessage('Dragged bean data is empty; cannot complete drop');
+          return;
+        }
       }
       // The string payload can be either a serialized Bean (JSON) or an id.
       // Try to parse JSON first; if parsing fails, treat as id and fetch.
       try {
-        const parsed = JSON.parse(raw);
+        const parsed = JSON.parse(raw as string);
         if (parsed && typeof parsed === 'object') {
           // Prefer explicit id, fall back to slug/code if present
           const candidateId = (parsed.id || parsed.slug || parsed.code) as string | undefined;
@@ -98,12 +133,12 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
           }
         } else {
           // Not an object – treat as id string
-          draggedBean = await this.service.showBean(raw);
+          draggedBean = await this.service.showBean(raw as string);
         }
       } catch (err) {
         // Not JSON — treat as id
         try {
-          draggedBean = await this.service.showBean(raw);
+          draggedBean = await this.service.showBean(raw as string);
         } catch (showErr) {
           const message = getUserMessage(showErr);
           logger.error(`Failed to resolve dragged bean id: ${message}`, showErr as Error);
