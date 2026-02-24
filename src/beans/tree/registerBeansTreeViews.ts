@@ -253,6 +253,50 @@ export function registerBeansTreeViews(
   // so that collapsed pane headers show accurate numbers immediately.
   void refreshCountTitles();
 
+  // Periodic refresh scheduler: optional user-configured interval (ms).
+  // When configured > 0, schedule `beans.refreshAll` at the interval. Listen
+  // for config changes to recreate/clear the timer. Ensure we clear the
+  // interval on disposal by pushing a disposable into context.subscriptions.
+  let refreshIntervalHandle: ReturnType<typeof setInterval> | undefined;
+
+  const setupPeriodicRefresh = (): void => {
+    // Clear existing interval if present
+    if (refreshIntervalHandle) {
+      clearInterval(refreshIntervalHandle);
+      refreshIntervalHandle = undefined;
+    }
+
+    const refreshMs = vscode.workspace.getConfiguration('beans').get<number>('view.refreshIntervalMs', 0);
+    if (refreshMs && refreshMs > 0) {
+      logger.info(`Scheduling periodic pane refresh every ${refreshMs}ms`);
+      refreshIntervalHandle = setInterval(() => {
+        // Use the command so existing refresh semantics and logging are reused
+        void vscode.commands.executeCommand('beans.refreshAll');
+      }, refreshMs);
+    }
+  };
+
+  // Initialize periodic refresh and listen for configuration changes
+  setupPeriodicRefresh();
+  const configListener = vscode.workspace.onDidChangeConfiguration(e => {
+    if (e.affectsConfiguration('beans.view.refreshIntervalMs') || e.affectsConfiguration('beans.view.showCounts')) {
+      setupPeriodicRefresh();
+      // reapply header titles immediately when counts/formatting preferences change
+      void refreshCountTitles();
+    }
+  });
+  context.subscriptions.push(configListener);
+
+  // Ensure interval is cleared when extension is deactivated (dispose runs on context)
+  context.subscriptions.push({
+    dispose: () => {
+      if (refreshIntervalHandle) {
+        clearInterval(refreshIntervalHandle);
+        refreshIntervalHandle = undefined;
+      }
+    },
+  });
+
   logger.info('Tree views registered with drag-and-drop support and details view integration');
 
   return {
