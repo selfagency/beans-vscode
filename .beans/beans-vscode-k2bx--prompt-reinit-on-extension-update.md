@@ -1,11 +1,11 @@
 ---
 # beans-vscode-k2bx
 title: Prompt user to reinitialize Copilot artifacts after extension update
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-02-19T12:04:00Z
-updated_at: 2026-02-19T12:04:00Z
+updated_at: 2026-02-24T14:31:39Z
 ---
 
 When a new version of the extension is installed or activated, prompt the user to reinitialize to receive the latest Copilot instructions and skills. The implementation should:
@@ -27,4 +27,3 @@ Ensure this respects workspace trust and only writes files when the workspace is
 - [ ] Respect workspace trust: if workspace is not trusted, prompt user to trust and do not write files until trusted
 - [ ] Add tests and validate via `pnpm run compile` and `pnpm run test`
  - [x] Add tests and validate via `pnpm run compile` and `pnpm run test`
-
