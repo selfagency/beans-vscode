@@ -69,6 +69,12 @@ export class BeansService {
   private readonly malformedWarningPaths = new Set<string>();
   private cliPath: string;
   private workspaceRoot: string;
+  // Config manager instance cached for lifecycle of service to avoid repeated I/O
+  private readonly configManager: BeansConfigManager;
+  // Short-lived parsed config cache to reduce repeated parsing on hot paths
+  private cachedConfig: BeansConfig | null = null;
+  private configCacheTs: number | null = null;
+  private readonly CONFIG_CACHE_TTL_MS = 5 * 1000; // 5s
   // Request deduplication: tracks in-flight CLI requests to prevent duplicate calls
   private readonly inFlightRequests = new Map<string, Promise<unknown>>();
   // Offline mode: cache last successful results for graceful degradation
@@ -81,6 +87,9 @@ export class BeansService {
     const config = vscode.workspace.getConfiguration('beans');
     this.cliPath = config.get<string>('cliPath', 'beans');
     this.workspaceRoot = config.get<string>('workspaceRoot', '') || defaultWorkspaceRoot;
+    // Initialize a single BeansConfigManager for the service lifecycle to avoid
+    // repeatedly instantiating and performing workspace I/O on hot paths.
+    this.configManager = new BeansConfigManager(this.workspaceRoot);
   }
 
   /**
@@ -477,9 +486,13 @@ export class BeansService {
    * Reads from .beans.yml via BeansConfigManager and merges with defaults
    */
   async getConfig(): Promise<BeansConfig> {
-    // Try to read from .beans.yml
-    const configManager = new BeansConfigManager(this.workspaceRoot);
-    const yamlConfig = await configManager.read();
+    // Short-circuit to cached parsed config when still fresh
+    if (this.cachedConfig && this.configCacheTs && Date.now() - this.configCacheTs < this.CONFIG_CACHE_TTL_MS) {
+      return this.cachedConfig;
+    }
+
+    // Try to read from .beans.yml via the shared manager instance
+    const yamlConfig = await this.configManager.read();
 
     // Default configuration values
     const defaults: BeansConfig = {
@@ -494,7 +507,11 @@ export class BeansService {
     };
 
     // Merge YAML config with defaults
-    return yamlConfig ? { ...defaults, ...yamlConfig } : defaults;
+    const merged = yamlConfig ? { ...defaults, ...yamlConfig } : defaults;
+    // Update short-lived cache so hot paths don't re-read within the TTL window
+    this.cachedConfig = merged;
+    this.configCacheTs = Date.now();
+    return merged;
   }
 
   /**
