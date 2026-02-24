@@ -1287,8 +1287,10 @@ export class BeansService {
     }
     this.malformedWarningPaths.add(warningKey);
 
-    const fileLabel = quarantinedPath ? path.basename(quarantinedPath) : rawBean.path || rawBean.id;
-    const message = `Malformed bean could not be auto-fixed and was quarantined: \`${fileLabel}\``;
+    const fileLabel = quarantinedPath
+      ? path.basename(quarantinedPath)
+      : path.basename(rawBean.path || String(rawBean.id));
+    const message = `Bean file quarantined: ${fileLabel}. Open the .beans/.quarantine folder to inspect or restore the file.`;
 
     if (!quarantinedPath) {
       void vscode.window.showWarningMessage(message);
