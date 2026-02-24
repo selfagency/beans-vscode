@@ -1,11 +1,11 @@
 ---
 # beans-vscode-n5pl
 title: 'refactor: eliminate unjustified any types in queryHelpers, DetailsViewProvider, and extension.ts'
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-02-24T13:49:01Z
-updated_at: 2026-02-24T13:49:01Z
+updated_at: 2026-02-24T16:02:31Z
 ---
 
 ## Problem

@@ -1,3 +1,13 @@
+---
+# beans-vscode-kcff
+title: update copilot instructions skill templates enforc
+status: completed
+type: task
+priority: normal
+created_at: 2026-02-24T16:02:13Z
+updated_at: 2026-02-24T16:03:17Z
+---
+
 ```markdown
 ---
 # beans-vscode-kcff

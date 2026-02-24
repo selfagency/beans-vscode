@@ -1,11 +1,11 @@
 ---
 # beans-vscode-6tt3
 title: 'refactor: replace errors?: any[] with typed GraphQLError interface in service and MCP layers'
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-02-24T13:49:45Z
-updated_at: 2026-02-24T13:49:45Z
+updated_at: 2026-02-24T16:02:46Z
 ---
 
 ## Problem

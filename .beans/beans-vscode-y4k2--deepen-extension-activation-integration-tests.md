@@ -1,12 +1,11 @@
 ---
 # beans-vscode-y4k2
 title: Deepen extension activation integration tests
-status: todo
+status: scrapped
 type: task
 priority: high
 created_at: 2026-02-17T03:29:40Z
-updated_at: 2026-02-17T03:29:40Z
-parent: beans-vscode-mdvp
+updated_at: 2026-02-24T16:05:47Z
 ---
 
 Expand extension activation test depth with fewer mocks and more realistic wiring:

@@ -1,12 +1,11 @@
 ---
 # beans-vscode-v2n7
 title: Deepen BeansCommands test depth
-status: todo
+status: scrapped
 type: task
 priority: high
 created_at: 2026-02-17T03:25:40Z
-updated_at: 2026-02-17T03:25:40Z
-parent: beans-vscode-mdvp
+updated_at: 2026-02-24T16:05:30Z
 ---
 
 Expand BeansCommands test coverage beyond broad unit mocks:

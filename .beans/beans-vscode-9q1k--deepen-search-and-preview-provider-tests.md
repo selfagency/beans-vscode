@@ -1,12 +1,11 @@
 ---
 # beans-vscode-9q1k
 title: Deepen Search and Preview provider tests
-status: todo
+status: scrapped
 type: task
 priority: high
 created_at: 2026-02-17T03:20:10Z
-updated_at: 2026-02-17T03:20:10Z
-parent: beans-vscode-mdvp
+updated_at: 2026-02-24T16:05:54Z
 ---
 
 Increase test depth for provider webview and rendering behavior:

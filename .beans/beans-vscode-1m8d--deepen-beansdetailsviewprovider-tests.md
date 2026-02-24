@@ -1,12 +1,11 @@
 ---
 # beans-vscode-1m8d
 title: Deepen BeansDetailsViewProvider tests
-status: todo
+status: scrapped
 type: task
 priority: high
 created_at: 2026-02-17T03:22:30Z
-updated_at: 2026-02-17T03:22:30Z
-parent: beans-vscode-mdvp
+updated_at: 2026-02-24T16:05:35Z
 ---
 
 Expand details view coverage beyond unit-level string assertions:
