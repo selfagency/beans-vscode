@@ -1,7 +1,7 @@
 ---
 # beans-vscode-t1qv
 title: 'fix: add depth limit to isDescendantOf to prevent infinite loop on corrupt bean cycles'
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-02-24T13:49:30Z
