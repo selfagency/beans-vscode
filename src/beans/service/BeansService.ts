@@ -61,6 +61,17 @@ interface RawBeanFromCLI {
 }
 
 /**
+ * Typed representation of a GraphQL error object as commonly returned by GraphQL
+ * services. Using this type avoids unsafe `any` usage at call sites.
+ */
+export interface GraphQLError {
+  message: string;
+  locations?: Array<{ line: number; column: number }>;
+  path?: Array<string | number>;
+  extensions?: Record<string, unknown>;
+}
+
+/**
  * Service for interacting with the Beans CLI
  * Provides type-safe wrappers around CLI operations with secure command execution
  */
@@ -363,7 +374,7 @@ export class BeansService {
   private async executeGraphQL<T>(
     query: string,
     variables?: Record<string, unknown>
-  ): Promise<{ data: T; errors?: any[] }> {
+  ): Promise<{ data: T; errors?: GraphQLError[] }> {
     const args = ['graphql', '--json', query];
     if (variables) {
       args.push('--variables', JSON.stringify(variables));
@@ -384,7 +395,7 @@ export class BeansService {
     if (existingRequest) {
       // Log only the bounded request key (hash) to avoid leaking variables
       this.logger.debug(`Deduplicating GraphQL request: ${requestKey}`);
-      return existingRequest as Promise<{ data: T; errors?: any[] }>;
+      return existingRequest as Promise<{ data: T; errors?: GraphQLError[] }>;
     }
 
     // Create new request with retry logic
