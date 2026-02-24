@@ -44,6 +44,27 @@ export class BeansOutput {
   }
 
   /**
+   * Reset the singleton instance for tests.
+   * This will dispose any existing OutputChannel and clear internal state so
+   * tests can start with a fresh instance. Guarded to only run in test env.
+   */
+  static resetInstance(): void {
+    if (process.env.NODE_ENV !== 'test') {
+      // Protective guard: only allow tests to reset the singleton
+      throw new Error('BeansOutput.resetInstance may only be used in test environment');
+    }
+
+    if (BeansOutput.instance) {
+      try {
+        BeansOutput.instance.dispose();
+      } catch {
+        // ignore dispose errors in tests
+      }
+      BeansOutput.instance = undefined;
+    }
+  }
+
+  /**
    * Update log level from configuration
    */
   private updateLevel(): void {

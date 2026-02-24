@@ -49,6 +49,8 @@ describe('BeansOutput', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Ensure tests start with a fresh singleton instance
+    BeansOutput.resetInstance();
     // Get fresh instance - singleton pattern means we need to get the same instance
     logger = BeansOutput.getInstance();
     mockOutputChannel = vscode.window.createOutputChannel('Beans', { log: true });
