@@ -12,7 +12,7 @@ export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
  * Provides structured logging with configurable log levels
  */
 export class BeansOutput {
-  private static instance: BeansOutput;
+  private static instance: BeansOutput | undefined;
   private outputChannel: vscode.OutputChannel;
   private level: LogLevel = 'info';
   private diagnosticsEnabled = false;
@@ -33,6 +33,14 @@ export class BeansOutput {
       BeansOutput.instance = new BeansOutput();
     }
     return BeansOutput.instance;
+  }
+
+  /**
+   * Clear the singleton instance. Used on extension deactivation so a fresh
+   * logger is created on next activation (prevents using a disposed OutputChannel).
+   */
+  static clearInstance(): void {
+    BeansOutput.instance = undefined;
   }
 
   /**

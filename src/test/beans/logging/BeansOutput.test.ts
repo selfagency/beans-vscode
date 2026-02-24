@@ -60,6 +60,13 @@ describe('BeansOutput', () => {
       const instance2 = BeansOutput.getInstance();
       expect(instance1).toBe(instance2);
     });
+
+    it('returns a new instance after clearInstance', () => {
+      const instance1 = BeansOutput.getInstance();
+      BeansOutput.clearInstance();
+      const instance2 = BeansOutput.getInstance();
+      expect(instance1).not.toBe(instance2);
+    });
   });
 
   describe('log levels', () => {
