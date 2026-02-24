@@ -80,7 +80,11 @@ describe('BeansPreviewProvider', () => {
 
     expect(content).toContain('# Preview title');
     expect(content).toContain('**ID:** `bean-1` | **Code:** `ABC`');
-    expect(content).toContain('img.shields.io');
+    // No external shields.io requests — badges should be rendered inline
+    expect(content).not.toContain('img.shields.io');
+    // Inline badge HTML should include the status and type labels
+    expect(content).toContain('in-progress');
+    expect(content).toContain('feature');
     expect(content).toContain('**Parent:** epic-1');
     expect(content).toContain('**Blocking:** bean-2');
     expect(content).toContain('**Blocked by:** bean-3');
