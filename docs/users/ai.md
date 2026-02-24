@@ -32,42 +32,19 @@ The Model Context Protocol (MCP) is a standard for connecting AI assistants to e
 
 ### Available MCP Tools
 
-When `beans.ai.enabled` is `true`, the following tools are available to AI clients:
+When `beans.ai.enabled` is `true`, the extension exposes a compact, consolidated set of MCP tools. These consolidated tools replace many fine-grained commands and should be preferred by AI clients and integrations.
 
-#### Initialization & Management
+Key public tools (see the full reference and examples at `docs/users/mcp-integration.md`):
 
-- `beans_vscode_init` - Initialize Beans in workspace
-- `beans_vscode_refresh` - Refresh all tree views
-
-#### Viewing & Listing
-
-- `beans_vscode_view` - View details of specific beans
-- `beans_vscode_list` - List beans with filters
-- `beans_vscode_search` - Full-text search across beans
-
-#### Creating & Editing
-
-- `beans_vscode_create` - Create new beans
-- `beans_vscode_edit` - Edit bean content
-
-#### Metadata Updates
-
-- `beans_vscode_set_status` - Update bean status
-- `beans_vscode_set_type` - Update bean type
-- `beans_vscode_set_priority` - Update bean priority
-
-#### Relationships
-
-- `beans_vscode_set_parent` - Set parent-child relationship
-- `beans_vscode_remove_parent` - Remove parent relationship
-- `beans_vscode_edit_blocking` - Manage blocking dependencies
-
-#### Organization
-
-- `beans_vscode_filter` - Apply filters to beans
-- `beans_vscode_sort` - Change sort order
-- `beans_vscode_copy_id` - Copy bean ID to clipboard
-- `beans_vscode_delete` - Delete beans (draft/scrapped only)
+- `beans_vscode_init` — Initialize the workspace (optional `prefix`).
+- `beans_vscode_view` — Fetch full bean details by `beanId`.
+- `beans_vscode_create` — Create a new bean (title/type + optional fields).
+- `beans_vscode_update` — Consolidated metadata updates (status/type/priority/parent/clearParent/blocking/blockedBy).
+- `beans_vscode_delete` — Delete a bean (`beanId`, optional `force`).
+- `beans_vscode_reopen` — Reopen a completed or scrapped bean to an active status.
+- `beans_vscode_query` — Unified list/search/filter/sort/llm_context/open_config operations.
+- `beans_vscode_bean_file` — Read/edit/create/delete files under `.beans`.
+- `beans_vscode_output` — Read extension output logs or show guidance.
 
 ### MCP Commands
 
