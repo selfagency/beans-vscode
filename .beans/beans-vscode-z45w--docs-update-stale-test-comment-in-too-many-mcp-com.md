@@ -1,7 +1,10 @@
 ---
 # beans-vscode-z45w
 title: 'docs: update stale test comment in too-many-mcp-commands.test.ts to reflect current regression-guard purpose'
-status: todo
+status: in-progress
+updated_at: 2026-02-24T13:55:00Z
+branch: docs/z45w-update-test-comment
+pr: https://github.com/selfagency/beans-vscode/pull/97
 type: task
 priority: low
 created_at: 2026-02-24T13:49:34Z
