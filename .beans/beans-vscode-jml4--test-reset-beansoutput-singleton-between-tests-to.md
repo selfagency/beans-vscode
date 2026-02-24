@@ -1,13 +1,13 @@
 ---
 # beans-vscode-jml4
 title: test reset beansoutput singleton between tests to
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-02-24T13:49:22Z
-updated_at: 2026-02-24T13:49:22Z
-id: beans-vscode-jml4
+updated_at: 2026-02-24T18:39:01Z
 ---
+
 ## Problem
 
 `BeansOutput.test.ts` calls `BeansOutput.getInstance()`, which returns the module-level singleton. Tests that modify the instance's state (log level, mirror path) mutate shared global state. The test file does not reset the static instance between tests.
