@@ -133,7 +133,7 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
 
     // Protect against corrupted parent chains / cycles by capping traversal depth.
     let depth = 0;
-    const MAX_DEPTH = 50;
+    const MAX_DEPTH = 5;
 
     while (current?.parent) {
       // Bail out early if we suspect a cycle or excessively deep chain
