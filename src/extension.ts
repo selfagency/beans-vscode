@@ -216,6 +216,12 @@ export async function activate(context: vscode.ExtensionContext) {
     // Register commands
     const beansCommands = new BeansCommands(beansService, context, filterManager, configManager, detailsProvider);
     beansCommands.registerAll();
+    // After commands are registered, check for extension version changes and prompt reinit when appropriate
+    try {
+      await checkForExtensionUpdateAndPrompt(context);
+    } catch (err) {
+      logger.diagnostics?.('Extension update prompt check failed', err as Error);
+    }
     // Register beans.showOutput command (always available)
     context.subscriptions.push(
       vscode.commands.registerCommand('beans.showOutput', () => {
@@ -709,6 +715,77 @@ async function workspaceFileExists(workspaceRoot: string, relativePath: string):
     return matches.length > 0;
   } catch {
     return false;
+  }
+}
+
+/**
+ * If the extension was previously initialized with a different version, prompt the user
+ * to reinitialize Copilot artifacts (instructions + skill). Only prompt when a saved
+ * `beans.lastInitializedExtensionVersion` exists and differs from the current version.
+ * Respect workspace trust and do not write files unless workspace is trusted.
+ */
+export async function checkForExtensionUpdateAndPrompt(context: vscode.ExtensionContext): Promise<void> {
+  try {
+    // Resolve current extension version: prefer the provided context (test-friendly),
+    // fall back to vscode.extensions if available.
+    const currentVersion =
+      (context.extension as any)?.packageJSON?.version ||
+      (vscode.extensions as any)?.getExtension?.('selfagency.beans-vscode')?.packageJSON?.version ||
+      '';
+    const lastVersion = context.workspaceState.get<string>('beans.lastInitializedExtensionVersion');
+
+    // Only prompt when we have a previous recorded version and it differs.
+    if (!lastVersion || lastVersion === currentVersion) {
+      return;
+    }
+
+    // If workspace is trusted, offer direct reinitialization.
+    if (vscode.workspace.isTrusted) {
+      const selection = await vscode.window.showInformationMessage(
+        'Beans extension was updated. Reinitialize Copilot instructions and skill to get the latest artifacts.',
+        'Reinitialize now (regenerates instructions & skill)',
+        'Remind me later'
+      );
+
+      if (selection === 'Reinitialize now (regenerates instructions & skill)') {
+        try {
+          // Call existing command that regenerates the Copilot instructions and skill
+          await vscode.commands.executeCommand('beans.reinitializeCopilotArtifacts');
+          // On success, persist the current extension version so we don't prompt again
+          await context.workspaceState.update('beans.lastInitializedExtensionVersion', currentVersion);
+          BeansOutput.getInstance().info('Updated workspaceState beans.lastInitializedExtensionVersion after reinit');
+        } catch (error) {
+          BeansOutput.getInstance().error(
+            'Failed to reinitialize Copilot artifacts from update prompt',
+            error as Error
+          );
+          // Let the user know
+          vscode.window.showErrorMessage(`Reinitialization failed: ${(error as Error).message}`);
+        }
+      }
+      // If user chose Remind me later or dismissed, do nothing so we'll prompt again on next activation
+      return;
+    }
+
+    // Workspace is not trusted: explain requirement and offer to open trust UI
+    const selection = await vscode.window.showInformationMessage(
+      'Beans was updated. Reinitializing Copilot instructions and skill requires a trusted workspace to write files. Trust this workspace to allow reinitialization.',
+      'Trust Workspace',
+      'Remind me later'
+    );
+
+    if (selection === 'Trust Workspace') {
+      // Open workspace trust UI; API command may vary by VS Code version
+      // Preferred command to open trust UI
+      try {
+        await vscode.commands.executeCommand('workbench.action.openWorkspaceTrust');
+      } catch {
+        // Fallback
+        await vscode.commands.executeCommand('workbench.action.manageTrustedWorkspaces');
+      }
+    }
+  } catch (err) {
+    BeansOutput.getInstance().warn('checkForExtensionUpdateAndPrompt failed', err as Error);
   }
 }
 

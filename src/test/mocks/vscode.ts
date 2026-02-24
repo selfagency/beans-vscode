@@ -130,6 +130,7 @@ export const window = {
 };
 
 export const workspace = {
+  isTrusted: false,
   workspaceFolders: undefined as any,
   getConfiguration: (): any => ({
     get: () => undefined,
