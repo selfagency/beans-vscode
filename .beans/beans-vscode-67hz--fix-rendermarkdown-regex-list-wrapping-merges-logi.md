@@ -1,7 +1,7 @@
 ---
 # beans-vscode-67hz
 title: 'fix: renderMarkdown regex list-wrapping merges logically separate lists'
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-02-24T13:49:37Z
