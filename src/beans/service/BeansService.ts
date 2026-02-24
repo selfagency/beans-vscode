@@ -1900,7 +1900,7 @@ export class BeansService {
    * Initialize Beans in the current workspace
    */
   async init(options?: { prefix?: string; defaultType?: string; defaultStatus?: string }): Promise<void> {
-    const args = ['init'];
+    const args = ['init', '--json'];
 
     if (options?.prefix) {
       args.push('--prefix', options.prefix);
