@@ -3,7 +3,6 @@ import * as vscode from 'vscode';
 import { BeansCommands } from '../../beans/commands';
 import { BeansConfigManager } from '../../beans/config';
 import { BeansDetailsViewProvider } from '../../beans/details';
-import { BeansPreviewProvider } from '../../beans/preview';
 import { BeansService } from '../../beans/service';
 import { BeansFilterManager } from '../../beans/tree';
 
@@ -14,7 +13,6 @@ import { BeansFilterManager } from '../../beans/tree';
 describe('Command Registration', () => {
   let mockContext: vscode.ExtensionContext;
   let mockService: BeansService;
-  let mockPreviewProvider: BeansPreviewProvider;
   let mockFilterManager: BeansFilterManager;
   let mockConfigManager: BeansConfigManager;
   let mockDetailsProvider: BeansDetailsViewProvider;
@@ -62,20 +60,12 @@ describe('Command Registration', () => {
 
     // Create mocks
     mockService = new BeansService('/mock/workspace');
-    mockPreviewProvider = new BeansPreviewProvider(mockService);
     mockFilterManager = new BeansFilterManager();
     mockConfigManager = new BeansConfigManager('/mock/workspace');
     mockDetailsProvider = new BeansDetailsViewProvider(vscode.Uri.file('/mock/extension'), mockService);
 
     // Create commands instance
-    commands = new BeansCommands(
-      mockService,
-      mockContext,
-      mockPreviewProvider,
-      mockFilterManager,
-      mockConfigManager,
-      mockDetailsProvider
-    );
+    commands = new BeansCommands(mockService, mockContext, mockFilterManager, mockConfigManager, mockDetailsProvider);
   });
 
   afterEach(() => {
