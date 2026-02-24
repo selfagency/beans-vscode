@@ -41,6 +41,17 @@ const PRIORITY_ICONS: Record<string, string> = {
  * Provides a search bar, multi-select filter checkboxes for
  * status / type / priority, and flat search results sorted by relevancy.
  */
+/**
+ * Legacy webview-based search provider.
+ *
+ * NOTE: This class is preserved in source for historical reference and for
+ * potential re-activation, but it is not instantiated by the extension's
+ * activation path. The tree-based search provider (`BeansSearchTreeProvider`)
+ * supersedes this implementation. If you re-activate this provider, ensure
+ * its export is added back to `src/beans/search/index.ts` and update the
+ * activation registration in `src/extension.ts` accordingly. See bean
+ * `beans-vscode-l7wv` for the decision record.
+ */
 export class BeansSearchViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'beans.search';
 
