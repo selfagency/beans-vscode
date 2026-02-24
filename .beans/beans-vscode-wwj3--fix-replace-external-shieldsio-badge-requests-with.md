@@ -1,7 +1,7 @@
 ---
 # beans-vscode-wwj3
 title: 'fix: replace external shields.io badge requests with local inline badges in BeansPreviewProvider'
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-02-24T13:49:26Z

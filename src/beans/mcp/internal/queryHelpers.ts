@@ -1,6 +1,31 @@
 export type SortMode = 'status-priority-type-title' | 'updated' | 'created' | 'id';
 
-function sortBeansInternal(beans: any[], mode: SortMode): any[] {
+export type BeanRecord = {
+  id: string;
+  slug: string;
+  path: string;
+  title: string;
+  body: string;
+  status: string;
+  type: string;
+  priority?: string;
+  tags?: string[];
+  parentId?: string;
+  blockingIds?: string[];
+  blockedByIds?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+  etag?: string;
+};
+
+interface QueryBackend {
+  graphqlSchema?: () => Promise<string>;
+  writeInstructions?: (instructions: string) => Promise<string | null>;
+  openConfig?: () => Promise<Record<string, unknown>>;
+  list(options?: { status?: string[]; type?: string[]; search?: string }): Promise<BeanRecord[]>;
+}
+
+function sortBeansInternal(beans: BeanRecord[], mode: SortMode): BeanRecord[] {
   const sorted = [...beans];
   const statusWeight: Record<string, number> = {
     'in-progress': 0,
@@ -61,7 +86,7 @@ function sortBeansInternal(beans: any[], mode: SortMode): any[] {
 import { buildBeansCopilotInstructions } from '../../config/CopilotInstructions';
 
 export async function handleQueryOperation(
-  backend: any,
+  backend: QueryBackend,
   params: {
     operation: string;
     mode?: SortMode;
@@ -72,15 +97,16 @@ export async function handleQueryOperation(
     writeToWorkspaceInstructions?: boolean;
     includeClosed?: boolean;
   }
-) {
+): Promise<{ content: Array<{ type: 'text'; text: string }>; structuredContent: any }> {
   const { operation, mode, statuses, types, search, tags, writeToWorkspaceInstructions, includeClosed } = params;
 
   if (operation === 'llm_context') {
-    const graphqlSchema = await backend.graphqlSchema();
+    const graphqlSchema = typeof backend.graphqlSchema === 'function' ? await backend.graphqlSchema() : '';
     const generatedInstructions = buildBeansCopilotInstructions(graphqlSchema);
-    const instructionsPath = writeToWorkspaceInstructions
-      ? await backend.writeInstructions(generatedInstructions)
-      : null;
+    const instructionsPath =
+      writeToWorkspaceInstructions && typeof backend.writeInstructions === 'function'
+        ? await backend.writeInstructions(generatedInstructions)
+        : null;
     return {
       content: [
         { type: 'text', text: JSON.stringify({ graphqlSchema, generatedInstructions, instructionsPath }, null, 2) },
@@ -90,7 +116,7 @@ export async function handleQueryOperation(
   }
 
   if (operation === 'open_config') {
-    const config = await backend.openConfig();
+    const config = typeof backend.openConfig === 'function' ? await backend.openConfig() : {};
     return { content: [{ type: 'text', text: JSON.stringify(config, null, 2) }], structuredContent: config };
   }
 
@@ -109,7 +135,7 @@ export async function handleQueryOperation(
     let beans = await backend.list({ status: normalizedStatuses, type: normalizedTypes, search });
     if (Array.isArray(tags) && tags.length > 0) {
       const tagSet = new Set(tags);
-      beans = beans.filter((bean: any) => (bean.tags || []).some((tag: string) => tagSet.has(tag)));
+      beans = beans.filter((bean: BeanRecord) => (bean.tags || []).some((tag: string) => tagSet.has(tag)));
     }
     return {
       content: [{ type: 'text', text: JSON.stringify({ count: beans.length, beans }, null, 2) }],
@@ -122,7 +148,7 @@ export async function handleQueryOperation(
     // Ensure robust search behavior even if backend.list ignores the `search` param.
     if (typeof search === 'string' && search.length > 0) {
       const q = search.toLowerCase();
-      beans = beans.filter((b: any) => {
+      beans = beans.filter((b: BeanRecord) => {
         const title = (b.title || '').toLowerCase();
         const id = (b.id || '').toLowerCase();
         const tags = (b.tags || []).join(' ').toLowerCase();
@@ -130,7 +156,7 @@ export async function handleQueryOperation(
       });
     }
     if (includeClosed === false) {
-      beans = beans.filter((b: any) => b.status !== 'completed' && b.status !== 'scrapped');
+      beans = beans.filter((b: BeanRecord) => b.status !== 'completed' && b.status !== 'scrapped');
     }
     return {
       content: [{ type: 'text', text: JSON.stringify({ query: search, count: beans.length, beans }, null, 2) }],
@@ -140,7 +166,7 @@ export async function handleQueryOperation(
 
   // sort
   const beans = await backend.list({ status: normalizedStatuses, type: normalizedTypes, search });
-  const sorted = sortBeansInternal(beans, (mode as any) || 'status-priority-type-title');
+  const sorted = sortBeansInternal(beans, mode ?? 'status-priority-type-title');
   return {
     content: [{ type: 'text', text: JSON.stringify({ mode, count: beans.length, beans: sorted }, null, 2) }],
     structuredContent: { mode, count: beans.length, beans: sorted },
