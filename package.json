@@ -529,11 +529,13 @@
         {
           "command": "beans.delete",
           "when": "view =~ /^beans\\./ && viewItem =~ /deletable/",
-          "group": "5_danger"        },
+          "group": "5_danger"
+        },
         {
           "command": "beans.copilotStartWork",
           "when": "view =~ /^beans\\./ && viewItem =~ /^bean/ && beans.aiEnabled",
-          "group": "6_ai"        }
+          "group": "6_ai"
+        }
       ],
       "webview/context": [
         {
@@ -680,6 +682,7 @@
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@octokit/rest": "^22.0.1",
     "@types/js-yaml": "^4.0.9",
+    "@types/marked": "6.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.3.0",
     "@types/vscode": "^1.109.0",
@@ -692,6 +695,7 @@
     "husky": "^9.1.7",
     "js-yaml": "^4.1.1",
     "lint-staged": "^16.2.7",
+    "marked": "^5.1.2",
     "npm-run-all": "^4.1.5",
     "ora": "^9.3.0",
     "prettier": "^3.8.1",

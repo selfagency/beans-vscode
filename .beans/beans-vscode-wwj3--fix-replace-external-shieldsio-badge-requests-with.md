@@ -31,8 +31,13 @@ Status, type, and priority are all bounded enumerations — their display values
 ## Recommendation
 
 Render badges locally using either:
+
 - VS Code codicons (already a dependency)
 - Simple inline SVG generated from the enum values
 - Styled `<span>` elements with CSS (coloured chips)
 
 This eliminates the network dependency entirely.
+
+## Comment
+
+This shouldn't even exist anymore after we eliminated the preview view to use the details pane instead.
