@@ -1,1 +1,0 @@
-Draft PR body for create_pull_request API placeholder.
