@@ -63,7 +63,17 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
       return;
     }
 
-    const draggedBean = transferItem.value as Bean;
+    // The transfer payload may be either the full Bean object (in-process) or
+    // a string id (when crossing views / processes). Normalize to a full
+    // Bean by loading from the service when an id is provided.
+    const raw = transferItem.value as unknown;
+    let draggedBean: Bean;
+    if (typeof raw === 'string') {
+      // Serialized id — fetch fresh bean data from the service
+      draggedBean = await this.service.showBean(raw);
+    } else {
+      draggedBean = raw as Bean;
+    }
     const targetBean = target?.bean;
 
     // Detect cross-pane drops: targetStatus !== null && dragged status not native to this pane
