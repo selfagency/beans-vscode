@@ -37,6 +37,18 @@ describe('registerBeansTreeViews integration', () => {
     service = new BeansService('/mock/workspace');
     manager = new BeansFilterManager();
     details = new BeansDetailsViewProvider(vscode.Uri.file('/mock/ext'), service);
+
+    // Mock createTreeView used by registerBeansTreeViews
+    (vscode.window as any).createTreeView = (_id: string, _opts: any) => {
+      return {
+        title: '',
+        reveal: vi.fn(),
+        dispose: vi.fn(),
+        onDidChangeSelection: vi.fn(),
+        onDidChangeVisibility: vi.fn(),
+        selection: [],
+      } as any;
+    };
   });
 
   it('registers providers and adds them to context.subscriptions', () => {
