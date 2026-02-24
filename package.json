@@ -339,6 +339,12 @@
           "default": true,
           "description": "Show item counts in Beans side panel headers (for example: Open Beans (12))."
         },
+        "beans.view.refreshIntervalMs": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "markdownDescription": "Periodic refresh interval (ms) for Beans sidebar panes. Set to 0 to disable automatic refreshing."
+        },
         "beans.autoInit.enabled": {
           "type": "boolean",
           "default": true,
