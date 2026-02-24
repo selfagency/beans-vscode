@@ -218,7 +218,7 @@
       },
       {
         "command": "beans.editBlocking",
-        "title": "Edit Blocking Relationships",
+        "title": "Set Blocking/Blocked By",
         "category": "Beans",
         "when": "beans.initialized"
       },
