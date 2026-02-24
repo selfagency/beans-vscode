@@ -32,6 +32,7 @@ vi.mock('node:fs/promises', () => ({ readFile: readFileMock, writeFile: writeFil
 
 function setupExecFileMock(): void {
   execFileMock.mockImplementation((file: string, args: string[], _opts: unknown, cb: (...params: any[]) => void) => {
+    void file;
     const done = (stdout: string) => cb(null, { stdout, stderr: '' });
     if (args[0] === 'graphql') {
       // Return minimal JSON for list/show/create/update/delete queries used by handlers

@@ -1,14 +1,14 @@
 ---
 # beans-vscode-3rd2
 title: too many mcp commands
-status: in-progress
+status: completed
 type: feature
+priority: normal
 created_at: 2026-02-24T02:56:47Z
-updated_at: 2026-02-24T03:00:00Z
-branch: feature/3rd2-too-many-mcp-commands
+updated_at: 2026-02-24T04:41:06Z
 ---
 
-hew down the number of mcp commands but provide a wider array of internal function for mcp commands  so that you don't really lose anything
+hew down the number of mcp commands but provide a wider array of internal function for mcp commands so that you don't really lose anything
 
 ## Todo
 

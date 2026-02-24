@@ -119,6 +119,16 @@ export async function handleQueryOperation(
 
   if (operation === 'search') {
     let beans = await backend.list({ search });
+    // Ensure robust search behavior even if backend.list ignores the `search` param.
+    if (typeof search === 'string' && search.length > 0) {
+      const q = search.toLowerCase();
+      beans = beans.filter((b: any) => {
+        const title = (b.title || '').toLowerCase();
+        const id = (b.id || '').toLowerCase();
+        const tags = (b.tags || []).join(' ').toLowerCase();
+        return title.includes(q) || id.includes(q) || tags.includes(q);
+      });
+    }
     if (includeClosed === false) {
       beans = beans.filter((b: any) => b.status !== 'completed' && b.status !== 'scrapped');
     }
