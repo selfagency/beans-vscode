@@ -26,4 +26,5 @@ Ensure this respects workspace trust and only writes files when the workspace is
 - [ ] If user selects reinitialize: call `beans.reinitializeCopilotArtifacts` and, on success, update workspaceState `beans.lastInitializedExtensionVersion` to the current extension version
 - [ ] Respect workspace trust: if workspace is not trusted, prompt user to trust and do not write files until trusted
 - [ ] Add tests and validate via `pnpm run compile` and `pnpm run test`
+ - [x] Add tests and validate via `pnpm run compile` and `pnpm run test`
 

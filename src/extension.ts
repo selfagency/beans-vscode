@@ -724,11 +724,14 @@ async function workspaceFileExists(workspaceRoot: string, relativePath: string):
  * `beans.lastInitializedExtensionVersion` exists and differs from the current version.
  * Respect workspace trust and do not write files unless workspace is trusted.
  */
-async function checkForExtensionUpdateAndPrompt(context: vscode.ExtensionContext): Promise<void> {
+export async function checkForExtensionUpdateAndPrompt(context: vscode.ExtensionContext): Promise<void> {
   try {
-    // Resolve current extension version (publisher.name from package.json)
-    const ext = vscode.extensions.getExtension('selfagency.beans-vscode');
-    const currentVersion = ext?.packageJSON?.version ?? '';
+    // Resolve current extension version: prefer the provided context (test-friendly),
+    // fall back to vscode.extensions if available.
+    const currentVersion =
+      (context.extension as any)?.packageJSON?.version ||
+      (vscode.extensions as any)?.getExtension?.('selfagency.beans-vscode')?.packageJSON?.version ||
+      '';
     const lastVersion = context.workspaceState.get<string>('beans.lastInitializedExtensionVersion');
 
     // Only prompt when we have a previous recorded version and it differs.
@@ -750,9 +753,12 @@ async function checkForExtensionUpdateAndPrompt(context: vscode.ExtensionContext
           await vscode.commands.executeCommand('beans.reinitializeCopilotArtifacts');
           // On success, persist the current extension version so we don't prompt again
           await context.workspaceState.update('beans.lastInitializedExtensionVersion', currentVersion);
-          logger.info('Updated workspaceState beans.lastInitializedExtensionVersion after reinit');
+          BeansOutput.getInstance().info('Updated workspaceState beans.lastInitializedExtensionVersion after reinit');
         } catch (error) {
-          logger.error('Failed to reinitialize Copilot artifacts from update prompt', error as Error);
+          BeansOutput.getInstance().error(
+            'Failed to reinitialize Copilot artifacts from update prompt',
+            error as Error
+          );
           // Let the user know
           vscode.window.showErrorMessage(`Reinitialization failed: ${(error as Error).message}`);
         }
@@ -779,7 +785,7 @@ async function checkForExtensionUpdateAndPrompt(context: vscode.ExtensionContext
       }
     }
   } catch (err) {
-    logger.warn('checkForExtensionUpdateAndPrompt failed', err as Error);
+    BeansOutput.getInstance().warn('checkForExtensionUpdateAndPrompt failed', err as Error);
   }
 }
 
