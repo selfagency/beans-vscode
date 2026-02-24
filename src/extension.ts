@@ -103,6 +103,7 @@ function getOrderedCliInstallOptions(platform: NodeJS.Platform = process.platfor
  */
 export async function activate(context: vscode.ExtensionContext) {
   logger = BeansOutput.getInstance();
+  initPromptDismissed = false;
   logger.info('Activating Beans extension...');
 
   // Get workspace root
@@ -120,11 +121,19 @@ export async function activate(context: vscode.ExtensionContext) {
   await vscode.commands.executeCommand('setContext', 'beans.aiEnabled', aiEnabled);
 
   if (enableOnlyIfInitialized) {
-    // Check for .beans.yml in workspace
+    // Check for .beans.yml in workspace. If absent, still show the init prompt
+    // so the user can opt in. Only skip silently if they have already dismissed.
     const configFiles = await vscode.workspace.findFiles('.beans.yml', null, 1);
     if (configFiles.length === 0) {
-      logger.info('Extension set to enable only if initialized, but .beans.yml not found. Skipping activation.');
-      return;
+      const initNeverAsk = context.workspaceState.get<boolean>('beans.initPromptDismissed') ?? false;
+      if (initNeverAsk) {
+        logger.info(
+          'Extension set to enable only if initialized; user previously dismissed init prompt. Skipping activation.'
+        );
+        return;
+      }
+      logger.info('Extension set to enable only if initialized, but .beans.yml not found. Will prompt user.');
+      // Fall through to activation so the init prompt can be shown.
     }
   }
 
@@ -407,11 +416,17 @@ async function promptForInitialization(
     return;
   }
 
+  // Don't prompt again if user previously chose "Don't Ask Again" (persisted per workspace)
+  if (context.workspaceState.get<boolean>('beans.initPromptDismissed') ?? false) {
+    logger.info("Skipping init prompt: user previously chose 'Don't Ask Again' in this workspace");
+    return;
+  }
+
   const result = await vscode.window.showInformationMessage(
     'Beans is not initialized in this workspace. Would you like to initialize it now?',
     'Initialize',
     'Learn More',
-    'Not Now'
+    "Don't Ask Again"
   );
 
   if (result === 'Initialize') {
@@ -453,10 +468,11 @@ async function promptForInitialization(
     }
   } else if (result === 'Learn More') {
     vscode.env.openExternal(vscode.Uri.parse('https://github.com/hmans/beans'));
-  } else if (result === 'Not Now') {
-    // Remember dismissal for this session
+  } else if (result === "Don't Ask Again" || result === undefined) {
+    // Persist dismissal so this workspace is never prompted again
+    await context.workspaceState.update('beans.initPromptDismissed', true);
     initPromptDismissed = true;
-    logger.info('User dismissed initialization prompt');
+    logger.info('User dismissed initialization prompt; will not show again in this workspace');
   }
 }
 
@@ -755,5 +771,6 @@ export function deactivate(): void {
   mcpIntegration = undefined;
   chatIntegration = undefined;
   aiArtifactSyncInProgress = false;
+  initPromptDismissed = false;
   logger?.dispose();
 }

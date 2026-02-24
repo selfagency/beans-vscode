@@ -668,11 +668,38 @@ describe('Extension lifecycle coverage', () => {
     expect(vscode.env.openExternal).toHaveBeenCalled();
     deactivate();
 
-    // Test Not Now branch
-    state.showInfoQueue.push('Not Now');
-    await activate(makeContext());
-    expect(logger.info).toHaveBeenCalledWith('User dismissed initialization prompt');
+    // Test "Don't Ask Again" branch
+    state.showInfoQueue.push("Don't Ask Again");
+    const dismissCtx = makeContext();
+    await activate(dismissCtx);
+    expect(dismissCtx.workspaceState.update).toHaveBeenCalledWith('beans.initPromptDismissed', true);
+    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('will not show again'));
     deactivate();
+
+    // Test that dismissing the modal (undefined result) also persists
+    vi.clearAllMocks();
+    state.showInfoQueue = [];
+    state.showInfoQueue.push(undefined as any);
+    const dismissCtx2 = makeContext();
+    await activate(dismissCtx2);
+    expect(dismissCtx2.workspaceState.update).toHaveBeenCalledWith('beans.initPromptDismissed', true);
+    deactivate();
+
+    // Test that a workspace with beans.initPromptDismissed=true skips the prompt entirely
+    vi.clearAllMocks();
+    state.showInfoQueue = [];
+    state.initialized = false;
+    const neverAskCtx = makeContext();
+    (neverAskCtx.workspaceState.get as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    await activate(neverAskCtx);
+    expect(vscode.window.showInformationMessage).not.toHaveBeenCalledWith(
+      expect.stringContaining('not initialized'),
+      expect.anything(),
+      expect.anything(),
+      expect.anything()
+    );
+    deactivate();
+    state.initialized = true;
   });
 
   describe('beans.openFirstMalformedBean command', () => {
