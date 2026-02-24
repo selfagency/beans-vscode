@@ -1059,8 +1059,7 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
    * Escape HTML special characters
    */
   private escapeHtml(text: string): string {
-    const div = { textContent: text } as any;
-    return div.textContent
+    return text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
