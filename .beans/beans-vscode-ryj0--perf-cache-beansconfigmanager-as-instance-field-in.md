@@ -1,7 +1,7 @@
 ---
 # beans-vscode-ryj0
 title: 'perf: cache BeansConfigManager as instance field instead of re-instantiating on every getConfig() call'
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-02-24T13:49:17Z
@@ -20,6 +20,7 @@ async getConfig(): Promise<BeansConfig> {
 ```
 
 `getConfig()` is called on every fetch cycle and in multiple hot paths:
+
 - `detectOrphanedBeanFiles`
 - `tryRepairMalformedBean`
 - `clearDanglingParentReferences`
