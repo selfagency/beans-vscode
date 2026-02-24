@@ -1,13 +1,11 @@
 ---
 # beans-vscode-9xdb
 title: 'refactor: remove duplicate sort/filter logic between BeansMcpServer and queryHelpers'
-status: in-progress
-branch: refactor/9xdb-remove-duplicate-sortfilter-logic
+status: completed
 type: task
 priority: high
 created_at: 2026-02-24T13:49:09Z
-updated_at: 2026-02-24T14:15:00Z
-pr_url: https://github.com/selfagency/beans-vscode/pull/93
+updated_at: 2026-02-24T16:36:22Z
 ---
 
 ## Problem
