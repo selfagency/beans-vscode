@@ -68,9 +68,30 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
     // Bean by loading from the service when an id is provided.
     const raw = transferItem.value as unknown;
     let draggedBean: Bean;
+
     if (typeof raw === 'string') {
-      // Serialized id — fetch fresh bean data from the service
-      draggedBean = await this.service.showBean(raw);
+      // The string payload can be either a serialized Bean (JSON) or an id.
+      // Try to parse JSON first; if parsing fails, treat as id and fetch.
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && parsed.id) {
+          draggedBean = parsed as Bean;
+        } else {
+          // Not a bean JSON, treat as id
+          draggedBean = await this.service.showBean(raw);
+        }
+      } catch (err) {
+        // Not JSON — treat as id
+        try {
+          draggedBean = await this.service.showBean(raw);
+        } catch (showErr) {
+          const message = getUserMessage(showErr);
+          logger.error(`Failed to resolve dragged bean id: ${message}`, showErr as Error);
+          // Surface a user-friendly error and abort the drop
+          vscode.window.showErrorMessage(`Failed to load bean for drag operation: ${message}`);
+          return;
+        }
+      }
     } else {
       draggedBean = raw as Bean;
     }
