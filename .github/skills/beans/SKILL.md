@@ -1,5 +1,6 @@
 ---
 name: beans
+title: Beans Skill
 description: 'Use for Beans issue tracker workflows in this workspace: planning and decomposing epics, listing issues, finding top-priority or stale work, starting work on a bean, creating/updating issues via extension commands or MCP tools, managing status/type/priority/parent/blocking relationships, and suggesting issue-related branch, commit, and PR workflows. Triggers on: "create a bean", "what should I work on", "plan this epic", "decompose this feature", "find stale issues", "set priority", "start work", "what beans are in progress", "commit this work".'
 ---
 
@@ -25,6 +26,19 @@ This skill drives all Beans issue tracker operations in this workspace using the
 - **Record branch and PR in bean frontmatter.** Add `branch:` and `pr:` as soon as they exist; commit immediately.
 - **Commit beans promptly.** Commit after create/edit unless building an epic hierarchy (batch commit everything together).
 - **Track todos in the bean body.** Maintain a `## Todo` checklist; update and commit after every completed step.
+
+## Agent constraints (must-follow)
+
+- **Always create or switch to the bean's branch before editing code or files.**
+  - If a branch exists for the bean, checkout it first. If not, create and push a new branch following the repository branch naming rules.
+  - Record the branch in the bean frontmatter immediately after creating or checking out the branch.
+
+- **Do not keep an internal agent todo list.**
+  - All task state and subtasks must live in the bean's `## Todo` checklist in the bean body. The agent must update the bean `## Todo` via MCP or extension commands and commit the bean to persist progress.
+
+- **Do not create or edit bean files by hand.**
+  - Use the MCP or extension commands for bean creation and edits; never write `.md` bean files directly to the repository.
+  - The agent must not add custom frontmatter keys except `branch` and `pr` (PR number). Adding other custom fields is forbidden.
 
 ## Starting work on a bean
 
@@ -57,26 +71,55 @@ This skill drives all Beans issue tracker operations in this workspace using the
 
 ## VS Code extension command reference
 
-| Command                  | Purpose                                                   |
-| ------------------------ | --------------------------------------------------------- |
-| `beans.create`           | Create a new bean                                         |
-| `beans.view`             | Open bean details sidebar                                 |
-| `beans.edit`             | Edit bean body/frontmatter in editor                      |
-| `beans.setStatus`        | Change status (todo → in-progress → completed / scrapped) |
-| `beans.setType`          | Change type (task / feature / bug / epic / milestone)     |
-| `beans.setPriority`      | Change priority (① critical … ⑤ low)                      |
-| `beans.setParent`        | Link a bean to a parent epic                              |
-| `beans.removeParent`     | Remove parent link                                        |
-| `beans.editBlocking`     | Edit blocking/blocked-by relationships                    |
-| `beans.copyId`           | Copy bean ID to clipboard                                 |
-| `beans.delete`           | Delete a bean (only draft or scrapped)                    |
-| `beans.search`           | Full-text search across all beans                         |
-| `beans.filter`           | Filter tree by status/type/priority/tag                   |
-| `beans.sort`             | Change tree sort mode                                     |
-| `beans.refresh`          | Force reload from disk                                    |
-| `beans.reopenCompleted`  | Reopen a completed bean                                   |
-| `beans.reopenScrapped`   | Reopen a scrapped bean                                    |
-| `beans.copilotStartWork` | Ask Copilot to start work on the selected bean            |
+### Bean operations
+
+| Command                 | Purpose                                                   |
+| ----------------------- | --------------------------------------------------------- |
+| `beans.create`          | Create a new bean                                         |
+| `beans.view`            | Open bean in Details sidebar panel                        |
+| `beans.edit`            | Edit bean body/frontmatter in editor                      |
+| `beans.delete`          | Delete a bean (only draft or scrapped)                    |
+| `beans.setStatus`       | Change status (todo → in-progress → completed / scrapped) |
+| `beans.setType`         | Change type (task / feature / bug / epic / milestone)     |
+| `beans.setPriority`     | Change priority (critical/high/normal/low/deferred)       |
+| `beans.setParent`       | Link a bean to a parent epic or milestone                 |
+| `beans.removeParent`    | Remove parent link                                        |
+| `beans.editBlocking`    | Edit blocking/blocked-by relationships                    |
+| `beans.reopenCompleted` | Reopen a completed bean                                   |
+| `beans.reopenScrapped`  | Reopen a scrapped bean                                    |
+| `beans.copyId`          | Copy bean ID to clipboard                                 |
+
+### Search and navigation
+
+| Command                   | Purpose                                        |
+| ------------------------- | ---------------------------------------------- |
+| `beans.search`            | Full-text search across all beans              |
+| `beans.filter`            | Filter tree by status/type/priority/tag        |
+| `beans.sort`              | Change tree sort mode                          |
+| `beans.refresh`           | Force reload from disk                         |
+| `beans.searchView.filter` | Filter search results                          |
+| `beans.searchView.clear`  | Clear search filters and query                 |
+| `beans.details.back`      | Navigate back in Details view browsing history |
+
+### AI and workflow
+
+| Command                  | Purpose                                         |
+| ------------------------ | ----------------------------------------------- |
+| `beans.copilotStartWork` | Open Copilot Chat with a bean workflow template |
+
+**`beans.copilotStartWork` templates:** assess status, remaining steps, close/commit, export to GitHub issue, set in-progress, flesh out specs.
+
+### Configuration and help
+
+| Command                        | Purpose                                              |
+| ------------------------------ | ---------------------------------------------------- |
+| `beans.init`                   | Initialize Beans in an uninitialized workspace       |
+| `beans.openConfig`             | Open `.beans.yml` configuration file                 |
+| `beans.openExtensionSettings`  | Open VS Code extension settings for Beans            |
+| `beans.showOutput`             | Show the Beans extension output/log channel          |
+| `beans.openUserGuide`          | Open user guide documentation                        |
+| `beans.openAiFeaturesGuide`    | Open AI features documentation                       |
+| `beans.openFirstMalformedBean` | Navigate to first malformed bean file for correction |
 
 ## Chat participant (`@beans`) guidance
 
@@ -206,7 +249,6 @@ Use CLI only when extension, `@beans`, and MCP tools are all unavailable.
 
 The following baseline is derived from `beans graphql --schema` and provides comprehensive guidance for working with beans in this project.
 
-```text
 """
 A bean represents an issue/task in the beans tracker
 """
@@ -294,7 +336,7 @@ Filter options for querying beans
 input BeanFilter {
   """
   Full-text search across slug, title, and body using Bleve query syntax.
-
+  
   Examples:
   - "login" - exact term match
   - "login~" - fuzzy match (1 edit distance)
@@ -566,4 +608,3 @@ input UpdateBeanInput {
   """
   ifMatch: String
 }
-```
