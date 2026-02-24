@@ -8,7 +8,7 @@ branch: fix/n2u0-validate-webview-payload
 files:
   - src/beans/details/BeansDetailsViewProvider.ts
   - src/test/beans/details/handleBeanUpdate.test.ts
-pr: 
+pr: https://github.com/selfagency/beans-vscode/pull/84
 ---
 
 ## Todo
