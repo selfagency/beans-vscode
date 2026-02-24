@@ -583,7 +583,7 @@ describe('BeansService', () => {
       expect(renameSource).toContain('/test/workspace/.beans/test-bad2--broken-bean.md');
       expect(renameTarget).toContain('/test/workspace/.beans/.quarantine/test-bad2--broken-bean.md');
       expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
-        expect.stringContaining('could not be auto-fixed and was quarantined'),
+        expect.stringContaining('Bean file quarantined:'),
         'Open File'
       );
     });
@@ -702,7 +702,7 @@ describe('BeansService', () => {
       expect(renameSource).toContain('/test/workspace/.beans/test-bad4--broken.md');
       expect(renameTarget).toContain('/test/workspace/.beans/.quarantine/test-bad4--broken.md');
       expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
-        expect.stringContaining('could not be auto-fixed and was quarantined'),
+        expect.stringContaining('Bean file quarantined:'),
         'Open File'
       );
     });
@@ -1037,9 +1037,7 @@ describe('BeansService', () => {
 
       // No path, no id, no title — cannot infer anything, bean is dropped
       expect(beans).toHaveLength(0);
-      expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
-        expect.stringContaining('could not be auto-fixed and was quarantined')
-      );
+      expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('Bean file quarantined:'));
     });
 
     it('notification message includes filename in inline code formatting', async () => {
@@ -1065,8 +1063,8 @@ describe('BeansService', () => {
 
       const warningCall = (vscode.window.showWarningMessage as ReturnType<typeof vi.fn>).mock.calls[0];
       const message = warningCall[0] as string;
-      expect(message).toContain('Malformed bean could not be auto-fixed and was quarantined: `');
-      expect(message).toContain('`');
+      expect(message).toContain('Bean file quarantined:');
+      expect(message).toContain('Open the .beans/.quarantine folder to inspect or restore the file.');
     });
   });
 
