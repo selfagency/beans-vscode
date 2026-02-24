@@ -30,7 +30,10 @@ describe('Beans barrel exports', () => {
 
     expect(details.BeansDetailsViewProvider).toBeDefined();
     expect(preview.BeansPreviewProvider).toBeDefined();
-    expect(search.BeansSearchViewProvider).toBeDefined();
+    // The webview-based `BeansSearchViewProvider` is intentionally not
+    // exported from the `beans/search` barrel (it's superseded by the
+    // tree-based provider). Confirm the tree provider is exported instead.
+    expect(search.BeansSearchTreeProvider).toBeDefined();
   });
 
   it('exports logging/service/mcp symbols', async () => {
