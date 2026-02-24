@@ -339,6 +339,12 @@
           "default": true,
           "description": "Show item counts in Beans side panel headers (for example: Open Beans (12))."
         },
+        "beans.view.refreshIntervalMs": {
+          "type": "number",
+          "default": 15000,
+          "minimum": 0,
+          "markdownDescription": "Periodic refresh interval (ms) for Beans sidebar panes. Set to 0 to disable automatic refreshing. Default: 15000 ms (15s)."
+        },
         "beans.autoInit.enabled": {
           "type": "boolean",
           "default": true,
@@ -529,11 +535,13 @@
         {
           "command": "beans.delete",
           "when": "view =~ /^beans\\./ && viewItem =~ /deletable/",
-          "group": "5_danger"        },
+          "group": "5_danger"
+        },
         {
           "command": "beans.copilotStartWork",
           "when": "view =~ /^beans\\./ && viewItem =~ /^bean/ && beans.aiEnabled",
-          "group": "6_ai"        }
+          "group": "6_ai"
+        }
       ],
       "webview/context": [
         {
@@ -680,6 +688,7 @@
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@octokit/rest": "^22.0.1",
     "@types/js-yaml": "^4.0.9",
+    "@types/marked": "6.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.3.0",
     "@types/vscode": "^1.109.0",
@@ -692,6 +701,9 @@
     "husky": "^9.1.7",
     "js-yaml": "^4.1.1",
     "lint-staged": "^16.2.7",
+    "marked": "^5.1.2",
+    "marked-gfm-heading-id": "^4.1.3",
+    "marked-mangle": "^1.1.12",
     "npm-run-all": "^4.1.5",
     "ora": "^9.3.0",
     "prettier": "^3.8.1",

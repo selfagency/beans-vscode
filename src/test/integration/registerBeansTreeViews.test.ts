@@ -51,6 +51,28 @@ describe('registerBeansTreeViews integration', () => {
     };
   });
 
+  it('schedules periodic refresh when configuration enables it', () => {
+    // Mock configuration to return a positive interval
+    const origGetConfiguration = vscode.workspace.getConfiguration as any;
+    (vscode.workspace as any).getConfiguration = (_section: string) => ({
+      get: (_key: string, _defaultValue: any) => {
+        // enable refresh interval
+        return 15000;
+      },
+    });
+
+    const infoSpy = vi.spyOn(BeansOutput.getInstance(), 'info').mockImplementation(() => undefined as any);
+
+    const providers = registerBeansTreeViews(mockContext, service, manager, details, BeansOutput.getInstance());
+
+    expect(infoSpy).toHaveBeenCalled();
+    expect(providers.activeProvider).toBeDefined();
+
+    // restore original
+    (vscode.workspace as any).getConfiguration = origGetConfiguration;
+    infoSpy.mockRestore();
+  });
+
   it('registers providers and adds them to context.subscriptions', () => {
     const initial = mockContext.subscriptions.length;
 
