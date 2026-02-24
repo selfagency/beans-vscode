@@ -32,6 +32,16 @@ type BeanRecord = {
   etag?: string;
 };
 
+/**
+ * GraphQL error shape as returned by the Beans CLI GraphQL endpoint.
+ */
+type GraphQLError = {
+  message: string;
+  locations?: Array<{ line: number; column: number }>;
+  path?: Array<string | number>;
+  extensions?: Record<string, unknown>;
+};
+
 const DEFAULT_MCP_PORT = 39173;
 
 /**
@@ -109,7 +119,7 @@ class BeansCliBackend {
   private async executeGraphQL<T>(
     query: string,
     variables?: Record<string, unknown>
-  ): Promise<{ data: T; errors?: any[] }> {
+  ): Promise<{ data: T; errors?: GraphQLError[] }> {
     const args = ['graphql', '--json', query];
 
     if (variables) {
