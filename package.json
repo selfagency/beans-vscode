@@ -206,7 +206,7 @@
       },
       {
         "command": "beans.setParent",
-        "title": "Set Parent",
+        "title": "Move To…",
         "category": "Beans",
         "when": "beans.initialized"
       },

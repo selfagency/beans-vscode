@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
-import { Bean } from '../model';
+import { Bean, VALID_PARENT_TYPES, getUserMessage } from '../model';
 import { BeansService } from '../service';
 import { BeanTreeItem } from './BeanTreeItem';
 
@@ -61,7 +61,7 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
     // Validate drop
     const validation = await this.validateDrop(draggedBean, targetBean);
     if (!validation.valid) {
-      vscode.window.showWarningMessage(validation.reason || 'Invalid drop operation');
+      vscode.window.showErrorMessage(validation.reason || 'Invalid drop operation');
       return;
     }
 
@@ -76,9 +76,10 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
       await this.reparentBean(draggedBean, targetBean);
       const draggedName = draggedBean.title || draggedBean.code || draggedBean.id;
       const targetName = targetBean ? targetBean.title : 'root';
-      vscode.window.showInformationMessage(`${draggedName} re-parented to ${targetName}`);
+      vscode.window.showInformationMessage(`${draggedName} moved to ${targetName}`);
+      await vscode.commands.executeCommand('beans.refreshAll');
     } catch (error) {
-      const message = `Failed to re-parent bean: ${(error as Error).message}`;
+      const message = getUserMessage(error);
       logger.error(message, error as Error);
       vscode.window.showErrorMessage(message);
     }
@@ -99,6 +100,16 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
     // If dropping on root (no target), always valid
     if (!targetBean) {
       return { valid: true };
+    }
+
+    // Validate type hierarchy: check whether targetBean's type is a valid parent
+    // for the dragged bean's type. Unknown types (custom configs) are allowed through.
+    const allowedParents = VALID_PARENT_TYPES[draggedBean.type];
+    if (allowedParents && !allowedParents.includes(targetBean.type)) {
+      return {
+        valid: false,
+        reason: `A ${draggedBean.type} cannot have a ${targetBean.type} as parent. Allowed parent types: ${allowedParents.join(', ')}.`,
+      };
     }
 
     // Prevent cycles: target bean cannot be a descendant of dragged bean
@@ -144,13 +155,12 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
     const draggedName = draggedBean.title || draggedBean.code || draggedBean.id;
     const targetName = targetBean ? targetBean.title : 'root (no parent)';
     const result = await vscode.window.showInformationMessage(
-      `Re-parent ${draggedName} to ${targetName}?`,
+      `Move ${draggedName} to ${targetName}?`,
       { modal: true },
-      'Yes',
-      'No'
+      'Move'
     );
 
-    return result === 'Yes';
+    return result === 'Move';
   }
 
   /**
@@ -162,6 +172,6 @@ export class BeansDragAndDropController implements vscode.TreeDragAndDropControl
 
     const beanName = bean.title || bean.code || bean.id;
     const parentName = newParent ? newParent.title || newParent.code || newParent.id : 'root';
-    logger.info(`Bean ${beanName} re-parented to ${parentName}`);
+    logger.info(`Bean ${beanName} moved to ${parentName}`);
   }
 }
