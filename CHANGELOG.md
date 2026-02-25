@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-02-25
+
+## What's Changed
+* fix: handle MCP notification dismissal gracefully and remove copilot reinitialization double-prompt by @selfagency in https://github.com/selfagency/beans-vscode/pull/101
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.4.0...v1.4.1
+
+_Source: changes from v1.4.0 to v1.4.1._
+
+
 ## [1.4.0] - 2026-02-24
 
 ## What's Changed
