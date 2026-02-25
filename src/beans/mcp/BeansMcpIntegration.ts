@@ -133,7 +133,7 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
 
     this.startupNoticeShown = true;
 
-    void (async () => {
+    (async () => {
       try {
         const selection = await vscode.window.showInformationMessage(
           `Beans MCP server started on port ${port}.`,
@@ -150,9 +150,16 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
           await config.update(MCP_STARTUP_NOTICE_SETTING, false, vscode.ConfigurationTarget.Workspace);
         }
       } catch (error) {
-        this.logger.warn(`Failed to handle MCP startup notification action: ${(error as Error).message}`);
+        // Ignore cancellation errors (user dismissed notification or extension was disposed).
+        // Only log non-cancellation errors.
+        if ((error as Error).message !== 'Canceled') {
+          this.logger.warn(`Failed to handle MCP startup notification action: ${(error as Error).message}`);
+        }
       }
-    })();
+    })().catch(() => {
+      // Silently ignore any unhandled promise rejections from the notification flow.
+      // This can occur if the extension is disposed while the notification is pending.
+    });
   }
 
   private getServerInfo(cliPathOverride?: string): {

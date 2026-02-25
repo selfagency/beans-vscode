@@ -656,9 +656,8 @@ describe('BeansCommands', () => {
       expect(commandHandlers.has('beans.reinitializeCopilotArtifacts')).toBe(true);
     });
 
-    it('writes instruction and skill files after user confirms', async () => {
+    it('writes instruction and skill files without confirmation', async () => {
       commands.registerAll();
-      showInformationMessage.mockResolvedValueOnce('Reinitialize');
 
       await commandHandlers.get('beans.reinitializeCopilotArtifacts')!();
 
@@ -670,17 +669,6 @@ describe('BeansCommands', () => {
       expect(showInformationMessage).toHaveBeenLastCalledWith(
         'Copilot instructions and skills regenerated successfully.'
       );
-    });
-
-    it('does nothing when user cancels the confirmation dialog', async () => {
-      commands.registerAll();
-      showInformationMessage.mockResolvedValueOnce(undefined);
-
-      await commandHandlers.get('beans.reinitializeCopilotArtifacts')!();
-
-      expect(service.graphqlSchema).not.toHaveBeenCalled();
-      expect(writeBeansCopilotInstructions).not.toHaveBeenCalled();
-      expect(writeBeansCopilotSkill).not.toHaveBeenCalled();
     });
 
     it('shows an error notification when regeneration fails', async () => {
