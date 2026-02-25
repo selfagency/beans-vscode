@@ -1606,22 +1606,13 @@ export class BeansCommands {
 
   /**
    * Reinitialize Copilot instruction and skill artifacts for this workspace.
-   * Prompts for confirmation before overwriting existing files.
+   * This is called automatically on extension update (user already confirmed in that prompt)
+   * or via the command palette (explicit user action).
    */
   private async reinitializeCopilotArtifacts(): Promise<void> {
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspaceRoot) {
       vscode.window.showErrorMessage('No workspace folder is open.');
-      return;
-    }
-
-    const confirm = await vscode.window.showInformationMessage(
-      'This will overwrite any existing Copilot instructions and skill files for this workspace. Continue?',
-      'Reinitialize',
-      'Cancel'
-    );
-    if (confirm !== 'Reinitialize') {
-      logger.info('Copilot artifact reinitialization canceled by user');
       return;
     }
 

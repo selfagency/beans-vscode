@@ -4,7 +4,7 @@ TL;DR — Extract the MCP runtime (tools, handlers, CLI) into a new npm package 
 
 ## Steps
 
-1. Create new package repo / workspace package `beans-mcp-server`
+1. Create new package repo / workspace package `@selfagency/beans-mcp-server`
    - Files to add:
      - `package.json` (name: "beans-mcp-server", engines.node: ">=18", exports + types)
      - `src/index.ts` — programmatic exports (createBeansMcpServer, startBeansMcpServer, parseCliArgs, isPathWithinRoot, types)

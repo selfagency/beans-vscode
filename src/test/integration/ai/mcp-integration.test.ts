@@ -423,6 +423,76 @@ describe('MCP Integration', () => {
       );
     });
 
+    it('should silently ignore Canceled error when user dismisses notification', async () => {
+      const inputDefinition = new vscode.McpStdioServerDefinition('Beans Commands', process.execPath, [], {}, '0.1.0');
+      const loggerSpy = vi.spyOn(BeansOutput.getInstance(), 'warn');
+
+      vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+        get: vi.fn((key: string, defaultValue?: any) => {
+          if (key === 'ai.enabled') {
+            return true;
+          }
+          if (key === 'mcp.enabled') {
+            return true;
+          }
+          if (key === 'cliPath') {
+            return '/custom/beans/path';
+          }
+          if (key === 'mcp.port') {
+            return 49731;
+          }
+          if (key === 'mcp.showStartupNotification') {
+            return true;
+          }
+          return defaultValue;
+        }),
+      } as unknown as vscode.WorkspaceConfiguration);
+
+      const canceledError = new Error('Canceled');
+      vi.spyOn(vscode.window, 'showInformationMessage').mockRejectedValue(canceledError);
+
+      await mcpIntegration.resolveMcpServerDefinition(inputDefinition);
+
+      // Canceled errors should not be logged as warnings
+      expect(loggerSpy).not.toHaveBeenCalledWith(expect.stringContaining('Canceled'));
+    });
+
+    it('should log warning when startup notification encounters non-Canceled error', async () => {
+      const inputDefinition = new vscode.McpStdioServerDefinition('Beans Commands', process.execPath, [], {}, '0.1.0');
+      const loggerSpy = vi.spyOn(BeansOutput.getInstance(), 'warn');
+
+      vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+        get: vi.fn((key: string, defaultValue?: any) => {
+          if (key === 'ai.enabled') {
+            return true;
+          }
+          if (key === 'mcp.enabled') {
+            return true;
+          }
+          if (key === 'cliPath') {
+            return '/custom/beans/path';
+          }
+          if (key === 'mcp.port') {
+            return 49731;
+          }
+          if (key === 'mcp.showStartupNotification') {
+            return true;
+          }
+          return defaultValue;
+        }),
+      } as unknown as vscode.WorkspaceConfiguration);
+
+      const testError = new Error('Something went wrong');
+      vi.spyOn(vscode.window, 'showInformationMessage').mockRejectedValue(testError);
+
+      await mcpIntegration.resolveMcpServerDefinition(inputDefinition);
+
+      // Non-Canceled errors should be logged
+      expect(loggerSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to handle MCP startup notification action')
+      );
+    });
+
     it('should resolve server definition with configured CLI path', () => {
       const inputDefinition = new vscode.McpStdioServerDefinition('Beans Commands', process.execPath, [], {}, '0.1.0');
 
