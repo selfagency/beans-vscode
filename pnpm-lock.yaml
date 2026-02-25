@@ -14,6 +14,9 @@ importers:
       '@octokit/rest':
         specifier: ^22.0.1
         version: 22.0.1
+      '@selfagency/beans-mcp':
+        specifier: ^0.1.1
+        version: 0.1.1
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
@@ -792,6 +795,11 @@ packages:
     resolution: {integrity: sha512-mxRFDdHIWRxg3UfIIAwCm6NzvxG0jDX/wBN6KsQFTvKFqqg9vTrWUE68qEjHt19A5wwx5X5aUi2zuZT7YR0jrA==}
     cpu: [x64]
     os: [win32]
+
+  '@selfagency/beans-mcp@0.1.1':
+    resolution: {integrity: sha512-LSGr8DaAM79lhGBrLxNWesr8CR51nUTsFumqN1+da2ZCz7Tsrn5aqYxxdQ/BBEaWFtWE5DqPbCdCDLScb4SbgQ==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   '@shikijs/core@2.5.0':
     resolution: {integrity: sha512-uu/8RExTKtavlpH7XqnVYBrfBkUc20ngXiX9NSrBhOVZYv/7XQRKUyhtkeflY5QsxC0GbJThCerruZfsUaSldg==}
@@ -3578,6 +3586,8 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.57.1':
     optional: true
+
+  '@selfagency/beans-mcp@0.1.1': {}
 
   '@shikijs/core@2.5.0':
     dependencies:
