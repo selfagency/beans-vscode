@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-02-27
+
+## What's Changed
+* refactor(mcp): use @selfagency/beans-mcp package in extension by @selfagency in https://github.com/selfagency/beans-vscode/pull/102
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.4.1...v1.4.2
+
+_Source: changes from v1.4.1 to v1.4.2._
+
+
 ## [1.4.1] - 2026-02-25
 
 ## What's Changed

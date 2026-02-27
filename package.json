@@ -1,7 +1,7 @@
 {
   "name": "beans-vscode",
   "displayName": "Beans",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "VS Code extension for Beans issue tracker with tree views, commands, MCP tools, GitHub Copilot integration, and remote development support",
   "categories": [
     "Other",
