@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-02-27
+
+## What's Changed
+* chore: update mcp server by @selfagency in https://github.com/selfagency/beans-vscode/pull/103
+* feat: Add logging of MCP package version and workspace resolution in BeansMcpServer by @selfagency in https://github.com/selfagency/beans-vscode/pull/104
+* chore(release): update version and changelog for v1.4.2 by @selfagency in https://github.com/selfagency/beans-vscode/pull/105
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.4.2...v1.4.3
+
+_Source: changes from v1.4.2 to v1.4.3._
+
+
 ## [1.4.2] - 2026-02-27
 
 ## What's Changed
