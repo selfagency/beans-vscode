@@ -689,11 +689,12 @@
     ]
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "@octokit/rest": "^22.0.1",
+    "@selfagency/beans-mcp": "^0.1.1",
     "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^25.3.0",
+    "@types/node": "^25.3.2",
     "@types/vscode": "^1.109.0",
     "@vitest/coverage-v8": "^4.0.18",
     "@vscode/codicons": "^0.0.44",

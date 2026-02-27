@@ -165,4 +165,6 @@ Use compact planning checklist format:
 
 The following baseline is derived from `beans graphql --schema` and provides comprehensive guidance for working with beans in this project.
 
+```graphql
 {{GRAPHQL_SCHEMA}}
+```
