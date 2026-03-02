@@ -83,7 +83,7 @@ jobs:
 
       - name: Upload test artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: test-artifacts
           path: |
@@ -95,7 +95,7 @@ jobs:
 
       - name: Upload extension bundle
         if: success()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: extension-bundle
           path: dist/extension.js
