@@ -349,7 +349,7 @@ input BeanFilter {
 "user OR login" - either term
 "slug:auth" - search only slug field
 "title:login" - search only title field
-- "body:auth" - search only body field
+"body:auth" - search only body field
   """
   search: String
   """

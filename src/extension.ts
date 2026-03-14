@@ -545,6 +545,7 @@ export async function checkForBeansCliUpdateAndPrompt(
     }
 
     await vscode.env.openExternal(vscode.Uri.parse('https://github.com/hmans/beans#installation'));
+    await context.workspaceState.update(BEANS_CLI_UPGRADE_PROMPT_STATE_KEY, promptPair);
   }
 }
 

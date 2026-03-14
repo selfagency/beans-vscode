@@ -14,7 +14,7 @@
  */
 import { execFile } from 'child_process';
 import { createHash } from 'crypto';
-import { mkdir, readdir, readFile, rename, writeFile } from 'fs/promises';
+import { mkdir, readdir, readFile, realpath, rename, writeFile } from 'fs/promises';
 import * as path from 'path';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
@@ -239,7 +239,12 @@ export class BeansService {
   private async resolveCLIExecutablePath(): Promise<string | undefined> {
     try {
       if (path.isAbsolute(this.cliPath)) {
-        return this.cliPath;
+        try {
+          // Resolve symlinks so install-method detection can inspect the actual binary location.
+          return await realpath(this.cliPath);
+        } catch {
+          return this.cliPath;
+        }
       }
 
       const locator = process.platform === 'win32' ? 'where' : 'which';
@@ -252,8 +257,16 @@ export class BeansService {
         .split(/\r?\n/)
         .map(line => line.trim())
         .find(Boolean);
+      if (!firstLine) {
+        return undefined;
+      }
 
-      return firstLine || undefined;
+      try {
+        // Resolve located symlinks (for example /usr/local/bin/beans -> Homebrew Cellar path).
+        return await realpath(firstLine);
+      } catch {
+        return firstLine;
+      }
     } catch {
       return undefined;
     }

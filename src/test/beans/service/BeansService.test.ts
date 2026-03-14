@@ -1,5 +1,5 @@
 import { execFile } from 'child_process';
-import { mkdir, readFile, readdir, rename, writeFile } from 'fs/promises';
+import { mkdir, readFile, readdir, realpath, rename, writeFile } from 'fs/promises';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { BeansOutput } from '../../../beans/logging/BeansOutput';
@@ -15,6 +15,7 @@ vi.mock('fs/promises', () => ({
   mkdir: vi.fn(),
   readdir: vi.fn(),
   readFile: vi.fn(),
+  realpath: vi.fn(),
   writeFile: vi.fn(),
   rename: vi.fn(),
 }));
@@ -69,6 +70,7 @@ describe('BeansService', () => {
   let mockRename: ReturnType<typeof vi.fn>;
   let mockMkdir: ReturnType<typeof vi.fn>;
   let mockReaddir: ReturnType<typeof vi.fn>;
+  let mockRealpath: ReturnType<typeof vi.fn>;
 
   function createErrnoError(message: string, code: string): NodeJS.ErrnoException {
     const error = new Error(message) as NodeJS.ErrnoException;
@@ -91,12 +93,14 @@ describe('BeansService', () => {
     mockRename = rename as unknown as ReturnType<typeof vi.fn>;
     mockMkdir = mkdir as unknown as ReturnType<typeof vi.fn>;
     mockReaddir = readdir as unknown as ReturnType<typeof vi.fn>;
+    mockRealpath = realpath as unknown as ReturnType<typeof vi.fn>;
 
     mockReadFile.mockResolvedValue('---\nstatus: todo\ntype: task\n---\nbody');
     mockWriteFile.mockResolvedValue(undefined);
     mockRename.mockResolvedValue(undefined);
     mockMkdir.mockResolvedValue(undefined);
     mockReaddir.mockResolvedValue([]);
+    mockRealpath.mockImplementation(async (value: string) => value);
 
     service = new BeansService('/test/workspace');
   });
@@ -157,12 +161,14 @@ describe('BeansService', () => {
 
     it('detects homebrew installation from resolved binary path', async () => {
       mockExecFile.mockImplementation((cmd, _args, _opts, callback) => {
-        if (cmd === 'which') {
+        if (cmd === 'which' || cmd === 'where') {
           callback(null, { stdout: '/opt/homebrew/bin/beans\n', stderr: '' });
           return;
         }
         callback(new Error('unexpected command') as any, null);
       });
+
+      mockRealpath.mockResolvedValue('/opt/homebrew/Cellar/beans/0.4.2/bin/beans');
 
       await expect(service.detectCLIInstallMethod()).resolves.toBe('brew');
     });

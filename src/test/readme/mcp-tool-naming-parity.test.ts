@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
+import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = process.cwd();
 
 function readWorkspaceFile(relativePath: string): string {
-  return readFileSync(`${ROOT}/${relativePath}`, 'utf8');
+  return readFileSync(path.join(ROOT, relativePath), 'utf8');
 }
 
 describe('MCP tool naming parity docs guard', () => {
