@@ -1,7 +1,7 @@
 ---
 id: beans-vscode-af9s
 title: "fix: quarantine notifcation failure"
-status: in-progress
+status: completed
 type: bug
 priority: normal
 branch: fix/af9s-quarantine-notif-failure
@@ -14,11 +14,11 @@ pr:
 
 ## Todo
 
-- [ ] Create feature branch `fix/af9s-quarantine-notif-failure` (done)
-- [ ] Add focused unit test reproducing quarantine notification formatting
-- [ ] Implement notification formatting fix (show filename only + user-friendly message)
-- [ ] Run tests and verify behavior manually (open quarantine flow)
-- [ ] Commit, push, open draft PR
+- [x] Create feature branch `fix/af9s-quarantine-notif-failure` (done)
+- [x] Add focused unit test reproducing quarantine notification formatting
+- [x] Implement notification formatting fix (show filename only + user-friendly message)
+- [x] Run tests and verify behavior manually (open quarantine flow)
+- [x] Commit, push, open draft PR
 
 ## Notes
 

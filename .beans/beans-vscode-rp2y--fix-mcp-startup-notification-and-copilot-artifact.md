@@ -1,13 +1,11 @@
 ---
 # beans-vscode-rp2y
 title: Fix MCP startup notification and Copilot artifact reinitialization issues
-status: in-progress
+status: completed
 type: fix
 priority: high
-branch: fix/rp2y-mcp-startup-notification-copilot-reinitialization
-pr: https://github.com/selfagency/beans-vscode/pull/101
 created_at: 2026-02-25T00:13:01Z
-updated_at: 2026-02-25T00:13:15Z
+updated_at: 2026-03-14T03:51:39Z
 ---
 
 Fix two extension initialization issues:
