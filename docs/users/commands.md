@@ -282,22 +282,22 @@ This extension exposes a small set of MCP (Model Context Protocol) tools so exte
 
 Public MCP tools (names and brief description):
 
-- `beans_vscode_init` — Initialize Beans in the workspace (accepts optional `prefix`).
-- `beans_vscode_view` — Fetch full bean details by `beanId`.
-- `beans_vscode_create` — Create a new bean (title, type, optional status/priority/description/parent).
-- `beans_vscode_update` — Consolidated update API for metadata fields (`beanId`, `status`, `type`, `priority`, `parent`, `clearParent`, `blocking`, `blockedBy`).
-- `beans_vscode_delete` — Delete a bean (requires `beanId`, optional `force`).
-- `beans_vscode_reopen` — Reopen a closed bean (`beanId`, `requiredCurrentStatus` of `completed|scrapped`, `targetStatus`).
-- `beans_vscode_query` — Unified query tool for `refresh`, `filter`, `search`, `sort`, `llm_context`, and `open_config` operations. Accepts `operation` plus optional params like `mode`, `statuses`, `types`, `search`, `tags`, `includeClosed`, and `writeToWorkspaceInstructions`.
-- `beans_vscode_bean_file` — Read/create/edit/delete files under `.beans` via an `operation` (`read|edit|create|delete`), `path`, `content`, and `overwrite` flag.
-- `beans_vscode_output` — Read extension output logs or show usage guidance (`operation: read|show`, optional `lines`).
+- `beans_init` — Initialize Beans in the workspace (accepts optional `prefix`).
+- `beans_view` — Fetch full bean details by `beanId` or `beanIds`.
+- `beans_create` — Create a new bean (title, type, optional status/priority/description/parent).
+- `beans_update` — Consolidated update API for metadata and body fields (`beanId`, `status`, `type`, `priority`, `parent`, `clearParent`, `blocking`, `blockedBy`, `body`, `bodyAppend`, `bodyReplace`, optional `ifMatch`).
+- `beans_delete` — Delete one or more beans (`beanId` or `beanIds`, optional `force`).
+- `beans_reopen` — Reopen a closed bean (`beanId`, `requiredCurrentStatus` of `completed|scrapped`, `targetStatus`).
+- `beans_query` — Unified query tool for `refresh`, `filter`, `search`, `sort`, `ready`, `llm_context`, and `open_config` operations. Accepts `operation` plus optional params like `mode`, `statuses`, `types`, `search`, `tags`, `includeClosed`, and `writeToWorkspaceInstructions`.
+- `beans_bean_file` — Read/create/edit/delete files under `.beans` via an `operation` (`read|edit|create|delete`), `path`, `content`, and `overwrite` flag.
+- `beans_output` — Read extension output logs or show usage guidance (`operation: read|show`, optional `lines`).
 
 Notes and guidance
 
-- Prefer `beans_vscode_query` for list/search/filter/sort workflows — it consolidates the logic and can also generate Copilot instructions (`llm_context`) or open the workspace config (`open_config`).
-- Use `beans_vscode_update` for any metadata changes instead of per-field update tools; it preserves idempotency and reduces tool surface complexity.
-- When reading or editing files under `.beans`, use `beans_vscode_bean_file` to ensure path sanitization and workspace-relative safety.
-- `beans_vscode_output` enforces that the requested log path stays within the workspace or the VS Code log directory for security.
+- Prefer `beans_query` for list/search/filter/sort workflows — it consolidates the logic and can also generate Copilot instructions (`llm_context`) or open the workspace config (`open_config`).
+- Use `beans_update` for any metadata/body changes instead of per-field update tools; it preserves idempotency and reduces tool surface complexity.
+- When reading or editing files under `.beans`, use `beans_bean_file` to ensure path sanitization and workspace-relative safety.
+- `beans_output` enforces that the requested log path stays within the workspace or the VS Code log directory for security.
 
 **Result**:
 
@@ -346,19 +346,19 @@ This extension exposes a small set of MCP (Model Context Protocol) tools so exte
 
 Public MCP tools (names and brief description):
 
-- `beans_vscode_init` — Initialize Beans in the workspace (accepts optional `prefix`).
-- `beans_vscode_view` — Fetch full bean details by `beanId`.
-- `beans_vscode_create` — Create a new bean (title, type, optional status/priority/description/parent).
-- `beans_vscode_update` — Consolidated update API for metadata fields (`beanId`, `status`, `type`, `priority`, `parent`, `clearParent`, `blocking`, `blockedBy`).
-- `beans_vscode_delete` — Delete a bean (requires `beanId`, optional `force`).
-- `beans_vscode_reopen` — Reopen a closed bean (`beanId`, `requiredCurrentStatus` of `completed|scrapped`, `targetStatus`).
-- `beans_vscode_query` — Unified query tool for `refresh`, `filter`, `search`, `sort`, `llm_context`, and `open_config` operations. Accepts `operation` plus optional params like `mode`, `statuses`, `types`, `search`, `tags`, `includeClosed`, and `writeToWorkspaceInstructions`.
-- `beans_vscode_bean_file` — Read/create/edit/delete files under `.beans` via an `operation` (`read|edit|create|delete`), `path`, `content`, and `overwrite` flag.
-- `beans_vscode_output` — Read extension output logs or show usage guidance (`operation: read|show`, optional `lines`).
+- `beans_init` — Initialize Beans in the workspace (accepts optional `prefix`).
+- `beans_view` — Fetch full bean details by `beanId` or `beanIds`.
+- `beans_create` — Create a new bean (title, type, optional status/priority/description/parent).
+- `beans_update` — Consolidated update API for metadata and body fields (`beanId`, `status`, `type`, `priority`, `parent`, `clearParent`, `blocking`, `blockedBy`, `body`, `bodyAppend`, `bodyReplace`, optional `ifMatch`).
+- `beans_delete` — Delete one or more beans (`beanId` or `beanIds`, optional `force`).
+- `beans_reopen` — Reopen a closed bean (`beanId`, `requiredCurrentStatus` of `completed|scrapped`, `targetStatus`).
+- `beans_query` — Unified query tool for `refresh`, `filter`, `search`, `sort`, `ready`, `llm_context`, and `open_config` operations. Accepts `operation` plus optional params like `mode`, `statuses`, `types`, `search`, `tags`, `includeClosed`, and `writeToWorkspaceInstructions`.
+- `beans_bean_file` — Read/create/edit/delete files under `.beans` via an `operation` (`read|edit|create|delete`), `path`, `content`, and `overwrite` flag.
+- `beans_output` — Read extension output logs or show usage guidance (`operation: read|show`, optional `lines`).
 
 Notes and guidance
 
-- Prefer `beans_vscode_query` for list/search/filter/sort workflows — it consolidates the logic and can also generate Copilot instructions (`llm_context`) or open the workspace config (`open_config`).
-- Use `beans_vscode_update` for any metadata changes instead of per-field update tools; it preserves idempotency and reduces tool surface complexity.
-- When reading or editing files under `.beans`, use `beans_vscode_bean_file` to ensure path sanitization and workspace-relative safety.
-- `beans_vscode_output` enforces that the requested log path stays within the workspace or the VS Code log directory for security.
+- Prefer `beans_query` for list/search/filter/sort workflows — it consolidates the logic and can also generate Copilot instructions (`llm_context`) or open the workspace config (`open_config`).
+- Use `beans_update` for any metadata/body changes instead of per-field update tools; it preserves idempotency and reduces tool surface complexity.
+- When reading or editing files under `.beans`, use `beans_bean_file` to ensure path sanitization and workspace-relative safety.
+- `beans_output` enforces that the requested log path stays within the workspace or the VS Code log directory for security.

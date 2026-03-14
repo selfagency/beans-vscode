@@ -36,15 +36,15 @@ When `beans.ai.enabled` is `true`, the extension exposes a compact, consolidated
 
 Key public tools (see the full reference and examples at `docs/users/mcp-integration.md`):
 
-- `beans_vscode_init` — Initialize the workspace (optional `prefix`).
-- `beans_vscode_view` — Fetch full bean details by `beanId`.
-- `beans_vscode_create` — Create a new bean (title/type + optional fields).
-- `beans_vscode_update` — Consolidated metadata updates (status/type/priority/parent/clearParent/blocking/blockedBy).
-- `beans_vscode_delete` — Delete a bean (`beanId`, optional `force`).
-- `beans_vscode_reopen` — Reopen a completed or scrapped bean to an active status.
-- `beans_vscode_query` — Unified list/search/filter/sort/llm_context/open_config operations.
-- `beans_vscode_bean_file` — Read/edit/create/delete files under `.beans`.
-- `beans_vscode_output` — Read extension output logs or show guidance.
+- `beans_init` — Initialize the workspace (optional `prefix`).
+- `beans_view` — Fetch full bean details by `beanId`.
+- `beans_create` — Create a new bean (title/type + optional fields).
+- `beans_update` — Consolidated metadata and body updates (`status`/`type`/`priority`/`parent`/`clearParent`/`blocking`/`blockedBy` plus `body`/`bodyAppend`/`bodyReplace` and optional `ifMatch`).
+- `beans_delete` — Delete one or more beans (`beanId` or `beanIds`, optional `force`).
+- `beans_reopen` — Reopen a completed or scrapped bean to an active status.
+- `beans_query` — Unified list/search/filter/sort/ready/llm_context/open_config operations.
+- `beans_bean_file` — Read/edit/create/delete files under `.beans`.
+- `beans_output` — Read extension output logs or show guidance.
 
 ### MCP Commands
 
@@ -64,7 +64,7 @@ MCP tools are called automatically by AI assistants. You don't call them directl
 ```text
 You: "Show me all high-priority bugs that are in-progress"
 
-AI: [Calls beans_vscode_list with filters]
+AI: [Calls beans_query with operation="filter"]
     Here are your 3 high-priority in-progress bugs:
     - bean-abc: "Fix login timeout"
     - bean-def: "Resolve memory leak"
@@ -206,7 +206,7 @@ You can also ask questions naturally without slash commands:
 ```text
 You: @beans what bugs need fixing?
 
-Copilot: [Uses beans_vscode_list with type=bug filter]
+Copilot: [Uses beans_query with operation="filter" and type=bug]
     You have 4 open bugs:
     - 2 critical priority
     - 1 high priority

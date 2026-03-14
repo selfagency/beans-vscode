@@ -150,7 +150,7 @@ This skill drives all Beans issue tracker operations in this workspace using the
 
 Use MCP tools when automation is needed outside the VS Code UI:
 
-1. **Read context first** — call `beans_vscode_llm_context` or equivalent view/search/filter/sort tools before mutating anything.
+1. **Read context first** — call `beans_query` with `operation: "llm_context"` (or equivalent view/search/filter/sort tools) before mutating anything.
 2. **Mutate with explicit intent** — create, edit, set status/type/priority, manage relationships.
 3. **Destructive actions** — `delete` and `archive` require explicit user confirmation.
 4. Prefer MCP over the CLI for any scripted or agent-driven operation.

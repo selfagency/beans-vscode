@@ -1,5 +1,6 @@
-// Type shim for @selfagency/beans-mcp (package currently ships CJS without .d.ts)
-// Keep this in sync with imports used by BeansMcpServer.ts.
+// Type shim for @selfagency/beans-mcp.
+// The package currently resolves to CJS in this TS config, so we declare the
+// exported runtime API used by the extension entrypoint.
 declare module '@selfagency/beans-mcp' {
   export function startBeansMcpServer(argv: string[]): Promise<void>;
   export function parseCliArgs(argv: string[]): {

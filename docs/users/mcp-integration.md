@@ -6,25 +6,25 @@ This page documents the compact, consolidated MCP (Model Context Protocol) tool 
 
 Summary of public MCP tools
 
-- `beans_vscode_init` — Initialize the workspace (optional `prefix`).
-- `beans_vscode_view` — Fetch full bean details by `beanId`.
-- `beans_vscode_create` — Create a new bean (title/type + optional fields).
-- `beans_vscode_update` — Consolidated metadata updates (status/type/priority/parent/clearParent/blocking/blockedBy).
-- `beans_vscode_delete` — Delete a bean (`beanId`, optional `force`).
-- `beans_vscode_reopen` — Reopen a completed or scrapped bean to an active status.
-- `beans_vscode_query` — Unified list/search/filter/sort/llm_context/open_config operations.
-- `beans_vscode_bean_file` — Read/edit/create/delete files under `.beans`.
-- `beans_vscode_output` — Read extension output logs or show guidance.
+- `beans_init` — Initialize the workspace (optional `prefix`).
+- `beans_view` — Fetch full bean details by `beanId` or `beanIds`.
+- `beans_create` — Create a new bean (title/type + optional fields).
+- `beans_update` — Consolidated metadata + body updates (`status`/`type`/`priority`/`parent`/`clearParent`/`blocking`/`blockedBy`/`body`/`bodyAppend`/`bodyReplace`) plus optional `ifMatch`.
+- `beans_delete` — Delete one or more beans (`beanId` or `beanIds`, optional `force`).
+- `beans_reopen` — Reopen a completed or scrapped bean to an active status.
+- `beans_query` — Unified list/search/filter/sort/ready/llm_context/open_config operations.
+- `beans_bean_file` — Read/edit/create/delete files under `.beans`.
+- `beans_output` — Read extension output logs or show guidance.
 
 Notes
 
-- The `beans_vscode_query` tool is intentionally broad: prefer it for listing, searching, filtering or sorting beans, and for generating Copilot instructions (`operation: 'llm_context'`).
+- The `beans_query` tool is intentionally broad: prefer it for listing, searching, filtering or sorting beans, and for generating Copilot instructions (`operation: 'llm_context'`).
 - All file and log operations validate paths to keep them within the workspace or the VS Code log directory.
-- `beans_vscode_update` replaces many fine-grained update tools; callers should use it to keep the public tool surface small and predictable.
+- `beans_update` replaces many fine-grained update tools; callers should use it to keep the public tool surface small and predictable.
 
 ## Examples
 
-### beans_vscode_init
+### beans_init
 
 Request:
 
@@ -38,7 +38,7 @@ Response (structuredContent):
 { "initialized": true }
 ```
 
-### beans_vscode_view
+### beans_view
 
 Request:
 
@@ -63,7 +63,7 @@ Response (structuredContent):
 }
 ```
 
-### beans_vscode_create
+### beans_create
 
 Request:
 
@@ -83,7 +83,7 @@ Response (structuredContent):
 { "bean": { "id": "new-1", "title": "Add dark mode", "status": "todo", "type": "feature" } }
 ```
 
-### beans_vscode_update
+### beans_update
 
 Request (change status and add blocking):
 
@@ -101,7 +101,7 @@ Response (structuredContent):
 { "bean": { "id": "bean-abc", "status": "in-progress", "blockingIds": ["bean-def"] } }
 ```
 
-### beans_vscode_delete
+### beans_delete
 
 Request:
 
@@ -115,7 +115,7 @@ Response:
 { "deleted": true, "beanId": "bean-old" }
 ```
 
-### beans_vscode_reopen
+### beans_reopen
 
 Request:
 
@@ -133,7 +133,7 @@ Response:
 { "bean": { "id": "bean-closed", "status": "todo" } }
 ```
 
-### beans_vscode_query — examples
+### beans_query — examples
 
 Refresh (list all beans):
 
@@ -187,7 +187,7 @@ Response (structuredContent):
 }
 ```
 
-### beans_vscode_bean_file
+### beans_bean_file
 
 Request (read):
 
@@ -204,7 +204,7 @@ Response:
 }
 ```
 
-### beans_vscode_output
+### beans_output
 
 Request (read last 200 lines):
 
@@ -221,6 +221,6 @@ Response:
 Security & Best Practices
 
 - Do not rely on the MCP tools for privileged file system access — all paths are validated to stay within the workspace (or VS Code logs directory) and will error if the path is invalid.
-- Prefer the consolidated tools (`beans_vscode_query`, `beans_vscode_update`, `beans_vscode_bean_file`) over any private/internal helpers — they are the supported public surface.
+- Prefer the consolidated tools (`beans_query`, `beans_update`, `beans_bean_file`) over any private/internal helpers — they are the supported public surface.
 
 If you need more example payloads for a specific tool or an SDK snippet for a language, tell me which one and I'll add it.

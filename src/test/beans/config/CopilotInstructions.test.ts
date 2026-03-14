@@ -28,6 +28,8 @@ describe('buildBeansCopilotInstructions', () => {
     expect(content).toContain('Branch names must follow: `[type]/[issue-number-without-prefix]-[short-title]`');
     expect(content).toContain('Examples: `feat/1234-add-search`, `fix/987-crash-on-init`');
     expect(content).toContain('Push the branch and record it in the bean frontmatter as soon as it exists');
+    expect(content).toContain('`beans_query` with `operation: "llm_context"`');
+    expect(content).not.toContain('beans_vscode_llm_context');
   });
 });
 
