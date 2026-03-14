@@ -14,7 +14,7 @@
  */
 import { execFile } from 'child_process';
 import { createHash } from 'crypto';
-import { mkdir, readdir, readFile, rename, writeFile } from 'fs/promises';
+import { mkdir, readdir, readFile, realpath, rename, writeFile } from 'fs/promises';
 import * as path from 'path';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
@@ -189,6 +189,86 @@ export class BeansService {
       }
       // Other errors might mean CLI is there but something else wrong
       return true;
+    }
+  }
+
+  /**
+   * Get installed Beans CLI version (e.g. 0.4.2), if detectable.
+   */
+  async getCLIVersion(): Promise<string | undefined> {
+    try {
+      const { stdout, stderr } = await execFileAsync(this.cliPath, ['--version'], {
+        cwd: this.workspaceRoot,
+        timeout: 5000,
+      });
+
+      const combined = `${stdout || ''}\n${stderr || ''}`.trim();
+      const match = /v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)/.exec(combined);
+      return match?.[1];
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Best-effort detection of how Beans CLI was installed.
+   */
+  async detectCLIInstallMethod(): Promise<'brew' | 'go' | 'unknown'> {
+    const resolvedPath = await this.resolveCLIExecutablePath();
+    if (!resolvedPath) {
+      return 'unknown';
+    }
+
+    const normalizedPath = resolvedPath.toLowerCase();
+    if (normalizedPath.includes('/homebrew/') || normalizedPath.includes('/cellar/')) {
+      return 'brew';
+    }
+
+    const goPath = process.env.GOPATH?.toLowerCase();
+    if (
+      normalizedPath.includes('/go/bin/') ||
+      normalizedPath.includes('\\go\\bin\\') ||
+      (goPath ? normalizedPath.startsWith(path.resolve(goPath, 'bin').toLowerCase()) : false)
+    ) {
+      return 'go';
+    }
+
+    return 'unknown';
+  }
+
+  private async resolveCLIExecutablePath(): Promise<string | undefined> {
+    try {
+      if (path.isAbsolute(this.cliPath)) {
+        try {
+          // Resolve symlinks so install-method detection can inspect the actual binary location.
+          return await realpath(this.cliPath);
+        } catch {
+          return this.cliPath;
+        }
+      }
+
+      const locator = process.platform === 'win32' ? 'where' : 'which';
+      const { stdout } = await execFileAsync(locator, [this.cliPath], {
+        cwd: this.workspaceRoot,
+        timeout: 5000,
+      });
+
+      const firstLine = stdout
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .find(Boolean);
+      if (!firstLine) {
+        return undefined;
+      }
+
+      try {
+        // Resolve located symlinks (for example /usr/local/bin/beans -> Homebrew Cellar path).
+        return await realpath(firstLine);
+      } catch {
+        return firstLine;
+      }
+    } catch {
+      return undefined;
     }
   }
 
@@ -1951,7 +2031,7 @@ export class BeansService {
   }
 
   /**
-   * Get project-focused guidance text from `beans graphql --schema`.
+   * Get GraphQL schema/introspection guidance text from `beans graphql --schema`.
    */
   async graphqlSchema(): Promise<string> {
     return (await this.executeText(['graphql', '--schema'])).trim();

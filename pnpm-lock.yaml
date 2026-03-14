@@ -15,8 +15,8 @@ importers:
         specifier: ^22.0.1
         version: 22.0.1
       '@selfagency/beans-mcp':
-        specifier: ^0.1.3
-        version: 0.1.3
+        specifier: ^0.4.2
+        version: 0.4.2
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
@@ -796,9 +796,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@selfagency/beans-mcp@0.1.3':
-    resolution: {integrity: sha512-0anrvFJHi621D5XoBGNWmwbsGwgYITLSO3x69wwXNOSMVb3+N9FVv8WLHhtjo6CIq1ak8h1cCCfo6OeTs49+1Q==}
-    engines: {node: '>=18'}
+  '@selfagency/beans-mcp@0.4.2':
+    resolution: {integrity: sha512-PRtYCu5K0OlxiARdD+hlZmj5A1ZzHOQhzAgtL/On2RytEB5sFVgX4ladUn9ThJ0Y1qIUFR4NdDCx+a+r4wismA==}
     hasBin: true
 
   '@shikijs/core@2.5.0':
@@ -3587,7 +3586,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.57.1':
     optional: true
 
-  '@selfagency/beans-mcp@0.1.3': {}
+  '@selfagency/beans-mcp@0.4.2': {}
 
   '@shikijs/core@2.5.0':
     dependencies:

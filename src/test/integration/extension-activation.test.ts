@@ -15,6 +15,8 @@ describe('Extension Activation', () => {
     // Mock BeansService CLI availability check
     vi.spyOn(BeansService.prototype, 'checkCLIAvailable').mockResolvedValue(true);
     vi.spyOn(BeansService.prototype, 'checkInitialized').mockResolvedValue(true);
+    vi.spyOn(BeansService.prototype, 'getCLIVersion').mockResolvedValue(undefined);
+    vi.spyOn(BeansService.prototype, 'detectCLIInstallMethod').mockResolvedValue('unknown');
     // Mock extension context
     mockContext = {
       subscriptions: [],

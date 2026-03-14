@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Improved CLI install-method detection on symlinked binaries (for example Homebrew shims in `/usr/local/bin` and `/opt/homebrew/bin`) by resolving real paths before classification.
+- Prevented repeated CLI upgrade prompts for the same installed/latest version pair when users choose **View installation instructions**.
+- Corrected a typo in generated Beans skill schema examples (`"body:auth"` search example).
+
 ## [1.4.3] - 2026-02-27
 
 ## What's Changed

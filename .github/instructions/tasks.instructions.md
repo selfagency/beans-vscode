@@ -127,7 +127,7 @@ Use these as authoritative guidance for Beans workflows in this repository.
 
 ## MCP workflow
 
-1. **Read/context first**: `beans_vscode_llm_context`, view, search, filter, sort.
+1. **Read/context first**: `beans_query` with `operation: "llm_context"`, then view/search/filter/sort as needed.
 2. **Mutate only with explicit intent**: create, edit, set status/type/priority, manage relationships.
 3. **Destructive actions** (delete, archive) require explicit user confirmation unless the user already requested it.
 4. MCP is the preferred programmatic interface when the extension UI is not in focus.
@@ -252,7 +252,7 @@ Filter options for querying beans
 input BeanFilter {
   """
   Full-text search across slug, title, and body using Bleve query syntax.
-  
+
   Examples:
   - "login" - exact term match
   - "login~" - fuzzy match (1 edit distance)

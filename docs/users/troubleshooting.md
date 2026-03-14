@@ -26,6 +26,20 @@ title: Troubleshooting
 
 - Initialize workspace or inspect context keys
 
+### CLI upgrade prompt behavior
+
+If the extension detects that your Beans CLI is outdated, it shows an upgrade prompt with an action based on install method detection.
+
+**How detection works**:
+
+- Homebrew installs are detected from the executable's resolved (real) path, including symlinked launch paths such as `/usr/local/bin/beans` and `/opt/homebrew/bin/beans`.
+- Go installs are detected from common Go bin locations (including `$GOPATH/bin`).
+
+**Prompt deduping**:
+
+- The upgrade prompt is shown once per installed/latest version pair.
+- Choosing **Skip this version** or **View installation instructions** records that pair and suppresses repeat prompts for the same version pair in that workspace.
+
 ### Performance
 
 **Check**:

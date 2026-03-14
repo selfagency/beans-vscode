@@ -112,6 +112,12 @@ vi.mock('../../beans/service', () => ({
     async graphqlSchema(): Promise<string> {
       return state.primeOutput;
     }
+    async getCLIVersion(): Promise<string | undefined> {
+      return undefined;
+    }
+    async detectCLIInstallMethod(): Promise<'brew' | 'go' | 'unknown'> {
+      return 'unknown';
+    }
   },
 }));
 
