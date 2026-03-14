@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-03-14
+
+## What's Changed
+* chore(ci)(deps): bump docker/login-action from 3 to 4 by @dependabot[bot] in https://github.com/selfagency/beans-vscode/pull/107
+* chore(ci)(deps): bump actions/upload-artifact from 6 to 7 by @dependabot[bot] in https://github.com/selfagency/beans-vscode/pull/106
+* test(docs): parity regression guards and MCP naming alignment by @selfagency in https://github.com/selfagency/beans-vscode/pull/108
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.4.3...v1.5.0
+
+_Source: changes from v1.4.3 to v1.5.0._
+
+
 ### Fixed
 
 - Improved CLI install-method detection on symlinked binaries (for example Homebrew shims in `/usr/local/bin` and `/opt/homebrew/bin`) by resolving real paths before classification.
