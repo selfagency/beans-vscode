@@ -180,6 +180,7 @@ Response (structuredContent):
 
 ```json
 {
+  "sourceCommand": "beans graphql --schema",
   "graphqlSchema": "...",
   "generatedInstructions": "...",
   "instructionsPath": "/workspace/.github/instructions/tasks.instructions.md"
@@ -214,7 +215,7 @@ Request (read last 200 lines):
 Response:
 
 ```json
-{ "path": "/workspace/.vscode/logs/beans-output.log", "content": "...log lines...", "linesReturned": 200 }
+{ "path": "/path/to/vscode/logs/beans-output.log", "content": "...log lines...", "linesReturned": 200 }
 ```
 
 Security & Best Practices

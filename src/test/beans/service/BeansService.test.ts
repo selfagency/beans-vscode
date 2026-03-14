@@ -142,6 +142,32 @@ describe('BeansService', () => {
     });
   });
 
+  describe('CLI metadata helpers', () => {
+    it('parses semantic version from --version output', async () => {
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        if (Array.isArray(args) && args.includes('--version')) {
+          callback(null, { stdout: 'beans v0.4.2\n', stderr: '' });
+          return;
+        }
+        callback(new Error('unexpected command') as any, null);
+      });
+
+      await expect(service.getCLIVersion()).resolves.toBe('0.4.2');
+    });
+
+    it('detects homebrew installation from resolved binary path', async () => {
+      mockExecFile.mockImplementation((cmd, _args, _opts, callback) => {
+        if (cmd === 'which') {
+          callback(null, { stdout: '/opt/homebrew/bin/beans\n', stderr: '' });
+          return;
+        }
+        callback(new Error('unexpected command') as any, null);
+      });
+
+      await expect(service.detectCLIInstallMethod()).resolves.toBe('brew');
+    });
+  });
+
   describe('checkInitialized', () => {
     it('returns true when workspace is initialized', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {

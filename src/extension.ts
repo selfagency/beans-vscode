@@ -16,6 +16,7 @@
  * - Use `BeansOutput` for logging (mirrored to context.logUri/beans-output.log)
  */
 import * as fs from 'node:fs/promises';
+import * as https from 'node:https';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { BeansChatIntegration } from './beans/chat';
@@ -61,6 +62,7 @@ let aiArtifactSyncInProgress = false;
 let firstMalformedBeanFilePath: string | undefined;
 const ARTIFACT_GENERATION_PREF_KEY = 'beans.ai.artifactsGenerationPreference';
 const AI_ENABLEMENT_PREF_KEY = 'beans.ai.enablementPreference';
+const BEANS_CLI_UPGRADE_PROMPT_STATE_KEY = 'beans.lastPromptedCliUpgradePair';
 
 // Lightweight provider interface for components that can reapply header titles
 // without a full refresh. Providers implementing this can update cached counts
@@ -169,6 +171,10 @@ export async function activate(context: vscode.ExtensionContext) {
       await promptForCLIInstallation();
       return; // Don't proceed with activation if CLI not found
     }
+
+    void checkForBeansCliUpdateAndPrompt(context, beansService).catch(error => {
+      logger.diagnostics?.('Beans CLI update prompt check failed', error as Error);
+    });
 
     // Register preview provider
     const previewProvider = new BeansPreviewProvider(beansService);
@@ -386,6 +392,159 @@ export async function activate(context: vscode.ExtensionContext) {
           }
         });
     }
+  }
+}
+
+function normalizeVersion(version: string): { major: number; minor: number; patch: number; pre?: string } | undefined {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/.exec(version.trim());
+  if (!match) {
+    return undefined;
+  }
+
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+    pre: match[4],
+  };
+}
+
+function isVersionOutdated(installed: string, latest: string): boolean {
+  const a = normalizeVersion(installed);
+  const b = normalizeVersion(latest);
+  if (!a || !b) {
+    return false;
+  }
+
+  if (a.major !== b.major) {
+    return a.major < b.major;
+  }
+  if (a.minor !== b.minor) {
+    return a.minor < b.minor;
+  }
+  if (a.patch !== b.patch) {
+    return a.patch < b.patch;
+  }
+
+  // If numeric parts are equal, prerelease is considered older than stable.
+  if (a.pre && !b.pre) {
+    return true;
+  }
+
+  return false;
+}
+
+async function fetchLatestBeansVersion(): Promise<string | undefined> {
+  try {
+    const payload = await new Promise<{ tag_name?: string } | undefined>(resolve => {
+      const request = https.get(
+        'https://api.github.com/repos/hmans/beans/releases/latest',
+        {
+          headers: {
+            Accept: 'application/vnd.github+json',
+            'User-Agent': 'beans-vscode-extension',
+          },
+          timeout: 5000,
+        },
+        response => {
+          const chunks: Buffer[] = [];
+          response.on('data', chunk => {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          });
+          response.on('end', () => {
+            if ((response.statusCode ?? 500) >= 400) {
+              resolve(undefined);
+              return;
+            }
+
+            try {
+              const json = JSON.parse(Buffer.concat(chunks).toString('utf8')) as { tag_name?: string };
+              resolve(json);
+            } catch {
+              resolve(undefined);
+            }
+          });
+        }
+      );
+
+      request.on('timeout', () => {
+        request.destroy();
+        resolve(undefined);
+      });
+
+      request.on('error', () => {
+        resolve(undefined);
+      });
+    });
+
+    if (!payload?.tag_name) {
+      return undefined;
+    }
+
+    return payload.tag_name.replace(/^v/, '');
+  } catch {
+    return undefined;
+  }
+}
+
+export async function checkForBeansCliUpdateAndPrompt(
+  context: vscode.ExtensionContext,
+  service: BeansService,
+  latestVersionFetcher: () => Promise<string | undefined> = fetchLatestBeansVersion
+): Promise<void> {
+  const installed = await service.getCLIVersion();
+  if (!installed) {
+    return;
+  }
+
+  const latest = await latestVersionFetcher();
+  if (!latest || !isVersionOutdated(installed, latest)) {
+    return;
+  }
+
+  const promptPair = `${installed}|${latest}`;
+  const lastPromptedPair = context.workspaceState.get<string>(BEANS_CLI_UPGRADE_PROMPT_STATE_KEY);
+  if (lastPromptedPair === promptPair) {
+    return;
+  }
+
+  const installMethod = await service.detectCLIInstallMethod();
+  const upgradeAction =
+    installMethod === 'brew'
+      ? 'Upgrade with Homebrew'
+      : installMethod === 'go'
+        ? 'Upgrade with Go'
+        : 'View installation instructions';
+
+  const selection = await vscode.window.showWarningMessage(
+    `Beans CLI ${installed} is installed, but ${latest} is available.`,
+    upgradeAction,
+    'Skip this version'
+  );
+
+  if (selection === 'Skip this version') {
+    await context.workspaceState.update(BEANS_CLI_UPGRADE_PROMPT_STATE_KEY, promptPair);
+    return;
+  }
+
+  if (selection === upgradeAction) {
+    if (installMethod === 'brew') {
+      const terminal = vscode.window.createTerminal({ name: 'Beans Upgrade' });
+      terminal.show();
+      terminal.sendText('brew upgrade hmans/beans/beans', true);
+      await context.workspaceState.update(BEANS_CLI_UPGRADE_PROMPT_STATE_KEY, promptPair);
+      return;
+    }
+
+    if (installMethod === 'go') {
+      const terminal = vscode.window.createTerminal({ name: 'Beans Upgrade' });
+      terminal.show();
+      terminal.sendText('go install github.com/hmans/beans@latest', true);
+      await context.workspaceState.update(BEANS_CLI_UPGRADE_PROMPT_STATE_KEY, promptPair);
+      return;
+    }
+
+    await vscode.env.openExternal(vscode.Uri.parse('https://github.com/hmans/beans#installation'));
   }
 }
 

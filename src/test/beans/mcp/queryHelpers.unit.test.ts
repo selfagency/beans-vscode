@@ -47,6 +47,7 @@ describe('queryHelpers unit', () => {
 
   it('llm_context without writeToWorkspaceInstructions does not call writeInstructions', async () => {
     const res = await handleQueryOperation(backend, { operation: 'llm_context', writeToWorkspaceInstructions: false });
+    expect(res.structuredContent.sourceCommand).toBe('beans graphql --schema');
     expect(res.structuredContent.graphqlSchema).toBe('type Query { x: String }');
     expect(res.structuredContent.instructionsPath).toBeNull();
     expect(backend.writeInstructions).not.toHaveBeenCalled();

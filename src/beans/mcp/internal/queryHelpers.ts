@@ -101,6 +101,7 @@ export async function handleQueryOperation(
   const { operation, mode, statuses, types, search, tags, writeToWorkspaceInstructions, includeClosed } = params;
 
   if (operation === 'llm_context') {
+    const sourceCommand = 'beans graphql --schema';
     const graphqlSchema = typeof backend.graphqlSchema === 'function' ? await backend.graphqlSchema() : '';
     const generatedInstructions = buildBeansCopilotInstructions(graphqlSchema);
     const instructionsPath =
@@ -109,9 +110,12 @@ export async function handleQueryOperation(
         : null;
     return {
       content: [
-        { type: 'text', text: JSON.stringify({ graphqlSchema, generatedInstructions, instructionsPath }, null, 2) },
+        {
+          type: 'text',
+          text: JSON.stringify({ sourceCommand, graphqlSchema, generatedInstructions, instructionsPath }, null, 2),
+        },
       ],
-      structuredContent: { graphqlSchema, generatedInstructions, instructionsPath },
+      structuredContent: { sourceCommand, graphqlSchema, generatedInstructions, instructionsPath },
     };
   }
 

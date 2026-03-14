@@ -247,7 +247,7 @@ When `beans.ai.enabled` is `true`, the extension can automatically generate two 
 
 **`.github/instructions/tasks.instructions.md`** - Copilot instruction file containing:
 
-- Task-tracking workflow guidance derived from the Beans GraphQL schema
+- Task-tracking workflow guidance derived from `beans graphql --schema`
 - Instructions for how AI assistants should interact with beans
 
 On first activation with AI enabled, the extension prompts you to generate these artifacts. Your preference is stored per workspace.
