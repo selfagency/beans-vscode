@@ -1029,14 +1029,23 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     const normalizedText = this.normalizeEscapedNewlinesOutsideCodeBlocks(textWithChecklistMarkers);
 
     // Use marked (a robust Markdown-to-HTML library) to render the normalized
-    // markdown into HTML. Disable mangle/headerIds to keep output stable and
-    // avoid adding id/mangle transformations that our tests don't expect.
-    // Convert single-line fenced code like ```block``` into multi-line fenced
-    // form so marked treats it as a block-level code fence and emits
-    // <pre><code>..</code></pre> (tests expect this behavior).
+    // markdown into HTML. walkTokens intercepts `html`-type tokens (raw HTML
+    // tags in the markdown source, e.g. `<title>`, `<script>`) and escapes
+    // them as literal text before rendering, so they cannot corrupt the
+    // webview DOM. marked's tokeniser correctly identifies these independently
+    // of fenced/code-span context, so code blocks and backtick spans are
+    // unaffected. Convert single-line fenced code like ```block``` into
+    // multi-line fenced form so marked emits <pre><code>..</code></pre>.
     const preprocessed = normalizedText.replace(/^```([^`]*)```$/gm, '```\n$1\n```');
 
-    let html = marked.parse(preprocessed) as string;
+    let html = marked.parse(preprocessed, {
+      walkTokens(token) {
+        if (token.type === 'html') {
+          token.type = 'text';
+          token.text = token.raw.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+      },
+    }) as string;
 
     // Sanitize links produced by marked to ensure only safe protocols are allowed
     // and add target/rel attributes for webview safety.
@@ -1458,4 +1467,18 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   private getIconLabel(bean: Bean): string {
     return `${bean.type} ${bean.status} bean`;
   }
+}
+
+/**
+ * Exposes private members of BeansDetailsViewProvider for unit tests.
+ *
+ * @internal not part of the public API; import only from test files.
+ */
+export interface BeansDetailsViewProviderPrivate {
+  _currentBean: Bean | undefined;
+  escapeHtml(s: string): string;
+  normalizeEscapedNewlinesOutsideCodeBlocks(input: string): string;
+  renderMarkdown(md: string, currentBeanId?: string): string;
+  getIconName(bean: Bean): string;
+  getTypeIconName(type: string): string;
 }
