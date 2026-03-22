@@ -695,7 +695,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.3.2",
-    "@types/vscode": "^1.109.0",
+    "@types/vscode": "^1.105.0",
     "@vitest/coverage-v8": "^4.0.18",
     "@vscode/codicons": "^0.0.44",
     "@vscode/test-cli": "^0.0.12",
