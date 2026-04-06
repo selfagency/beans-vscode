@@ -56,9 +56,10 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
     try {
       this.context.subscriptions.push(vscode.lm.registerMcpServerDefinitionProvider(MCP_PROVIDER_ID, this));
     } catch (error) {
+      const normalizedError = error instanceof Error ? error : new Error(String(error));
       this.logger.warn(
-        `Failed to register MCP server definition provider "${MCP_PROVIDER_ID}": ${(error as Error).message}`,
-        error as Error
+        `Failed to register MCP server definition provider "${MCP_PROVIDER_ID}": ${normalizedError.message}`,
+        normalizedError
       );
       return;
     }
@@ -101,16 +102,28 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
   }
 
   private hasManifestProviderContribution(): boolean {
-    const packageJson = this.context.extension.packageJSON as {
-      contributes?: {
-        mcpServerDefinitionProviders?: Array<{
-          id?: string;
-        }>;
-      };
-    };
+    const packageJson = this.context.extension?.packageJSON;
+    if (!packageJson || typeof packageJson !== 'object') {
+      return false;
+    }
 
-    const providers = packageJson.contributes?.mcpServerDefinitionProviders;
-    return Array.isArray(providers) && providers.some(provider => provider.id === MCP_PROVIDER_ID);
+    const contributes =
+      'contributes' in packageJson && packageJson.contributes && typeof packageJson.contributes === 'object'
+        ? packageJson.contributes
+        : undefined;
+    const providers =
+      contributes &&
+      'mcpServerDefinitionProviders' in contributes &&
+      Array.isArray(contributes.mcpServerDefinitionProviders)
+        ? contributes.mcpServerDefinitionProviders
+        : undefined;
+
+    return (
+      Array.isArray(providers) &&
+      providers.some(
+        provider => provider && typeof provider === 'object' && 'id' in provider && provider.id === MCP_PROVIDER_ID
+      )
+    );
   }
 
   provideMcpServerDefinitions(): vscode.ProviderResult<vscode.McpStdioServerDefinition[]> {
