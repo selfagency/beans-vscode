@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-04-06
+
+## What's Changed
+* feat(mcp): align extension with revised beans-mcp surface by @selfagency in https://github.com/selfagency/beans-vscode/pull/128
+* perf: cache beans sidebar loading by @selfagency in https://github.com/selfagency/beans-vscode/pull/129
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.6.0...v1.7.0
+
+_Source: changes from v1.6.0 to v1.7.0._
+
+
 ## [1.6.0] - 2026-04-06
 
 ## What's Changed
