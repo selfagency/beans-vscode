@@ -1,5 +1,5 @@
 import { execFile } from 'child_process';
-import { mkdir, readFile, readdir, realpath, rename, writeFile } from 'fs/promises';
+import { mkdir, readFile, readdir, realpath, rename, stat, writeFile } from 'fs/promises';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { BeansOutput } from '../../../beans/logging/BeansOutput';
@@ -16,6 +16,7 @@ vi.mock('fs/promises', () => ({
   readdir: vi.fn(),
   readFile: vi.fn(),
   realpath: vi.fn(),
+  stat: vi.fn(),
   writeFile: vi.fn(),
   rename: vi.fn(),
 }));
@@ -71,6 +72,8 @@ describe('BeansService', () => {
   let mockMkdir: ReturnType<typeof vi.fn>;
   let mockReaddir: ReturnType<typeof vi.fn>;
   let mockRealpath: ReturnType<typeof vi.fn>;
+  let mockStat: ReturnType<typeof vi.fn>;
+  let mockWorkspaceState: { get: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
 
   function createErrnoError(message: string, code: string): NodeJS.ErrnoException {
     const error = new Error(message) as NodeJS.ErrnoException;
@@ -94,13 +97,24 @@ describe('BeansService', () => {
     mockMkdir = mkdir as unknown as ReturnType<typeof vi.fn>;
     mockReaddir = readdir as unknown as ReturnType<typeof vi.fn>;
     mockRealpath = realpath as unknown as ReturnType<typeof vi.fn>;
+    mockStat = stat as unknown as ReturnType<typeof vi.fn>;
 
     mockReadFile.mockResolvedValue('---\nstatus: todo\ntype: task\n---\nbody');
     mockWriteFile.mockResolvedValue(undefined);
     mockRename.mockResolvedValue(undefined);
     mockMkdir.mockResolvedValue(undefined);
-    mockReaddir.mockResolvedValue([]);
+    mockReaddir.mockImplementation(async (_target: string, options?: { withFileTypes?: boolean }) => {
+      if (options?.withFileTypes) {
+        return [];
+      }
+      return [];
+    });
     mockRealpath.mockImplementation(async (value: string) => value);
+    mockStat.mockResolvedValue({ mtimeMs: 1, size: 100 });
+    mockWorkspaceState = {
+      get: vi.fn(),
+      update: vi.fn().mockResolvedValue(undefined),
+    };
 
     service = new BeansService('/test/workspace');
   });
@@ -291,26 +305,68 @@ describe('BeansService', () => {
       );
     });
 
-    it('applies status filters', async () => {
-      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('graphql');
-        const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
-        expect(variables.filter.status).toEqual(['todo']);
-        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
+    it('filters by status from the warm in-memory full-list cache', async () => {
+      const mixedBeans = [
+        ...mockBeanData,
+        {
+          id: 'test-def2',
+          title: 'Completed Bean',
+          slug: 'completed-bean',
+          path: 'beans/test-def2.md',
+          body: 'Done',
+          status: 'completed',
+          type: 'task',
+          tags: [],
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-03T00:00:00Z',
+          etag: 'etag2',
+        },
+      ];
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(null, { stdout: JSON.stringify({ beans: mixedBeans }), stderr: '' });
       });
 
-      await service.listBeans({ status: ['todo'] });
+      await service.listBeans();
+      mockExecFile.mockClear();
+
+      const beans = await service.listBeans({ status: ['todo'] });
+
+      expect(mockExecFile).not.toHaveBeenCalled();
+      expect(beans).toHaveLength(1);
+      expect(beans[0].status).toBe('todo');
     });
 
-    it('applies type filters', async () => {
-      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
-        expect(args).toContain('graphql');
-        const variables = JSON.parse(args[args.indexOf('--variables') + 1]);
-        expect(variables.filter.type).toEqual(['task']);
-        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
+    it('filters by type from the warm in-memory full-list cache', async () => {
+      const mixedBeans = [
+        ...mockBeanData,
+        {
+          id: 'test-bug2',
+          title: 'Bug Bean',
+          slug: 'bug-bean',
+          path: 'beans/test-bug2.md',
+          body: 'Bug',
+          status: 'todo',
+          type: 'bug',
+          tags: [],
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-03T00:00:00Z',
+          etag: 'etag2',
+        },
+      ];
+
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(null, { stdout: JSON.stringify({ beans: mixedBeans }), stderr: '' });
       });
 
-      await service.listBeans({ type: ['task'] });
+      await service.listBeans();
+      mockExecFile.mockClear();
+
+      const beans = await service.listBeans({ type: ['task'] });
+
+      expect(mockExecFile).not.toHaveBeenCalled();
+      expect(beans).toHaveLength(1);
+      expect(beans[0].type).toBe('task');
     });
 
     it('applies search filter', async () => {
@@ -375,35 +431,58 @@ describe('BeansService', () => {
       expect(beans[0].blockedBy).toEqual(['preferred']);
     });
 
-    it('caches successful results', async () => {
+    it('reuses the full in-memory cache while bean file timestamps are unchanged', async () => {
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
         callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
       });
 
       await service.listBeans();
-      expect(service.isOffline()).toBe(false);
+      const beans = await service.listBeans({ status: ['todo'] });
 
-      // Clear cache to test it was set
-      service.clearCache();
+      expect(mockExecFile).toHaveBeenCalledTimes(1);
+      expect(service.isOffline()).toBe(false);
+      expect(beans).toHaveLength(1);
     });
 
-    it('falls back to cache in offline mode', async () => {
-      // First successful call to populate cache
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
+    it('refreshes the cache when a tracked bean file timestamp changes', async () => {
+      const beanDirEntry = { name: 'test-abc1.md', isFile: () => true };
+      let currentMtime = 1;
+      const firstResponseBeans = [{ ...mockBeanData[0], path: '.beans/test-abc1.md' }];
+
+      mockReaddir.mockImplementation(async (_target: string, options?: { withFileTypes?: boolean }) => {
+        if (options?.withFileTypes) {
+          return [beanDirEntry];
+        }
+        return ['test-abc1.md'];
       });
+      mockStat.mockImplementation(async () => ({ mtimeMs: currentMtime, size: 100 }));
 
-      await service.listBeans();
+      mockExecFile
+        .mockImplementationOnce((_cmd, _args, _opts, callback) => {
+          callback(null, { stdout: JSON.stringify({ beans: firstResponseBeans }), stderr: '' });
+        })
+        .mockImplementationOnce((_cmd, _args, _opts, callback) => {
+          callback(null, {
+            stdout: JSON.stringify({
+              beans: [
+                {
+                  ...firstResponseBeans[0],
+                  title: 'Test Bean 1 (reloaded)',
+                  etag: 'etag2',
+                },
+              ],
+            }),
+            stderr: '',
+          });
+        });
 
-      // Second call fails, should use cache
-      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        const error = createErrnoError('ENOENT', 'ENOENT');
-        callback(error, null);
-      });
+      const first = await service.listBeans();
+      currentMtime = 2;
+      const second = await service.listBeans();
 
-      const beans = await service.listBeans();
-      expect(beans).toHaveLength(1);
-      expect(service.isOffline()).toBe(true);
+      expect(mockExecFile).toHaveBeenCalledTimes(2);
+      expect(first[0].title).toBe('Test Bean 1');
+      expect(second[0].title).toBe('Test Bean 1 (reloaded)');
     });
 
     it('applies requested filters when serving cached data in offline mode', async () => {
@@ -463,6 +542,114 @@ describe('BeansService', () => {
 
       await expect(service.listBeans()).rejects.toThrow(BeansCLINotFoundError);
       await expect(service.listBeans()).rejects.toThrow('Beans CLI is not available and no cached data exists');
+    });
+
+    it('clears the warm cache after an update action so the next list reloads', async () => {
+      let listCallCount = 0;
+
+      mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+        const query = Array.isArray(args) && args.includes('graphql') ? args[args.indexOf('graphql') + 2] : '';
+
+        if (typeof query === 'string' && query.includes('query ListBeans')) {
+          listCallCount += 1;
+          callback(null, { stdout: JSON.stringify({ beans: mockBeanData }), stderr: '' });
+          return;
+        }
+
+        if (typeof query === 'string' && query.includes('mutation UpdateBean')) {
+          callback(null, {
+            stdout: JSON.stringify({
+              updateBean: {
+                ...mockBeanData[0],
+                priority: 'high',
+              },
+            }),
+            stderr: '',
+          });
+          return;
+        }
+
+        callback(new Error('Unexpected command') as any, null);
+      });
+
+      await service.listBeans();
+      await service.updateBean('test-abc1', { priority: 'high' });
+      await service.listBeans();
+
+      expect(listCallCount).toBe(2);
+    });
+
+    it('restores a persisted workspaceState cache when timestamps still match', async () => {
+      const persistedBeans = [
+        {
+          id: 'test-abc1',
+          code: 'abc1',
+          slug: 'test-bean-1',
+          path: '.beans/test-abc1.md',
+          title: 'Persisted Bean',
+          body: 'Persisted body',
+          status: 'todo',
+          type: 'task',
+          priority: 'normal',
+          tags: ['cached'],
+          blocking: [],
+          blockedBy: [],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-02T00:00:00.000Z',
+          etag: 'etag-persisted',
+        },
+      ];
+
+      mockWorkspaceState.get.mockReturnValue({
+        beans: persistedBeans,
+        snapshot: [['/test/workspace/.beans/test-abc1.md', { mtimeMs: 1, size: 100 }]],
+      });
+      mockReaddir.mockImplementation(async (_target: string, options?: { withFileTypes?: boolean }) => {
+        if (options?.withFileTypes) {
+          return [{ name: 'test-abc1.md', isFile: () => true }];
+        }
+        return ['test-abc1.md'];
+      });
+
+      const restoredService = new BeansService('/test/workspace', mockWorkspaceState as unknown as vscode.Memento);
+      const beans = await restoredService.listBeans({ status: ['todo'] });
+
+      expect(beans).toHaveLength(1);
+      expect(beans[0].title).toBe('Persisted Bean');
+      expect(mockExecFile).not.toHaveBeenCalled();
+    });
+
+    it('persists the warm cache into workspaceState after a successful full fetch', async () => {
+      mockReaddir.mockImplementation(async (_target: string, options?: { withFileTypes?: boolean }) => {
+        if (options?.withFileTypes) {
+          return [{ name: 'test-abc1.md', isFile: () => true }];
+        }
+        return ['test-abc1.md'];
+      });
+      mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+        callback(null, {
+          stdout: JSON.stringify({
+            beans: [{ ...mockBeanData[0], path: '.beans/test-abc1.md' }],
+          }),
+          stderr: '',
+        });
+      });
+
+      const persistedService = new BeansService('/test/workspace', mockWorkspaceState as unknown as vscode.Memento);
+      await persistedService.listBeans();
+
+      expect(mockWorkspaceState.update).toHaveBeenCalledWith(
+        'beans.cachedBeansSnapshot.v1',
+        expect.objectContaining({
+          beans: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'test-abc1',
+              title: 'Test Bean 1',
+            }),
+          ]),
+          snapshot: [['/test/workspace/.beans/test-abc1.md', { mtimeMs: 1, size: 100 }]],
+        })
+      );
     });
 
     it('continues listing when one bean is malformed and can be auto-repaired', async () => {
@@ -545,7 +732,7 @@ describe('BeansService', () => {
       expect(beans[0].title).toBe('repair me');
       expect(beans[0].status).toBe('todo');
       expect(beans[0].type).toBe('bug');
-      expect(service.getConfig).toHaveBeenCalledTimes(2);
+      expect(service.getConfig).toHaveBeenCalledTimes(3);
       expect(mockWriteFile).toHaveBeenCalledTimes(1);
       const writtenContent = mockWriteFile.mock.calls[0][1] as string;
       expect(writtenContent).toContain('status: todo');

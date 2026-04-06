@@ -14,7 +14,7 @@
  */
 import { execFile } from 'child_process';
 import { createHash } from 'crypto';
-import { mkdir, readdir, readFile, realpath, rename, writeFile } from 'fs/promises';
+import { mkdir, readdir, readFile, realpath, rename, stat, writeFile } from 'fs/promises';
 import * as path from 'path';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
@@ -60,6 +60,33 @@ interface RawBeanFromCLI {
   blockedByIds: string[];
 }
 
+interface BeanFileSnapshotEntry {
+  mtimeMs: number;
+  size: number;
+}
+
+interface PersistedBeansCache {
+  beans: Array<{
+    id: string;
+    code: string;
+    slug: string;
+    path: string;
+    title: string;
+    body: string;
+    status: BeanStatus;
+    type: BeanType;
+    priority?: BeanPriority;
+    tags: string[];
+    parent?: string;
+    blocking: string[];
+    blockedBy: string[];
+    createdAt: string;
+    updatedAt: string;
+    etag: string;
+  }>;
+  snapshot: Array<[string, BeanFileSnapshotEntry]>;
+}
+
 /**
  * Typed representation of a GraphQL error object as commonly returned by GraphQL
  * services. Using this type avoids unsafe `any` usage at call sites.
@@ -76,10 +103,12 @@ export interface GraphQLError {
  * Provides type-safe wrappers around CLI operations with secure command execution
  */
 export class BeansService {
+  private static readonly WORKSPACE_STATE_CACHE_KEY = 'beans.cachedBeansSnapshot.v1';
   private readonly logger = BeansOutput.getInstance();
   private readonly malformedWarningPaths = new Set<string>();
   private cliPath: string;
   private workspaceRoot: string;
+  private readonly workspaceState?: vscode.Memento;
   // Config manager instance cached for lifecycle of service to avoid repeated I/O
   private readonly configManager: BeansConfigManager;
   // Short-lived parsed config cache to reduce repeated parsing on hot paths
@@ -93,14 +122,19 @@ export class BeansService {
   private cachedBeans: Bean[] | null = null;
   private cacheTimestamp: number | null = null;
   private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+  private cachedBeanFileSnapshot = new Map<string, BeanFileSnapshotEntry>();
+  private hasLoadedFullBeansCache = false;
+  private fullBeansRefreshPromise: Promise<Bean[]> | null = null;
 
-  constructor(defaultWorkspaceRoot: string) {
+  constructor(defaultWorkspaceRoot: string, workspaceState?: vscode.Memento) {
     const config = vscode.workspace.getConfiguration('beans');
     this.cliPath = config.get<string>('cliPath', 'beans');
     this.workspaceRoot = config.get<string>('workspaceRoot', '') || defaultWorkspaceRoot;
+    this.workspaceState = workspaceState;
     // Initialize a single BeansConfigManager for the service lifecycle to avoid
     // repeatedly instantiating and performing workspace I/O on hot paths.
     this.configManager = new BeansConfigManager(this.workspaceRoot);
+    this.restorePersistedCache();
   }
 
   /**
@@ -126,6 +160,89 @@ export class BeansService {
   private updateCache(beans: Bean[]): void {
     this.cachedBeans = beans;
     this.cacheTimestamp = Date.now();
+  }
+
+  /**
+   * Update the full bean-list cache and the tracked file snapshot used to
+   * determine whether the cached data is still fresh.
+   */
+  private setFullBeansCache(beans: Bean[], snapshot: Map<string, BeanFileSnapshotEntry>): void {
+    this.updateCache(beans);
+    this.cachedBeanFileSnapshot = snapshot;
+    this.hasLoadedFullBeansCache = true;
+    this.persistCache();
+  }
+
+  /**
+   * Restore a persisted warm cache from workspaceState.
+   */
+  private restorePersistedCache(): void {
+    if (!this.workspaceState) {
+      return;
+    }
+
+    const persisted = this.workspaceState.get<PersistedBeansCache>(BeansService.WORKSPACE_STATE_CACHE_KEY);
+    if (!persisted) {
+      return;
+    }
+
+    try {
+      this.cachedBeans = persisted.beans.map(bean => ({
+        ...bean,
+        createdAt: new Date(bean.createdAt),
+        updatedAt: new Date(bean.updatedAt),
+      }));
+      this.cachedBeanFileSnapshot = new Map(persisted.snapshot);
+      this.cacheTimestamp = Date.now();
+      this.hasLoadedFullBeansCache = true;
+    } catch (error) {
+      this.logger.warn(`Failed to restore persisted bean cache: ${(error as Error).message}`);
+      this.cachedBeans = null;
+      this.cachedBeanFileSnapshot.clear();
+      this.hasLoadedFullBeansCache = false;
+      this.cacheTimestamp = null;
+    }
+  }
+
+  /**
+   * Persist the current warm cache into workspaceState for the next window.
+   */
+  private persistCache(): void {
+    if (!this.workspaceState || !this.cachedBeans || !this.hasLoadedFullBeansCache) {
+      return;
+    }
+
+    const payload: PersistedBeansCache = {
+      beans: this.cachedBeans.map(bean => ({
+        ...bean,
+        createdAt: bean.createdAt.toISOString(),
+        updatedAt: bean.updatedAt.toISOString(),
+      })),
+      snapshot: Array.from(this.cachedBeanFileSnapshot.entries()),
+    };
+
+    void this.workspaceState.update(BeansService.WORKSPACE_STATE_CACHE_KEY, payload).then(
+      () => undefined,
+      error => {
+        this.logger.warn(`Failed to persist bean cache to workspaceState: ${(error as Error).message}`);
+      }
+    );
+  }
+
+  /**
+   * Remove any persisted warm cache snapshot.
+   */
+  private clearPersistedCache(): void {
+    if (!this.workspaceState) {
+      return;
+    }
+
+    void this.workspaceState.update(BeansService.WORKSPACE_STATE_CACHE_KEY, undefined).then(
+      () => undefined,
+      error => {
+        this.logger.warn(`Failed to clear persisted bean cache: ${(error as Error).message}`);
+      }
+    );
   }
 
   /**
@@ -170,6 +287,120 @@ export class BeansService {
   clearCache(): void {
     this.cachedBeans = null;
     this.cacheTimestamp = null;
+    this.cachedBeanFileSnapshot.clear();
+    this.hasLoadedFullBeansCache = false;
+    this.clearPersistedCache();
+  }
+
+  /**
+   * Resolve the workspace beans directory from config.
+   */
+  private async getBeansDirectoryPath(): Promise<string> {
+    const config = await this.getConfig();
+    return path.resolve(this.workspaceRoot, config.path || '.beans');
+  }
+
+  /**
+   * Capture the current mtime/size snapshot for top-level bean markdown files.
+   */
+  private async snapshotBeanFiles(): Promise<Map<string, BeanFileSnapshotEntry>> {
+    const beansDir = await this.getBeansDirectoryPath();
+    const entries = await readdir(beansDir, { withFileTypes: true });
+    const mdEntries = entries
+      .filter(entry => entry.isFile() && entry.name.endsWith('.md'))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    const snapshot = new Map<string, BeanFileSnapshotEntry>();
+    await Promise.all(
+      mdEntries.map(async entry => {
+        const absolutePath = path.join(beansDir, entry.name);
+        const fileStats = await stat(absolutePath);
+        snapshot.set(absolutePath, {
+          mtimeMs: fileStats.mtimeMs,
+          size: fileStats.size,
+        });
+      })
+    );
+
+    return snapshot;
+  }
+
+  /**
+   * Return true when the disk snapshot differs from the cached snapshot.
+   */
+  private hasBeanFileSnapshotChanged(snapshot: Map<string, BeanFileSnapshotEntry>): boolean {
+    if (!this.hasLoadedFullBeansCache) {
+      return true;
+    }
+
+    if (snapshot.size !== this.cachedBeanFileSnapshot.size) {
+      return true;
+    }
+
+    for (const [absolutePath, entry] of snapshot.entries()) {
+      const cachedEntry = this.cachedBeanFileSnapshot.get(absolutePath);
+      if (!cachedEntry) {
+        return true;
+      }
+
+      if (cachedEntry.mtimeMs !== entry.mtimeMs || cachedEntry.size !== entry.size) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * True when a search filter requires the CLI's native full-text semantics.
+   */
+  private requiresCliFilteredFetch(options?: {
+    status?: string[];
+    type?: string[];
+    search?: string;
+    parent?: string;
+  }): boolean {
+    return Boolean(options?.search || options?.parent);
+  }
+
+  /**
+   * Determine whether the full cached bean list can be reused safely.
+   */
+  private async canServeFromFullCache(): Promise<boolean> {
+    if (!this.cachedBeans || !this.hasLoadedFullBeansCache) {
+      return false;
+    }
+
+    try {
+      const snapshot = await this.snapshotBeanFiles();
+      return !this.hasBeanFileSnapshotChanged(snapshot);
+    } catch (error) {
+      this.logger.debug(`Unable to validate bean cache freshness: ${(error as Error).message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Refresh the authoritative full bean list through the CLI once and share the
+   * result across concurrent callers.
+   */
+  private async refreshFullBeansCacheFromCli(recoveryAttempted = false): Promise<Bean[]> {
+    if (this.fullBeansRefreshPromise) {
+      return this.fullBeansRefreshPromise;
+    }
+
+    this.fullBeansRefreshPromise = (async () => {
+      const beans = await this.fetchBeansFromCli(undefined, recoveryAttempted);
+      const snapshot = await this.snapshotBeanFiles();
+      this.setFullBeansCache(beans, snapshot);
+      return beans;
+    })();
+
+    try {
+      return await this.fullBeansRefreshPromise;
+    } finally {
+      this.fullBeansRefreshPromise = null;
+    }
   }
 
   /**
@@ -613,6 +844,26 @@ export class BeansService {
     options?: { status?: string[]; type?: string[]; search?: string; parent?: string },
     recoveryAttempted = false
   ): Promise<Bean[]> {
+    if (!this.requiresCliFilteredFetch(options) && (await this.canServeFromFullCache())) {
+      this.offlineMode = false;
+      return this.filterBeans(this.cachedBeans ?? [], options);
+    }
+
+    if (!this.requiresCliFilteredFetch(options)) {
+      const beans = await this.refreshFullBeansCacheFromCli(recoveryAttempted);
+      return this.filterBeans(beans, options);
+    }
+
+    return this.fetchBeansFromCli(options, recoveryAttempted);
+  }
+
+  /**
+   * Fetch beans through the CLI/GraphQL path.
+   */
+  private async fetchBeansFromCli(
+    options?: { status?: string[]; type?: string[]; search?: string; parent?: string },
+    recoveryAttempted = false
+  ): Promise<Bean[]> {
     try {
       const filter: Record<string, unknown> = {};
 
@@ -692,7 +943,9 @@ export class BeansService {
         // Orphan children of every quarantined bean by clearing their parent field.
         await this.clearDanglingParentReferences(normalizedBeans);
 
-        // Update cache on successful fetch
+        // Update cache on successful full fetch. Filtered queries are served from
+        // the full-cache path where possible, but keep this fallback for search
+        // queries and callers that explicitly requested a filtered CLI fetch.
         this.updateCache(normalizedBeans);
       }
       this.offlineMode = false;
@@ -728,7 +981,7 @@ export class BeansService {
 
       if (!recoveryAttempted && (await this.tryRecoverFromMalformedListError(error))) {
         this.logger.info('Recovered from malformed bean list error by quarantining the reported file; retrying list');
-        return this.listBeans(options, true);
+        return this.fetchBeansFromCli(options, true);
       }
 
       // For other errors, just throw
@@ -1655,6 +1908,8 @@ export class BeansService {
       await this.repairBeanFrontmatter(bean.path);
     }
 
+    this.clearCache();
+
     return bean;
   }
 
@@ -1776,6 +2031,8 @@ export class BeansService {
       }
     }
 
+    this.clearCache();
+
     return updatedBean;
   }
 
@@ -1788,6 +2045,8 @@ export class BeansService {
     if (errors && errors.length > 0) {
       throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
     }
+
+    this.clearCache();
   }
 
   /**
@@ -1869,6 +2128,10 @@ export class BeansService {
         )
       );
 
+      if (results.some(result => result.success)) {
+        this.clearCache();
+      }
+
       return results;
     } catch (error) {
       // Entire batch failed
@@ -1946,21 +2209,28 @@ export class BeansService {
     try {
       const { data: resp, errors } = await this.executeGraphQL<Record<string, RawBeanFromCLI>>(mutation, variables);
 
-      return batchUpdates.map(({ id }, i) => {
-        const alias = aliases[i];
-        const error = errors?.find(e => e.path?.includes(alias));
+      const results: Array<{ success: true; bean: Bean } | { success: false; error: Error; id: string }> =
+        batchUpdates.map(({ id }, i) => {
+          const alias = aliases[i];
+          const error = errors?.find(e => e.path?.includes(alias));
 
-        if (error) {
-          return { success: false, error: new Error(error.message), id };
-        }
+          if (error) {
+            return { success: false, error: new Error(error.message), id };
+          }
 
-        const beanData = resp[alias];
-        if (!beanData) {
-          return { success: false, error: new Error('Internal error: Mutation results missing for alias'), id };
-        }
+          const beanData = resp[alias];
+          if (!beanData) {
+            return { success: false, error: new Error('Internal error: Mutation results missing for alias'), id };
+          }
 
-        return { success: true, bean: this.normalizeBean(beanData) };
-      });
+          return { success: true, bean: this.normalizeBean(beanData) };
+        });
+
+      if (results.some(result => result.success)) {
+        this.clearCache();
+      }
+
+      return results;
     } catch (error) {
       // Entire batch failed
       return batchUpdates.map(({ id }) => ({ success: false, error: error as Error, id }));
@@ -1993,16 +2263,24 @@ export class BeansService {
     try {
       const { errors } = await this.executeGraphQL<Record<string, boolean>>(mutation, variables);
 
-      return ids.map((id, i) => {
-        const alias = `d${i}`;
-        const error = errors?.find(e => e.path?.includes(alias));
+      const results: Array<{ success: true; id: string } | { success: false; error: Error; id: string }> = ids.map(
+        (id, i) => {
+          const alias = `d${i}`;
+          const error = errors?.find(e => e.path?.includes(alias));
 
-        if (error) {
-          return { success: false, error: new Error(error.message), id };
+          if (error) {
+            return { success: false, error: new Error(error.message), id };
+          }
+
+          return { success: true, id };
         }
+      );
 
-        return { success: true, id };
-      });
+      if (results.some(result => result.success)) {
+        this.clearCache();
+      }
+
+      return results;
     } catch (error) {
       // Entire batch failed
       return ids.map(id => ({ success: false, error: error as Error, id }));
