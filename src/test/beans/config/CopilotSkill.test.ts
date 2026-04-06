@@ -35,7 +35,7 @@ describe('CopilotSkill', () => {
       expect(content).toContain('# Beans Skill');
       expect(content).toContain('## Planning mode: epic decomposition');
       expect(content).toContain('### Step 3 — Propose the issue map');
-      expect(content).toContain('`beans_query` with `operation: "llm_context"`');
+      expect(content).toContain('prefer `beans_query` for `llm_context`');
       expect(content).not.toContain('beans_vscode_llm_context');
     });
 

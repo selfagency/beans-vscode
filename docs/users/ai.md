@@ -37,14 +37,25 @@ When `beans.ai.enabled` is `true`, the extension exposes a compact, consolidated
 Key public tools (see the full reference and examples at `docs/users/mcp-integration.md`):
 
 - `beans_init` — Initialize the workspace (optional `prefix`).
-- `beans_view` — Fetch full bean details by `beanId`.
+- `beans_view` — Fetch full bean details by `beanId` or `beanIds`.
 - `beans_create` — Create a new bean (title/type + optional fields).
+- `beans_bulk_create` — Create multiple beans in one request, optionally applying a shared parent.
 - `beans_update` — Consolidated metadata and body updates (`status`/`type`/`priority`/`parent`/`clearParent`/`blocking`/`blockedBy` plus `body`/`bodyAppend`/`bodyReplace` and optional `ifMatch`).
+- `beans_bulk_update` — Update multiple beans in one request, optionally reassigning a shared parent.
 - `beans_delete` — Delete one or more beans (`beanId` or `beanIds`, optional `force`).
 - `beans_reopen` — Reopen a completed or scrapped bean to an active status.
 - `beans_query` — Unified list/search/filter/sort/ready/llm_context/open_config operations.
 - `beans_bean_file` — Read/edit/create/delete files under `.beans`.
 - `beans_output` — Read extension output logs or show guidance.
+
+Important upstream behavior notes:
+
+- Prefer `beans_query` for nearly all read/query flows; it is intentionally broad.
+- Prefer `beans_update` for most mutations instead of composing many fine-grained calls.
+- `beans_bulk_create` and `beans_bulk_update` are **best-effort** and return per-item success/failure results.
+- `beans_create` prefers `body`; `description` is only a deprecated alias.
+- `beans_bean_file` accepts either `some-bean.md` or `.beans/some-bean.md`; the `.beans/` prefix is normalized automatically.
+- Version mismatches between `beans-mcp` and the installed Beans CLI are warning-only and non-blocking.
 
 ### MCP Commands
 
@@ -133,7 +144,7 @@ Create a new bean with AI guidance.
 ```text
 You: @beans /create Add dark mode support to the application
 
-Copilot: I'll help you create a bean for dark mode support.
+Copilot: I'll help you draft a bean for dark mode support.
 
 Suggested configuration:
 - Type: feature
@@ -141,7 +152,7 @@ Suggested configuration:
 - Status: todo
 - Description: Implement dark mode theme with toggle in settings
 
-Would you like me to create this bean? [Yes/No]
+You can create it interactively with `beans.create`, or in automation with MCP `beans_create`.
 ```
 
 #### `/next`
@@ -249,6 +260,8 @@ When `beans.ai.enabled` is `true`, the extension can automatically generate two 
 
 - Task-tracking workflow guidance derived from `beans graphql --schema`
 - Instructions for how AI assistants should interact with beans
+
+> Note: This extension-generated file is separate from the MCP server's `beans_query` `llm_context` output. When the upstream MCP server writes its own instruction artifact, it uses `.github/instructions/beans-prime.instructions.md`.
 
 On first activation with AI enabled, the extension prompts you to generate these artifacts. Your preference is stored per workspace.
 

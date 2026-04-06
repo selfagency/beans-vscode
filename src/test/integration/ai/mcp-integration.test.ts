@@ -162,10 +162,11 @@ describe('MCP Integration', () => {
       expect(definition.label).toBe('Beans Commands');
       expect(definition.command).toBe(process.execPath);
       expect(definition.args.length).toBeGreaterThan(0);
-      expect(definition.args).toContain('--workspace');
-      expect(definition.args).toContain('/workspace/root');
+      expect(definition.args[1]).toBe('/workspace/root');
       expect(definition.args).toContain('--port');
       expect(definition.args).toContain('39173');
+      expect(definition.args).toContain('--log-dir');
+      expect(definition.args).toContain('/mock/logs');
       expect(definition.env).toBeDefined();
       expect(definition.env?.BEANS_VSCODE_MCP).toBe('1');
       expect(definition.env?.BEANS_VSCODE_MCP_PORT).toBe('39173');
@@ -571,8 +572,9 @@ describe('MCP Integration', () => {
 
       const resolved = mcpIntegration.resolveMcpServerDefinition(inputDefinition) as vscode.McpStdioServerDefinition;
 
-      expect(resolved.args).toContain('--workspace');
-      expect(resolved.args).toContain('/workspace/root');
+      expect(resolved.args[1]).toBe('/workspace/root');
+      expect(resolved.args).toContain('--log-dir');
+      expect(resolved.args).toContain('/mock/logs');
     });
   });
 

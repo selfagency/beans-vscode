@@ -103,7 +103,7 @@ The Beans MCP server can be run as a standalone process for debugging:
 pnpm run compile
 
 # Run the server manually
-node ./dist/beans-mcp-server.js --workspace . --cli-path beans --port 39173
+node ./dist/beans-mcp-server.js . --cli-path beans --port 39173 --log-dir ./.vscode/logs
 ```
 
 ## Pull Request Checklist

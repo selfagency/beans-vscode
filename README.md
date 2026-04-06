@@ -20,7 +20,7 @@
 - **🔍 Search & Filter**: Full-text search across all fields, filter by status/type/priority/tags, five sort modes, and dedicated search results view with context menus
 - **🎯 Drag & Drop**: Create parent-child hierarchies visually with cycle detection and confirmation
 - **🔗 Relationships**: Parent-child hierarchies (milestone > epic > feature > task) and blocking/blocked-by dependency tracking
-- **🤖 AI Integration**: MCP tools for all operations, `@beans` chat participant with 7 slash commands, auto-generated Copilot skills & instructions, and "Start Work" templates for Copilot-assisted workflows
+- **🤖 AI Integration**: Consolidated MCP tools for query/update/batch/file/log workflows, `@beans` chat participant with 7 slash commands, auto-generated Copilot skills & instructions, and "Start Work" templates for Copilot-assisted workflows
 - **🌐 Remote Ready**: Works seamlessly in SSH, WSL, containers, and Codespaces
 - **⚡ Keyboard-First**: Configurable shortcuts for all operations
 - **📂 File Watching**: Automatic tree refresh on filesystem changes with configurable debounce
