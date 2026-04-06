@@ -6,6 +6,8 @@ type: task
 priority: high
 created_at: 2026-04-06T13:06:14Z
 updated_at: 2026-04-06T13:11:04Z
+branch: chore/5esu-dependency-bumps
+pr: 127
 ---
 
 Apply requested Dependabot bumps in package dependencies and GitHub Actions workflows, refresh lockfile, and validate compile/tests.
