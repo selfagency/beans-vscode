@@ -677,11 +677,11 @@
   ],
   "lint-staged": {
     "src/**/*.ts": [
-      "eslint --fix",
+      "eslint --fix --no-error-on-unmatched-pattern",
       "prettier --write"
     ],
     "docs/!(plans)/**/*.md": [
-      "vitepress build",
+      "bash -c 'vitepress build'",
       "prettier --write"
     ],
     "docs/plans/**/*.md": [
