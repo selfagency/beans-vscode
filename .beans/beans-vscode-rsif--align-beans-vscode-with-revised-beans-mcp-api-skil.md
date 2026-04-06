@@ -6,6 +6,8 @@ type: task
 priority: normal
 created_at: 2026-04-06T13:31:53Z
 updated_at: 2026-04-06T13:50:51Z
+branch: feat/rsif-revised-beans-mcp-alignment
+pr: 128
 ---
 
 Review upstream changes in `selfagency/beans-mcp` and update this extension's MCP integration, generated skill/instructions guidance, chat participant behavior, and docs to properly match the revised MCP surface.
