@@ -691,7 +691,7 @@
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@octokit/rest": "^22.0.1",
-    "@selfagency/beans-mcp": "^0.4.2",
+    "@selfagency/beans-mcp": "^0.5.1",
     "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.5.2",
@@ -713,7 +713,7 @@
     "prettier": "^3.8.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.58.0",
-    "vite": "^7.3.1",
+    "vite": "^8.0.5",
     "vitepress": "^1.6.4",
     "vitest": "^4.1.2",
     "zod": "^4.3.6",
