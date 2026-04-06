@@ -9,26 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [1.6.0] - 2026-04-06
-
-## What's Changed
-* chore(deps)(deps-dev): bump esbuild from 0.27.3 to 0.27.4 by @dependabot[bot] in https://github.com/selfagency/beans-vscode/pull/110
-* chore(ci)(deps): bump dorny/paths-filter from 3 to 4 by @dependabot[bot] in https://github.com/selfagency/beans-vscode/pull/111
-* chore(deps)(deps-dev): bump the dev-dependencies group with 5 updates by @dependabot[bot] in https://github.com/selfagency/beans-vscode/pull/112
-* chore(deps)(deps-dev): bump marked from 15.0.12 to 17.0.4 by @dependabot[bot] in https://github.com/selfagency/beans-vscode/pull/114
-* fix: lower engine floor to 1.105.0 for Cursor IDE compatibility by @SamLeatherdale in https://github.com/selfagency/beans-vscode/pull/117
-* fix: escape raw HTML tags in bean body via marked walkTokens by @SamLeatherdale in https://github.com/selfagency/beans-vscode/pull/118
-* fix: resolve Windows MCP provider registration failure by @selfagency in https://github.com/selfagency/beans-vscode/pull/126
-* chore(deps): bump vite and CI action dependencies by @selfagency in https://github.com/selfagency/beans-vscode/pull/127
-
-## New Contributors
-* @SamLeatherdale made their first contribution in https://github.com/selfagency/beans-vscode/pull/117
-
-**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.5.0...v1.6.0
-
-_Source: changes from v1.5.0 to v1.6.0._
-
-
 ## [1.5.0] - 2026-03-14
 
 ## What's Changed
