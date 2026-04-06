@@ -45,7 +45,24 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
       return;
     }
 
-    this.context.subscriptions.push(vscode.lm.registerMcpServerDefinitionProvider(MCP_PROVIDER_ID, this));
+    if (!this.hasManifestProviderContribution()) {
+      this.logger.warn(
+        `Skipping MCP server definition provider registration because package.json does not contribute "${MCP_PROVIDER_ID}". ` +
+          'This can happen when the installed extension manifest is out of sync with the bundled code.'
+      );
+      return;
+    }
+
+    try {
+      this.context.subscriptions.push(vscode.lm.registerMcpServerDefinitionProvider(MCP_PROVIDER_ID, this));
+    } catch (error) {
+      const normalizedError = error instanceof Error ? error : new Error(String(error));
+      this.logger.warn(
+        `Failed to register MCP server definition provider "${MCP_PROVIDER_ID}": ${normalizedError.message}`,
+        normalizedError
+      );
+      return;
+    }
 
     this.context.subscriptions.push(
       vscode.commands.registerCommand('beans.mcp.refreshDefinitions', () => {
@@ -82,6 +99,31 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
     );
 
     this.context.subscriptions.push({ dispose: () => this.onDidChangeEmitter.dispose() });
+  }
+
+  private hasManifestProviderContribution(): boolean {
+    const packageJson = this.context.extension?.packageJSON;
+    if (!packageJson || typeof packageJson !== 'object') {
+      return false;
+    }
+
+    const contributes =
+      'contributes' in packageJson && packageJson.contributes && typeof packageJson.contributes === 'object'
+        ? packageJson.contributes
+        : undefined;
+    const providers =
+      contributes &&
+      'mcpServerDefinitionProviders' in contributes &&
+      Array.isArray(contributes.mcpServerDefinitionProviders)
+        ? contributes.mcpServerDefinitionProviders
+        : undefined;
+
+    return (
+      Array.isArray(providers) &&
+      providers.some(
+        provider => provider && typeof provider === 'object' && 'id' in provider && provider.id === MCP_PROVIDER_ID
+      )
+    );
   }
 
   provideMcpServerDefinitions(): vscode.ProviderResult<vscode.McpStdioServerDefinition[]> {
