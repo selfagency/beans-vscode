@@ -11,9 +11,15 @@ try {
   // Use require() so TypeScript doesn't try to rewrite it to an import.
   // @ts-ignore - require exists in the Node/CommonJS build environment
   marked = require('marked/lib/marked.cjs');
-} catch (e) {
-  // Defer to dynamic import at runtime if the CJS bundle isn't available.
-  marked = undefined;
+} catch (_e1) {
+  try {
+    // Fall back to the main package entry (works for marked v17+ in Node/test env)
+    // @ts-ignore - require exists in the Node/CommonJS build environment
+    marked = require('marked');
+  } catch (_e2) {
+    // Defer to dynamic import at runtime if no CJS bundle is available.
+    marked = undefined;
+  }
 }
 
 import * as vscode from 'vscode';
