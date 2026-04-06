@@ -4,7 +4,7 @@ import { isPathWithinRoot, parseCliArgs, sortBeans } from '../../../../src/beans
 
 describe('BeansMcpServer utilities', () => {
   it('parses CLI args including port/workspace/cli-path', () => {
-    const argv = ['--workspace', '/ws', '--cli-path', '/custom/beans', '--port', '1234'];
+    const argv = ['/ws', '--cli-path', '/custom/beans', '--port', '1234'];
     const parsed = parseCliArgs(argv);
     expect(parsed.workspaceRoot).toBe('/ws');
     expect(parsed.cliPath).toBe('/custom/beans');

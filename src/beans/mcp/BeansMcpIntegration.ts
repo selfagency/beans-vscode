@@ -219,12 +219,13 @@ export class BeansMcpIntegration implements vscode.McpServerDefinitionProvider<v
     const serverScript = path.join(this.context.extensionPath, 'dist', 'beans-mcp-server.js');
     const args = [
       serverScript,
-      '--workspace',
       this.workspaceRoot,
       '--cli-path',
       cliPathOverride || this.cliPath,
       '--port',
       String(mcpPort),
+      '--log-dir',
+      this.context.logUri.fsPath,
     ];
     const outputLogPath = path.join(this.context.logUri.fsPath, 'beans-output.log');
 

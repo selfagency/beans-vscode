@@ -150,10 +150,19 @@ This skill drives all Beans issue tracker operations in this workspace using the
 
 Use MCP tools when automation is needed outside the VS Code UI:
 
-1. **Read context first** — call `beans_query` with `operation: "llm_context"` (or equivalent view/search/filter/sort tools) before mutating anything.
-2. **Mutate with explicit intent** — create, edit, set status/type/priority, manage relationships.
-3. **Destructive actions** — `delete` and `archive` require explicit user confirmation.
-4. Prefer MCP over the CLI for any scripted or agent-driven operation.
+1. **Read context first** — prefer `beans_query` for `llm_context`, `refresh`, `filter`, `search`, `sort`, `ready`, and `open_config`; use `beans_view` when you need full bean payloads.
+2. **Mutate with explicit intent** — prefer `beans_update` for most metadata/body changes; use `beans_create` for single items and `beans_bulk_create` / `beans_bulk_update` when decomposing epics or moving batches.
+3. **Use file/log helpers intentionally** — `beans_bean_file` is the supported path for `.beans` file access, and `beans_output` is the supported path for log access.
+4. **Destructive actions** — `beans_delete` (and any archive-style action outside MCP) require explicit user confirmation.
+5. Prefer MCP over the CLI for any scripted or agent-driven operation.
+
+### Revised MCP surface highlights
+
+- `beans_update` supports body-safe incremental edits via `bodyAppend` and `bodyReplace`, plus `ifMatch` for optimistic concurrency.
+- `beans_create` prefers `body`; `description` remains only a deprecated alias.
+- Batch tools are **best-effort**, so callers must inspect the per-item result array instead of assuming atomic success.
+- `beans_query` is intentionally broad and should be your first stop for read/query workflows.
+- When `beans_query` writes instructions from MCP `llm_context`, the upstream MCP server writes `.github/instructions/beans-prime.instructions.md`; this is separate from extension-generated `tasks.instructions.md` artifacts.
 
 ## Planning mode: epic decomposition
 

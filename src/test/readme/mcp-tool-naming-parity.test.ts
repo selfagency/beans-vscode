@@ -15,18 +15,24 @@ describe('MCP tool naming parity docs guard', () => {
     const commandsDoc = readWorkspaceFile('docs/users/commands.md');
 
     expect(aiDoc).toContain('`beans_query`');
+    expect(aiDoc).toContain('`beans_bulk_create`');
     expect(mcpDoc).toContain('`beans_query`');
+    expect(mcpDoc).toContain('`beans_bulk_create`');
+    expect(mcpDoc).toContain('`beans_bulk_update`');
     expect(commandsDoc).toContain('`beans_query`');
+    expect(commandsDoc).toContain('`beans_bulk_create`');
 
     expect(aiDoc).not.toContain('beans_vscode_');
     expect(mcpDoc).not.toContain('beans_vscode_');
     expect(commandsDoc).not.toContain('beans_vscode_');
   });
 
-  it('keeps GraphQL-based llm_context source guidance in MCP docs', () => {
+  it('keeps revised llm_context artifact guidance in MCP docs', () => {
     const mcpDoc = readWorkspaceFile('docs/users/mcp-integration.md');
 
-    expect(mcpDoc).toContain('"sourceCommand": "beans graphql --schema"');
-    expect(mcpDoc).toContain('"instructionsPath": "/workspace/.github/instructions/tasks.instructions.md"');
+    expect(mcpDoc).toContain('"instructionsPath": "/workspace/.github/instructions/beans-prime.instructions.md"');
+    expect(mcpDoc).toContain(
+      "extension's own initialization flow still generates `.github/instructions/tasks.instructions.md`"
+    );
   });
 });
