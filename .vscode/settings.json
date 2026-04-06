@@ -27,5 +27,9 @@
     "codeQL.createQuery.qlPackLocation": "${workspaceFolder}/codeql",
     "vitest.rootConfig": ".",
     "vitest.cliArguments": "",
-    "beans.mcp.showStartupNotification": false
+    "beans.mcp.showStartupNotification": false,
+    "sonarlint.connectedMode.project": {
+        "connectionId": "selfagency",
+        "projectKey": "selfagency_beans-vscode"
+    }
 }
