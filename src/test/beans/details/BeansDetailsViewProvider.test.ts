@@ -1,18 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
-import { BeansDetailsViewProvider } from '../../../beans/details/BeansDetailsViewProvider';
+import {
+  BeansDetailsViewProvider,
+  BeansDetailsViewProviderPrivate,
+} from '../../../beans/details/BeansDetailsViewProvider';
 import type { Bean } from '../../../beans/model';
 import type { BeansService } from '../../../beans/service';
 
-/** Type helper for accessing private members of BeansDetailsViewProvider in tests. */
-type ProviderPrivate = {
-  _currentBean: Bean | undefined;
-  renderMarkdown(md: string): string;
-  escapeHtml(s: string): string;
-  normalizeEscapedNewlinesOutsideCodeBlocks(input: string): string;
-  getIconName(bean: Bean): string;
-  getTypeIconName(type: string): string;
-};
+type ProviderPrivate = BeansDetailsViewProviderPrivate;
 
 // TODO(beans-vscode-1m8d): Add deeper webview integration tests for details
 // panel interactions (real DOM script execution, select-change update flows,
