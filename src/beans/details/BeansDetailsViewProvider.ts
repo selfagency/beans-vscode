@@ -1,4 +1,20 @@
-import { marked } from 'marked';
+// Importing the ESM-only `marked` package via static `import` causes TypeScript
+// to emit `require()` calls for CommonJS modules which then fail when the
+// referenced module is ESM-only. Use a runtime `require` of the CommonJS
+// bundle if present, falling back to dynamic import at runtime. This keeps
+// the file CommonJS-compatible for the current build setup.
+
+let marked: any;
+try {
+  // Prefer the packaged CommonJS build when available
+  // (some releases ship a lib/marked.cjs alongside ESM sources).
+  // Use require() so TypeScript doesn't try to rewrite it to an import.
+  // @ts-ignore - require exists in the Node/CommonJS build environment
+  marked = require('marked/lib/marked.cjs');
+} catch (e) {
+  // Defer to dynamic import at runtime if the CJS bundle isn't available.
+  marked = undefined;
+}
 
 import * as vscode from 'vscode';
 import { BeansOutput } from '../logging';
@@ -138,10 +154,14 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
   /**
    * A validated, typed shape for allowed updates coming from the webview.
    */
-  private sanitizeAndValidateUpdates(
-    updates: unknown
-  ):
-    | { status?: Bean['status']; type?: Bean['type']; priority?: Bean['priority']; title?: string; body?: string }
+  private sanitizeAndValidateUpdates(updates: unknown):
+    | {
+        status?: Bean['status'];
+        type?: Bean['type'];
+        priority?: Bean['priority'];
+        title?: string;
+        body?: string;
+      }
     | undefined {
     if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
       return undefined;
@@ -1038,8 +1058,8 @@ export class BeansDetailsViewProvider implements vscode.WebviewViewProvider {
     // multi-line fenced form so marked emits <pre><code>..</code></pre>.
     const preprocessed = normalizedText.replace(/^```([^`]*)```$/gm, '```\n$1\n```');
 
-    let html = marked.parse(preprocessed, {
-      walkTokens(token) {
+    let html = marked!.parse(preprocessed, {
+      walkTokens: (token: any) => {
         if (token.type === 'html') {
           token.type = 'text';
           token.text = token.raw.replace(/</g, '&lt;').replace(/>/g, '&gt;');
