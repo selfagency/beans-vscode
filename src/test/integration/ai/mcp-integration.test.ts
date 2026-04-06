@@ -19,7 +19,12 @@ describe('MCP Integration', () => {
       extensionUri: vscode.Uri.file('/mock/extension/path'),
       logUri: vscode.Uri.file('/mock/logs'),
       extension: {
-        packageJSON: { version: '0.1.0' },
+        packageJSON: {
+          version: '0.1.0',
+          contributes: {
+            mcpServerDefinitionProviders: [{ id: 'beans.mcpServers', label: 'Beans MCP Servers' }],
+          },
+        },
       },
     } as unknown as vscode.ExtensionContext;
 
@@ -91,6 +96,41 @@ describe('MCP Integration', () => {
       mcpIntegration.register();
 
       expect(registeredProviders.size).toBe(0);
+    });
+
+    it('should not register when package manifest does not contribute the provider id', () => {
+      (mockContext.extension as unknown as { packageJSON: unknown }).packageJSON = {
+        version: '0.1.0',
+        contributes: {
+          mcpServerDefinitionProviders: [],
+        },
+      };
+      const warnSpy = vi.spyOn(BeansOutput.getInstance(), 'warn');
+
+      mcpIntegration = new BeansMcpIntegration(mockContext, '/workspace/root', 'beans');
+      mcpIntegration.register();
+
+      expect(vscode.lm.registerMcpServerDefinitionProvider).not.toHaveBeenCalled();
+      expect(registeredProviders.size).toBe(0);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('package.json does not contribute'));
+    });
+
+    it('should swallow provider registration errors and continue safely', () => {
+      const warnSpy = vi.spyOn(BeansOutput.getInstance(), 'warn');
+      (vscode as unknown as { lm: unknown }).lm = {
+        registerMcpServerDefinitionProvider: vi.fn(() => {
+          throw new Error('provider contribution missing');
+        }),
+      };
+
+      mcpIntegration = new BeansMcpIntegration(mockContext, '/workspace/root', 'beans');
+
+      expect(() => mcpIntegration.register()).not.toThrow();
+      expect(registeredProviders.size).toBe(0);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to register MCP server definition provider "beans.mcpServers"'),
+        expect.any(Error)
+      );
     });
   });
 
