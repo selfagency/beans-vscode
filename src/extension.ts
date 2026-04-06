@@ -151,7 +151,7 @@ export async function activate(context: vscode.ExtensionContext) {
     const outputMirrorPath = path.join(context.logUri.fsPath, 'beans-output.log');
     logger.setMirrorFilePath(outputMirrorPath);
 
-    beansService = new BeansService(workspaceFolder.uri.fsPath);
+    beansService = new BeansService(workspaceFolder.uri.fsPath, context.workspaceState);
     const configuredCliPath = vscode.workspace.getConfiguration('beans').get<string>('cliPath', 'beans');
 
     // Register MCP integration provider and related troubleshooting commands only when AI features are enabled.
