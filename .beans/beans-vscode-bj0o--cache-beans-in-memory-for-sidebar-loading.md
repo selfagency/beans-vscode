@@ -1,9 +1,11 @@
 ---
 # beans-vscode-bj0o
-title: Cache beans in memory for sidebar loading
+title: "Cache beans in memory for sidebar loading"
 status: completed
 type: task
 priority: high
+branch: feat/bj0o-cache-beans-in-memory
+pr: 129
 created_at: 2026-04-06T14:29:18Z
 updated_at: 2026-04-06T14:42:02Z
 ---
@@ -13,7 +15,7 @@ Improve sidebar startup and refresh performance by caching bean file data in mem
 ## Todo
 - [x] Inspect tree loading path and identify the right cache boundary
 - [x] Implement an in-memory bean cache keyed by bean file path with timestamp-based invalidation
-- [x] Invalidate or update cached entries after extension actions that mutate beans
+- [x] Invalidate or update cached entries after extension actions that mutate those beans
 - [x] Add regression tests for cache hits, timestamp invalidation, and mutation invalidation
 - [x] Verify compile/tests still pass
 
