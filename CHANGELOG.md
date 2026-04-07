@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-04-07
+
+## What's Changed
+* fix: eliminate CPU spike from repeated ripgrep config searches by @selfagency in https://github.com/selfagency/beans-vscode/pull/130
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.7.0...v1.7.1
+
+_Source: changes from v1.7.0 to v1.7.1._
+
+
 ## [1.7.0] - 2026-04-06
 
 ## What's Changed
