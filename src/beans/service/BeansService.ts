@@ -1046,7 +1046,7 @@ export class BeansService {
     // Typical CLI diagnostics include either absolute paths or workspace-relative
     // paths under .beans. Extract and resolve whichever variant appears.
     const pathMatch =
-      /((?:[A-Za-z]:\\[^\s:'"\n]+\.md)|(?:\/?[^\s:'"\n]*\.beans[\/\\][^\s:'"\n]+\.md)|(?:\.beans[\/\\][^\s:'"\n]+\.md))/.exec(
+      /((?:[A-Za-z]:\\[^\s:'"]+\.md)|(?:\/?[^\s:'"]*\.beans[/\\][^\s:'"]+\.md)|(?:\.beans[/\\][^\s:'"]+\.md))/.exec(
         combined
       );
 
@@ -1414,7 +1414,7 @@ export class BeansService {
     if (v.length === 0) {
       return "''";
     }
-    const needsQuotes = /^[-?:{}[\]#&*!|>'"\%@`]/.test(v) || /: |^: $| #|\n|\r|\t/.test(v);
+    const needsQuotes = /^[-?:{}[\]#&*!|>'"%@`]/.test(v) || /: |^: $| #|\n|\r|\t/.test(v);
     if (!needsQuotes) {
       return v;
     }
