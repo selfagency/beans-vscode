@@ -1,0 +1,16 @@
+.github/copilot-instructions.md
+  h_5cf1e2c1161853 1
+package.json
+  h_5cf1e2c1161853 697-699,704,708-710,713-716,718
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "c5887b52589eaeaf23530533d08b4b2cb5b1a52f",
+  "prompts": {},
+  "humans": {
+    "h_5cf1e2c1161853": {
+      "author": "Daniel Sieradski"
+    }
+  }
+}
