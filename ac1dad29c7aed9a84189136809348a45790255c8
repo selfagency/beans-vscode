@@ -1,0 +1,16 @@
+src/beans/service/BeansService.ts
+  h_5cf1e2c1161853 898,1434,2044,2144-2145,2147-2148
+src/test/beans/service/BeansService.test.ts
+  h_5cf1e2c1161853 1749,1926,1985
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "ac1dad29c7aed9a84189136809348a45790255c8",
+  "prompts": {},
+  "humans": {
+    "h_5cf1e2c1161853": {
+      "author": "Daniel Sieradski"
+    }
+  }
+}
