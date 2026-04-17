@@ -895,7 +895,7 @@ export class BeansService {
       }
 
       if (options?.parent) {
-        filter.parent = options.parent;
+        filter.parentId = options.parent;
       }
 
       const { data, errors } = await this.executeGraphQL<{ beans: RawBeanFromCLI[] }>(graphql.LIST_BEANS_QUERY, {
@@ -1429,7 +1429,10 @@ export class BeansService {
     const knownIds = new Set(normalizedBeans.map(b => b.id));
     const resultsByMissingParent = new Map<
       string,
-      { successes: Array<{ id: string; code: string }>; failures: Array<{ id: string; error: Error }> }
+      {
+        successes: Array<{ id: string; code: string }>;
+        failures: Array<{ id: string; error: Error }>;
+      }
     >();
 
     for (const bean of normalizedBeans) {
@@ -2035,7 +2038,11 @@ export class BeansService {
 
         const beanData = resp[alias];
         if (!beanData) {
-          return { success: false, error: new Error('Internal error: Mutation results missing for alias'), data };
+          return {
+            success: false,
+            error: new Error('Internal error: Mutation results missing for alias'),
+            data,
+          };
         }
 
         return { success: true, bean: this.normalizeBean(beanData) };
@@ -2134,7 +2141,11 @@ export class BeansService {
 
           const beanData = resp[alias];
           if (!beanData) {
-            return { success: false, error: new Error('Internal error: Mutation results missing for alias'), id };
+            return {
+              success: false,
+              error: new Error('Internal error: Mutation results missing for alias'),
+              id,
+            };
           }
 
           return { success: true, bean: this.normalizeBean(beanData) };
