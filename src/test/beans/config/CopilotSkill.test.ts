@@ -18,7 +18,7 @@ function normalizeSlashes(value: string): string {
 describe('CopilotSkill', () => {
   describe('COPILOT_SKILL_RELATIVE_PATH', () => {
     it('should have correct path structure', () => {
-      expect(COPILOT_SKILL_RELATIVE_PATH).toBe(path.join('.github', 'skills', 'beans', 'SKILL.md'));
+      expect(COPILOT_SKILL_RELATIVE_PATH).toBe(path.join('.agents', 'skills', 'beans-vscode', 'SKILL.md'));
     });
   });
 
@@ -33,9 +33,11 @@ describe('CopilotSkill', () => {
       expect(content).toContain('description:');
       expect(content).not.toContain('Template: copilot-skill.template.md');
       expect(content).toContain('# Beans Skill');
+      expect(content).toContain('Always use beans instead of TodoWrite');
       expect(content).toContain('## Planning mode: epic decomposition');
       expect(content).toContain('### Step 3 — Propose the issue map');
       expect(content).toContain('prefer `beans_query` for `llm_context`');
+      expect(content).toContain('## Available MCP tools');
       expect(content).not.toContain('beans_vscode_llm_context');
     });
 
@@ -52,6 +54,7 @@ describe('CopilotSkill', () => {
       const content = buildBeansCopilotSkill('');
 
       expect(content).toContain('## Core rules (always enforced)');
+      expect(content).toContain('## Git Flow branch mapping');
       expect(content).toContain('## Starting work on a bean');
       expect(content).toContain('Never start work without a bean');
     });
@@ -95,7 +98,7 @@ describe('CopilotSkill', () => {
       await writeBeansCopilotSkill('/workspace', 'content');
 
       const mkdirPath = mkdirSpy.mock.calls[0]?.[0] as string;
-      expect(normalizeSlashes(mkdirPath)).toContain('/.github/skills/beans');
+      expect(normalizeSlashes(mkdirPath)).toContain('/.agents/skills/beans-vscode');
       expect(mkdirSpy).toHaveBeenCalledWith(expect.any(String), { recursive: true });
     });
 
@@ -175,11 +178,13 @@ describe('CopilotSkill', () => {
       await removeBeansCopilotSkill('/workspace2');
 
       const firstPath = rmSpy.mock.calls[0]?.[0] as string;
-      const secondPath = rmSpy.mock.calls[1]?.[0] as string;
+      const secondPath = rmSpy.mock.calls[2]?.[0] as string;
       expect(normalizeSlashes(firstPath)).toContain('/workspace1/');
       expect(normalizeSlashes(secondPath)).toContain('/workspace2/');
       expect(rmSpy).toHaveBeenNthCalledWith(1, expect.any(String), { force: true });
       expect(rmSpy).toHaveBeenNthCalledWith(2, expect.any(String), { force: true });
+      expect(rmSpy).toHaveBeenNthCalledWith(3, expect.any(String), { force: true });
+      expect(rmSpy).toHaveBeenNthCalledWith(4, expect.any(String), { force: true });
     });
   });
 });

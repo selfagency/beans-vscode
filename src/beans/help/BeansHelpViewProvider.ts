@@ -21,11 +21,11 @@ export class BeansHelpViewProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [this.extensionUri],
     };
 
-    webviewView.webview.html = this.getHtml();
+    webviewView.webview.html = this.getHtml(webviewView.webview);
   }
 
-  private getHtml(): string {
-    const csp = ["default-src 'none'", "style-src 'unsafe-inline'", 'img-src https: data:'].join('; ');
+  private getHtml(webview: vscode.Webview): string {
+    const csp = ["default-src 'none'", "style-src 'unsafe-inline'", `img-src ${webview.cspSource} data:`].join('; ');
 
     return `<!DOCTYPE html>
 <html lang="en">

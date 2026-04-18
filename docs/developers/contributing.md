@@ -45,9 +45,11 @@ We use Beans (this extension!) to track all work in this repository.
 
 ### Branch Naming
 
-- **Features**: `feature/<bean-id>-<slug>` or `feat/<ticket>-<slug>`
-- **Fixes**: `fix/<bean-id>-<slug>` or `fix/<ticket>-<slug>`
-- **Docs/Chore**: `docs/<slug>` or `chore/<slug>`
+- **Features / Tasks**: `feature/<bean-id>-<slug>`
+- **Bugs**: `bugfix/<bean-id>-<slug>`
+- **Urgent production bugs**: `hotfix/<bean-id>-<slug>`
+- **Milestone / release-support work**: `support/<bean-id>-<slug>`
+- **Note**: `develop` is the shared integration branch, not a per-bean topic branch.
 
 _Example_: `feature/beans-vscode-li45-developer-docs`
 

@@ -249,7 +249,7 @@ Each template opens Copilot Chat pre-filled with context about the selected bean
 
 When `beans.ai.enabled` is `true`, the extension can automatically generate two types of files on initialization:
 
-**`.github/skills/beans/SKILL.md`** - Copilot skill file containing:
+**`.agents/skills/beans-vscode/SKILL.md`** - Copilot skill file containing:
 
 - Planning-mode guidance for epic decomposition
 - Instructions for creating and linking child issues

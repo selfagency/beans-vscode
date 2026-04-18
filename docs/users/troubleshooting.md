@@ -83,7 +83,7 @@ If the extension detects that your Beans CLI is outdated, it shows an upgrade pr
 
 **Check**:
 
-- Is `.github/skills/beans/SKILL.md` present?
+- Is `.agents/skills/beans-vscode/SKILL.md` present?
 - Is file content up to date?
 
 **Solutions**:

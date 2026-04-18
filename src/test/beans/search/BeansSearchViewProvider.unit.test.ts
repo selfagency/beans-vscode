@@ -4,7 +4,9 @@ import { BeansSearchViewProvider } from '../../../beans/search/BeansSearchViewPr
 
 vi.mock('vscode');
 vi.mock('../../../beans/logging/BeansOutput', () => ({
-  BeansOutput: { getInstance: vi.fn(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })) },
+  BeansOutput: {
+    getInstance: vi.fn(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })),
+  },
 }));
 
 describe('BeansSearchViewProvider', () => {
@@ -17,7 +19,16 @@ describe('BeansSearchViewProvider', () => {
     posted = null;
     service = {
       listBeans: vi.fn(async () => [
-        { id: 'a', code: 'A', title: 'Alpha', status: 'todo', type: 'task', priority: 'normal', tags: [], body: '' },
+        {
+          id: 'a',
+          code: 'A',
+          title: 'Alpha',
+          status: 'todo',
+          type: 'task',
+          priority: 'normal',
+          tags: [],
+          body: '',
+        },
         {
           id: 'b',
           code: 'B',
@@ -29,7 +40,13 @@ describe('BeansSearchViewProvider', () => {
           body: 'contains',
         },
       ]),
-      showBean: vi.fn(async (id: string) => ({ id, code: id.toUpperCase(), title: 'T', status: 'todo', type: 'task' })),
+      showBean: vi.fn(async (id: string) => ({
+        id,
+        code: id.toUpperCase(),
+        title: 'T',
+        status: 'todo',
+        type: 'task',
+      })),
     };
 
     provider = new BeansSearchViewProvider(vscode.Uri.file('/ext'), service as any);
@@ -76,5 +93,6 @@ describe('BeansSearchViewProvider', () => {
     expect(html).toContain('Search beans');
     expect(html).toContain('searchInput');
     expect(html).toContain('resultsContainer');
+    expect(html).toContain(".replace(/&/g, '&amp;')");
   });
 });

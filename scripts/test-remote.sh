@@ -54,7 +54,7 @@ RUN apt-get update && apt-get install -y curl jq git wget && \
 ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}"
 
 # Install beans CLI
-RUN go install github.com/hmans/beans@latest
+RUN go install github.com/hmans/beans@v0.4.2
 
 # Verify beans installed
 RUN beans version

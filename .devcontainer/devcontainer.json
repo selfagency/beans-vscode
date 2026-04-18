@@ -6,7 +6,7 @@
       "version": "latest"
     }
   },
-  "postCreateCommand": "go install github.com/hmans/beans@latest",
+  "postCreateCommand": "go install github.com/hmans/beans@v0.4.2",
   "customizations": {
     "vscode": {
       "settings": {

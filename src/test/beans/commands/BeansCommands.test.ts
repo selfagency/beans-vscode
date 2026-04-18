@@ -8,7 +8,7 @@ const writeBeansCopilotInstructions = vi.hoisted(() =>
   vi.fn(async () => '/ws/.github/instructions/tasks.instructions.md')
 );
 const buildBeansCopilotSkill = vi.hoisted(() => vi.fn(() => 'skill content'));
-const writeBeansCopilotSkill = vi.hoisted(() => vi.fn(async () => '/ws/.github/skills/beans/SKILL.md'));
+const writeBeansCopilotSkill = vi.hoisted(() => vi.fn(async () => '/ws/.agents/skills/beans-vscode/SKILL.md'));
 
 vi.mock('../../../beans/config', () => ({
   BeansConfigManager: vi.fn(() => ({ open: vi.fn(async () => undefined) })),
@@ -17,7 +17,7 @@ vi.mock('../../../beans/config', () => ({
   buildBeansCopilotSkill,
   writeBeansCopilotSkill,
   COPILOT_INSTRUCTIONS_RELATIVE_PATH: '.github/instructions/tasks.instructions.md',
-  COPILOT_SKILL_RELATIVE_PATH: '.github/skills/beans/SKILL.md',
+  COPILOT_SKILL_RELATIVE_PATH: '.agents/skills/beans-vscode/SKILL.md',
   removeBeansCopilotSkill: vi.fn(async () => undefined),
 }));
 
@@ -280,7 +280,10 @@ describe('BeansCommands', () => {
     expect(items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ label: '$(issues) Todo', description: 'todo' }),
-        expect.objectContaining({ label: '$(play-circle) In Progress', description: 'in-progress' }),
+        expect.objectContaining({
+          label: '$(play-circle) In Progress',
+          description: 'in-progress',
+        }),
         expect.objectContaining({ label: '$(issue-closed) Completed', description: 'completed' }),
         expect.objectContaining({ label: '$(issue-draft) Draft', description: 'draft' }),
         expect.objectContaining({ label: '$(stop) Scrapped', description: 'scrapped' }),
@@ -366,8 +369,18 @@ describe('BeansCommands', () => {
   it('deletes all descendants recursively (not just direct children) when user selects Delete All', async () => {
     const parent = makeBean({ id: 'parent-1', code: 'P1', status: 'draft', title: 'Parent' });
     const child1 = makeBean({ id: 'child-1', code: 'C1', parent: 'parent-1', status: 'todo' });
-    const grandchild1 = makeBean({ id: 'grandchild-1', code: 'GC1', parent: 'child-1', status: 'todo' });
-    const grandchild2 = makeBean({ id: 'grandchild-2', code: 'GC2', parent: 'child-1', status: 'draft' });
+    const grandchild1 = makeBean({
+      id: 'grandchild-1',
+      code: 'GC1',
+      parent: 'child-1',
+      status: 'todo',
+    });
+    const grandchild2 = makeBean({
+      id: 'grandchild-2',
+      code: 'GC2',
+      parent: 'child-1',
+      status: 'draft',
+    });
     service.listBeans.mockResolvedValueOnce([parent, child1, grandchild1, grandchild2]);
     showWarningMessage.mockResolvedValueOnce('Delete All');
 
@@ -446,7 +459,12 @@ describe('BeansCommands', () => {
   });
 
   it('uses delete confirmation flow when bean has no children', async () => {
-    const parent = makeBean({ id: 'parent-7', code: 'P7', status: 'draft', title: 'No Children Parent' });
+    const parent = makeBean({
+      id: 'parent-7',
+      code: 'P7',
+      status: 'draft',
+      title: 'No Children Parent',
+    });
     service.listBeans.mockResolvedValueOnce([parent]);
     showWarningMessage.mockResolvedValueOnce('Delete');
 
@@ -461,7 +479,12 @@ describe('BeansCommands', () => {
   });
 
   it('aborts no-children delete when modal is dismissed', async () => {
-    const parent = makeBean({ id: 'parent-8', code: 'P8', status: 'scrapped', title: 'No Children Parent' });
+    const parent = makeBean({
+      id: 'parent-8',
+      code: 'P8',
+      status: 'scrapped',
+      title: 'No Children Parent',
+    });
     service.listBeans.mockResolvedValueOnce([parent]);
     showWarningMessage.mockResolvedValueOnce(undefined);
 
@@ -522,7 +545,13 @@ describe('BeansCommands', () => {
   });
 
   it('renders issue picker with type icon (or in-progress icon) and code description', async () => {
-    const todoTask = makeBean({ id: 'task-1', code: 'T1', title: 'Todo task', type: 'task', status: 'todo' });
+    const todoTask = makeBean({
+      id: 'task-1',
+      code: 'T1',
+      title: 'Todo task',
+      type: 'task',
+      status: 'todo',
+    });
     const inProgressBug = makeBean({
       id: 'bug-1',
       code: 'B1',
@@ -536,7 +565,11 @@ describe('BeansCommands', () => {
 
     await (commands as any).pickBean('Pick issue', undefined, true);
 
-    const items = showQuickPick.mock.calls[0][0] as Array<{ label: string; description?: string; bean: Bean }>;
+    const items = showQuickPick.mock.calls[0][0] as Array<{
+      label: string;
+      description?: string;
+      bean: Bean;
+    }>;
 
     expect(items).toEqual(
       expect.arrayContaining([
@@ -690,9 +723,27 @@ describe('BeansCommands', () => {
       status: 'in-progress',
       title: 'Milestone A',
     });
-    const epic = makeBean({ id: 'ep-1', code: 'ep-1', type: 'epic', status: 'in-progress', title: 'Epic A' });
-    const feature = makeBean({ id: 'ft-1', code: 'ft-1', type: 'feature', status: 'in-progress', title: 'Feature A' });
-    const task = makeBean({ id: 'tk-1', code: 'tk-1', type: 'task', status: 'todo', title: 'Task A' });
+    const epic = makeBean({
+      id: 'ep-1',
+      code: 'ep-1',
+      type: 'epic',
+      status: 'in-progress',
+      title: 'Epic A',
+    });
+    const feature = makeBean({
+      id: 'ft-1',
+      code: 'ft-1',
+      type: 'feature',
+      status: 'in-progress',
+      title: 'Feature A',
+    });
+    const task = makeBean({
+      id: 'tk-1',
+      code: 'tk-1',
+      type: 'task',
+      status: 'todo',
+      title: 'Task A',
+    });
     const bug = makeBean({ id: 'bg-1', code: 'bg-1', type: 'bug', status: 'todo', title: 'Bug A' });
     const allBeans = [milestone, epic, feature, task, bug];
 
