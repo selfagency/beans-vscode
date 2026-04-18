@@ -526,7 +526,11 @@ describe('BeansService', () => {
         callback(error, null);
       });
 
-      const filtered = await service.listBeans({ status: ['todo'], type: ['task'], search: 'todo' });
+      const filtered = await service.listBeans({
+        status: ['todo'],
+        type: ['task'],
+        search: 'todo',
+      });
       expect(filtered).toHaveLength(1);
       expect(filtered[0].id).toBe('test-abc1');
       expect(service.isOffline()).toBe(true);
@@ -682,7 +686,10 @@ describe('BeansService', () => {
       };
 
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
-        callback(null, { stdout: JSON.stringify({ beans: [malformedBean, goodBean] }), stderr: '' });
+        callback(null, {
+          stdout: JSON.stringify({ beans: [malformedBean, goodBean] }),
+          stderr: '',
+        });
       });
 
       const beans = await service.listBeans();
@@ -990,7 +997,10 @@ describe('BeansService', () => {
         if (query.includes('UpdateBean')) {
           callback(null, { stdout: JSON.stringify({ updateBean: orphanedChild }), stderr: '' });
         } else {
-          callback(null, { stdout: JSON.stringify({ beans: [malformedParent, childBean] }), stderr: '' });
+          callback(null, {
+            stdout: JSON.stringify({ beans: [malformedParent, childBean] }),
+            stderr: '',
+          });
         }
       });
 
@@ -1642,7 +1652,10 @@ describe('BeansService', () => {
         if (Array.isArray(args) && args.includes('graphql')) {
           const query = args[args.indexOf('graphql') + 2];
           if (query.includes('updateBean')) {
-            callback(null, { stdout: JSON.stringify({ updateBean: { id: 'test-abc1' } }), stderr: '' });
+            callback(null, {
+              stdout: JSON.stringify({ updateBean: { id: 'test-abc1' } }),
+              stderr: '',
+            });
             return;
           }
           if (query.includes('ShowBean')) {
@@ -1733,7 +1746,7 @@ describe('BeansService', () => {
 
             if (query.includes('query ListBeans')) {
               const filter = vars.filter || {};
-              const parentFilter = filter.parent;
+              const parentFilter = filter.parentId;
 
               if (parentFilter === parentId) {
                 callback(null, {
@@ -1910,7 +1923,7 @@ describe('BeansService', () => {
                 stderr: '',
               });
             } else if (query.includes('query ListBeans')) {
-              if (vars.filter?.parent === parentId) {
+              if (vars.filter?.parentId === parentId) {
                 callback(null, {
                   stdout: JSON.stringify({
                     beans: [
@@ -1969,7 +1982,7 @@ describe('BeansService', () => {
 
             if (query.includes('query ListBeans')) {
               const filter = vars.filter || {};
-              const parentFilter = filter.parent;
+              const parentFilter = filter.parentId;
               if (parentFilter === parentId) {
                 callback(null, {
                   stdout: JSON.stringify({
@@ -2429,7 +2442,11 @@ describe('BeansService', () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('--json');
         callback(null, {
-          stdout: JSON.stringify({ success: true, message: 'Initialized .beans directory', path: '/test/.beans' }),
+          stdout: JSON.stringify({
+            success: true,
+            message: 'Initialized .beans directory',
+            path: '/test/.beans',
+          }),
           stderr: '',
         });
       });
@@ -2441,7 +2458,11 @@ describe('BeansService', () => {
       mockExecFile.mockImplementation((_cmd, args, _opts, callback) => {
         expect(args).toContain('init');
         callback(null, {
-          stdout: JSON.stringify({ success: true, message: 'Initialized .beans directory', path: '/test/.beans' }),
+          stdout: JSON.stringify({
+            success: true,
+            message: 'Initialized .beans directory',
+            path: '/test/.beans',
+          }),
           stderr: '',
         });
       });
@@ -2456,7 +2477,11 @@ describe('BeansService', () => {
         expect(args).toContain('--default-type');
         expect(args).toContain('bug');
         callback(null, {
-          stdout: JSON.stringify({ success: true, message: 'Initialized .beans directory', path: '/test/.beans' }),
+          stdout: JSON.stringify({
+            success: true,
+            message: 'Initialized .beans directory',
+            path: '/test/.beans',
+          }),
           stderr: '',
         });
       });
