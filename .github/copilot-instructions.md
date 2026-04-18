@@ -1,4 +1,4 @@
-# Claude Instructions for `beans-vscode`
+# GitHub Copilot Instructions for `beans-vscode`
 
 ## What this is
 
