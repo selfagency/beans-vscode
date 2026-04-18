@@ -173,7 +173,9 @@ export class BeansChatIntegration {
   private async handleSearch(prompt: string, stream: vscode.ChatResponseStream): Promise<void> {
     const query = prompt.trim();
     if (!query) {
-      stream.markdown('What would you like to search for? Enter `/search <term>` and I will find matching beans.');
+      stream.markdown(
+        'What would you like to search for? Enter `/search <term>` and I will find matching beans. For automation, use the MCP `beans_query` tool with `operation: "search"`.'
+      );
       return;
     }
 
@@ -255,10 +257,13 @@ export class BeansChatIntegration {
     stream.markdown('- **Title**\n');
     stream.markdown('- **Type** (`task`, `bug`, `feature`, `milestone`)\n');
     stream.markdown('- **Priority** (`critical`, `high`, `normal`, `low`, `deferred`)\n');
-    stream.markdown('- **Description**\n');
+    stream.markdown('- **Body / Description**\n');
     stream.markdown('- **Parent** (optional bean id)\n\n');
     stream.markdown(
       'You can also create directly in VS Code using the `beans.create` command — it will prompt for each field interactively.'
+    );
+    stream.markdown(
+      '\n\nFor agent-driven workflows, use MCP `beans_create` for a single bean or `beans_bulk_create` for batches. Prefer the `body` field; `description` is only a deprecated alias.'
     );
   }
 

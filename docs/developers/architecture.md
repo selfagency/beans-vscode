@@ -150,11 +150,10 @@ The Beans VS Code extension follows a layered architecture with clear separation
   - `BeansMcpServer`: Standalone stdio MCP server
 - **Responsibility**: Expose Beans operations as MCP tools for any AI client
 - **Tools Exposed**:
-  - Workspace: `init`, `refresh`
-  - Read: `view`, `list`, `search`, `filter`, `sort`
-  - Write: `create`, `edit`, `set_status`, `set_type`, `set_priority`
-  - Relationships: `set_parent`, `remove_parent`, `edit_blocking`
-  - Utilities: `copy_id`, `delete`, `open_config`, `show_output`
+  - Workspace/query: `beans_init`, `beans_query`, `beans_view`
+  - Creation/update: `beans_create`, `beans_bulk_create`, `beans_update`, `beans_bulk_update`
+  - Lifecycle: `beans_delete`, `beans_reopen`
+  - File/log helpers: `beans_bean_file`, `beans_output`
 - **Server Architecture**:
   - Standalone stdio server bundled as `dist/beans-mcp-server.js`
   - Dynamically contributed via `mcp.mcpServers` API
@@ -283,7 +282,7 @@ Tree views update UI
 Copilot Chat or MCP Client
     │
     ▼
-MCP Tool Request (e.g., beans_vscode_create)
+MCP Tool Request (e.g., `beans_query` or `beans_update`)
     │
     ▼
 BeansMcpServer.handleToolCall()

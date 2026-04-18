@@ -25,6 +25,7 @@ vi.mock('vscode', () => ({
 
 vi.mock('fs/promises', () => ({
   access: vi.fn(),
+  readFile: vi.fn(),
 }));
 
 vi.mock('../../../beans/logging/BeansOutput', () => ({
@@ -56,26 +57,24 @@ describe('BeansConfigManager', () => {
   });
 
   describe('read', () => {
-    it('returns null when no config file is found', async () => {
-      vi.mocked(vscode.workspace.findFiles).mockResolvedValue([]);
+    it('returns null when config file is not found (ENOENT)', async () => {
+      const enoent = Object.assign(new Error('ENOENT: no such file or directory'), { code: 'ENOENT' });
+      vi.mocked(fs.readFile).mockRejectedValue(enoent);
 
       await expect(manager.read()).resolves.toBeNull();
     });
 
     it('parses and returns config object', async () => {
-      vi.mocked(vscode.workspace.findFiles).mockResolvedValue([{} as any]);
-      vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue({
-        getText: () =>
-          [
-            'beans:',
-            '  path: .beans',
-            '  prefix: abc',
-            '  id_length: 4',
-            '  default_status: todo',
-            '  default_type: task',
-            '  created_at: 2026-02-17',
-          ].join('\n'),
-      } as any);
+      const yaml = [
+        'beans:',
+        '  path: .beans',
+        '  prefix: abc',
+        '  id_length: 4',
+        '  default_status: todo',
+        '  default_type: task',
+        '  created_at: 2026-02-17',
+      ].join('\n');
+      vi.mocked(fs.readFile).mockResolvedValue(yaml as any);
 
       const result = await manager.read();
 
@@ -91,17 +90,14 @@ describe('BeansConfigManager', () => {
     });
 
     it('returns null and logs warning when parsed value is non-object', async () => {
-      vi.mocked(vscode.workspace.findFiles).mockResolvedValue([{} as any]);
-      vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue({
-        getText: () => 'true',
-      } as any);
+      vi.mocked(fs.readFile).mockResolvedValue('true' as any);
 
       await expect(manager.read()).resolves.toBeNull();
       expect(mockLogger.warn).toHaveBeenCalledWith('.beans.yml parsed to non-object value');
     });
 
     it('returns null and logs error on read failure', async () => {
-      vi.mocked(vscode.workspace.findFiles).mockRejectedValue(new Error('read failed'));
+      vi.mocked(fs.readFile).mockRejectedValue(new Error('read failed'));
 
       await expect(manager.read()).resolves.toBeNull();
       expect(mockLogger.error).toHaveBeenCalledWith('Failed to read .beans.yml:', expect.any(Error));

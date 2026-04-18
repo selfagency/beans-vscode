@@ -10,7 +10,14 @@ describe('BeansMcpServer helpers', () => {
   });
 
   it('parseCliArgs reads workspace, cli path, and port flags', () => {
-    const parsed = parseCliArgs(['--workspace', '/tmp/repo', '--cli-path', '/usr/local/bin/beans', '--port', '49731']);
+    const parsed = parseCliArgs([
+      '--workspace-root',
+      '/tmp/repo',
+      '--cli-path',
+      '/usr/local/bin/beans',
+      '--port',
+      '49731',
+    ]);
     expect(parsed.workspaceRoot).toBe('/tmp/repo');
     expect(parsed.cliPath).toBe('/usr/local/bin/beans');
     expect(parsed.port).toBe(49731);
@@ -61,8 +68,24 @@ describe('BeansMcpServer helpers', () => {
   it('sortBeans id mode sorts lexicographically', () => {
     const sorted = sortBeans(
       [
-        { id: 'bean-2', title: 'Two', slug: 'two', path: 'two.md', body: '', status: 'todo', type: 'task' },
-        { id: 'bean-1', title: 'One', slug: 'one', path: 'one.md', body: '', status: 'todo', type: 'task' },
+        {
+          id: 'bean-2',
+          title: 'Two',
+          slug: 'two',
+          path: 'two.md',
+          body: '',
+          status: 'todo',
+          type: 'task',
+        },
+        {
+          id: 'bean-1',
+          title: 'One',
+          slug: 'one',
+          path: 'one.md',
+          body: '',
+          status: 'todo',
+          type: 'task',
+        },
       ],
       'id'
     );

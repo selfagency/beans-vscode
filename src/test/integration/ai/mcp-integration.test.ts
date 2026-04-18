@@ -19,7 +19,12 @@ describe('MCP Integration', () => {
       extensionUri: vscode.Uri.file('/mock/extension/path'),
       logUri: vscode.Uri.file('/mock/logs'),
       extension: {
-        packageJSON: { version: '0.1.0' },
+        packageJSON: {
+          version: '0.1.0',
+          contributes: {
+            mcpServerDefinitionProviders: [{ id: 'beans.mcpServers', label: 'Beans MCP Servers' }],
+          },
+        },
       },
     } as unknown as vscode.ExtensionContext;
 
@@ -92,6 +97,41 @@ describe('MCP Integration', () => {
 
       expect(registeredProviders.size).toBe(0);
     });
+
+    it('should not register when package manifest does not contribute the provider id', () => {
+      (mockContext.extension as unknown as { packageJSON: unknown }).packageJSON = {
+        version: '0.1.0',
+        contributes: {
+          mcpServerDefinitionProviders: [],
+        },
+      };
+      const warnSpy = vi.spyOn(BeansOutput.getInstance(), 'warn');
+
+      mcpIntegration = new BeansMcpIntegration(mockContext, '/workspace/root', 'beans');
+      mcpIntegration.register();
+
+      expect(vscode.lm.registerMcpServerDefinitionProvider).not.toHaveBeenCalled();
+      expect(registeredProviders.size).toBe(0);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('package.json does not contribute'));
+    });
+
+    it('should swallow provider registration errors and continue safely', () => {
+      const warnSpy = vi.spyOn(BeansOutput.getInstance(), 'warn');
+      (vscode as unknown as { lm: unknown }).lm = {
+        registerMcpServerDefinitionProvider: vi.fn(() => {
+          throw new Error('provider contribution missing');
+        }),
+      };
+
+      mcpIntegration = new BeansMcpIntegration(mockContext, '/workspace/root', 'beans');
+
+      expect(() => mcpIntegration.register()).not.toThrow();
+      expect(registeredProviders.size).toBe(0);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to register MCP server definition provider "beans.mcpServers"'),
+        expect.any(Error)
+      );
+    });
   });
 
   describe('provideMcpServerDefinitions', () => {
@@ -122,10 +162,11 @@ describe('MCP Integration', () => {
       expect(definition.label).toBe('Beans Commands');
       expect(definition.command).toBe(process.execPath);
       expect(definition.args.length).toBeGreaterThan(0);
-      expect(definition.args).toContain('--workspace');
-      expect(definition.args).toContain('/workspace/root');
+      expect(definition.args[1]).toBe('/workspace/root');
       expect(definition.args).toContain('--port');
       expect(definition.args).toContain('39173');
+      expect(definition.args).toContain('--log-dir');
+      expect(definition.args).toContain('/mock/logs');
       expect(definition.env).toBeDefined();
       expect(definition.env?.BEANS_VSCODE_MCP).toBe('1');
       expect(definition.env?.BEANS_VSCODE_MCP_PORT).toBe('39173');
@@ -531,8 +572,9 @@ describe('MCP Integration', () => {
 
       const resolved = mcpIntegration.resolveMcpServerDefinition(inputDefinition) as vscode.McpStdioServerDefinition;
 
-      expect(resolved.args).toContain('--workspace');
-      expect(resolved.args).toContain('/workspace/root');
+      expect(resolved.args[1]).toBe('/workspace/root');
+      expect(resolved.args).toContain('--log-dir');
+      expect(resolved.args).toContain('/mock/logs');
     });
   });
 

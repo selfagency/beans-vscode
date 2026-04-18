@@ -14,7 +14,7 @@
  */
 import { execFile } from 'child_process';
 import { createHash } from 'crypto';
-import { mkdir, readdir, readFile, realpath, rename, writeFile } from 'fs/promises';
+import { mkdir, readdir, readFile, realpath, rename, stat, writeFile } from 'fs/promises';
 import * as path from 'path';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
@@ -60,6 +60,33 @@ interface RawBeanFromCLI {
   blockedByIds: string[];
 }
 
+interface BeanFileSnapshotEntry {
+  mtimeMs: number;
+  size: number;
+}
+
+interface PersistedBeansCache {
+  beans: Array<{
+    id: string;
+    code: string;
+    slug: string;
+    path: string;
+    title: string;
+    body: string;
+    status: BeanStatus;
+    type: BeanType;
+    priority?: BeanPriority;
+    tags: string[];
+    parent?: string;
+    blocking: string[];
+    blockedBy: string[];
+    createdAt: string;
+    updatedAt: string;
+    etag: string;
+  }>;
+  snapshot: Array<[string, BeanFileSnapshotEntry]>;
+}
+
 /**
  * Typed representation of a GraphQL error object as commonly returned by GraphQL
  * services. Using this type avoids unsafe `any` usage at call sites.
@@ -76,16 +103,19 @@ export interface GraphQLError {
  * Provides type-safe wrappers around CLI operations with secure command execution
  */
 export class BeansService {
+  private static readonly WORKSPACE_STATE_CACHE_KEY = 'beans.cachedBeansSnapshot.v1';
   private readonly logger = BeansOutput.getInstance();
   private readonly malformedWarningPaths = new Set<string>();
   private cliPath: string;
   private workspaceRoot: string;
+  private readonly workspaceState?: vscode.Memento;
   // Config manager instance cached for lifecycle of service to avoid repeated I/O
   private readonly configManager: BeansConfigManager;
   // Short-lived parsed config cache to reduce repeated parsing on hot paths
   private cachedConfig: BeansConfig | null = null;
   private configCacheTs: number | null = null;
-  private readonly CONFIG_CACHE_TTL_MS = 5 * 1000; // 5s
+  private readonly CONFIG_CACHE_TTL_MS = 60 * 1000; // 60s
+  private configRefreshPromise: Promise<BeansConfig> | null = null;
   // Request deduplication: tracks in-flight CLI requests to prevent duplicate calls
   private readonly inFlightRequests = new Map<string, Promise<unknown>>();
   // Offline mode: cache last successful results for graceful degradation
@@ -93,14 +123,19 @@ export class BeansService {
   private cachedBeans: Bean[] | null = null;
   private cacheTimestamp: number | null = null;
   private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+  private cachedBeanFileSnapshot = new Map<string, BeanFileSnapshotEntry>();
+  private hasLoadedFullBeansCache = false;
+  private fullBeansRefreshPromise: Promise<Bean[]> | null = null;
 
-  constructor(defaultWorkspaceRoot: string) {
+  constructor(defaultWorkspaceRoot: string, workspaceState?: vscode.Memento) {
     const config = vscode.workspace.getConfiguration('beans');
     this.cliPath = config.get<string>('cliPath', 'beans');
     this.workspaceRoot = config.get<string>('workspaceRoot', '') || defaultWorkspaceRoot;
+    this.workspaceState = workspaceState;
     // Initialize a single BeansConfigManager for the service lifecycle to avoid
     // repeatedly instantiating and performing workspace I/O on hot paths.
     this.configManager = new BeansConfigManager(this.workspaceRoot);
+    this.restorePersistedCache();
   }
 
   /**
@@ -126,6 +161,89 @@ export class BeansService {
   private updateCache(beans: Bean[]): void {
     this.cachedBeans = beans;
     this.cacheTimestamp = Date.now();
+  }
+
+  /**
+   * Update the full bean-list cache and the tracked file snapshot used to
+   * determine whether the cached data is still fresh.
+   */
+  private setFullBeansCache(beans: Bean[], snapshot: Map<string, BeanFileSnapshotEntry>): void {
+    this.updateCache(beans);
+    this.cachedBeanFileSnapshot = snapshot;
+    this.hasLoadedFullBeansCache = true;
+    this.persistCache();
+  }
+
+  /**
+   * Restore a persisted warm cache from workspaceState.
+   */
+  private restorePersistedCache(): void {
+    if (!this.workspaceState) {
+      return;
+    }
+
+    const persisted = this.workspaceState.get<PersistedBeansCache>(BeansService.WORKSPACE_STATE_CACHE_KEY);
+    if (!persisted) {
+      return;
+    }
+
+    try {
+      this.cachedBeans = persisted.beans.map(bean => ({
+        ...bean,
+        createdAt: new Date(bean.createdAt),
+        updatedAt: new Date(bean.updatedAt),
+      }));
+      this.cachedBeanFileSnapshot = new Map(persisted.snapshot);
+      this.cacheTimestamp = Date.now();
+      this.hasLoadedFullBeansCache = true;
+    } catch (error) {
+      this.logger.warn(`Failed to restore persisted bean cache: ${(error as Error).message}`);
+      this.cachedBeans = null;
+      this.cachedBeanFileSnapshot.clear();
+      this.hasLoadedFullBeansCache = false;
+      this.cacheTimestamp = null;
+    }
+  }
+
+  /**
+   * Persist the current warm cache into workspaceState for the next window.
+   */
+  private persistCache(): void {
+    if (!this.workspaceState || !this.cachedBeans || !this.hasLoadedFullBeansCache) {
+      return;
+    }
+
+    const payload: PersistedBeansCache = {
+      beans: this.cachedBeans.map(bean => ({
+        ...bean,
+        createdAt: bean.createdAt.toISOString(),
+        updatedAt: bean.updatedAt.toISOString(),
+      })),
+      snapshot: Array.from(this.cachedBeanFileSnapshot.entries()),
+    };
+
+    void this.workspaceState.update(BeansService.WORKSPACE_STATE_CACHE_KEY, payload).then(
+      () => undefined,
+      error => {
+        this.logger.warn(`Failed to persist bean cache to workspaceState: ${(error as Error).message}`);
+      }
+    );
+  }
+
+  /**
+   * Remove any persisted warm cache snapshot.
+   */
+  private clearPersistedCache(): void {
+    if (!this.workspaceState) {
+      return;
+    }
+
+    void this.workspaceState.update(BeansService.WORKSPACE_STATE_CACHE_KEY, undefined).then(
+      () => undefined,
+      error => {
+        this.logger.warn(`Failed to clear persisted bean cache: ${(error as Error).message}`);
+      }
+    );
   }
 
   /**
@@ -170,6 +288,120 @@ export class BeansService {
   clearCache(): void {
     this.cachedBeans = null;
     this.cacheTimestamp = null;
+    this.cachedBeanFileSnapshot.clear();
+    this.hasLoadedFullBeansCache = false;
+    this.clearPersistedCache();
+  }
+
+  /**
+   * Resolve the workspace beans directory from config.
+   */
+  private async getBeansDirectoryPath(): Promise<string> {
+    const config = await this.getConfig();
+    return path.resolve(this.workspaceRoot, config.path || '.beans');
+  }
+
+  /**
+   * Capture the current mtime/size snapshot for top-level bean markdown files.
+   */
+  private async snapshotBeanFiles(): Promise<Map<string, BeanFileSnapshotEntry>> {
+    const beansDir = await this.getBeansDirectoryPath();
+    const entries = await readdir(beansDir, { withFileTypes: true });
+    const mdEntries = entries
+      .filter(entry => entry.isFile() && entry.name.endsWith('.md'))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    const snapshot = new Map<string, BeanFileSnapshotEntry>();
+    await Promise.all(
+      mdEntries.map(async entry => {
+        const absolutePath = path.join(beansDir, entry.name);
+        const fileStats = await stat(absolutePath);
+        snapshot.set(absolutePath, {
+          mtimeMs: fileStats.mtimeMs,
+          size: fileStats.size,
+        });
+      })
+    );
+
+    return snapshot;
+  }
+
+  /**
+   * Return true when the disk snapshot differs from the cached snapshot.
+   */
+  private hasBeanFileSnapshotChanged(snapshot: Map<string, BeanFileSnapshotEntry>): boolean {
+    if (!this.hasLoadedFullBeansCache) {
+      return true;
+    }
+
+    if (snapshot.size !== this.cachedBeanFileSnapshot.size) {
+      return true;
+    }
+
+    for (const [absolutePath, entry] of snapshot.entries()) {
+      const cachedEntry = this.cachedBeanFileSnapshot.get(absolutePath);
+      if (!cachedEntry) {
+        return true;
+      }
+
+      if (cachedEntry.mtimeMs !== entry.mtimeMs || cachedEntry.size !== entry.size) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * True when a search filter requires the CLI's native full-text semantics.
+   */
+  private requiresCliFilteredFetch(options?: {
+    status?: string[];
+    type?: string[];
+    search?: string;
+    parent?: string;
+  }): boolean {
+    return Boolean(options?.search || options?.parent);
+  }
+
+  /**
+   * Determine whether the full cached bean list can be reused safely.
+   */
+  private async canServeFromFullCache(): Promise<boolean> {
+    if (!this.cachedBeans || !this.hasLoadedFullBeansCache) {
+      return false;
+    }
+
+    try {
+      const snapshot = await this.snapshotBeanFiles();
+      return !this.hasBeanFileSnapshotChanged(snapshot);
+    } catch (error) {
+      this.logger.debug(`Unable to validate bean cache freshness: ${(error as Error).message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Refresh the authoritative full bean list through the CLI once and share the
+   * result across concurrent callers.
+   */
+  private async refreshFullBeansCacheFromCli(recoveryAttempted = false): Promise<Bean[]> {
+    if (this.fullBeansRefreshPromise) {
+      return this.fullBeansRefreshPromise;
+    }
+
+    this.fullBeansRefreshPromise = (async () => {
+      const beans = await this.fetchBeansFromCli(undefined, recoveryAttempted);
+      const snapshot = await this.snapshotBeanFiles();
+      this.setFullBeansCache(beans, snapshot);
+      return beans;
+    })();
+
+    try {
+      return await this.fullBeansRefreshPromise;
+    } finally {
+      this.fullBeansRefreshPromise = null;
+    }
   }
 
   /**
@@ -582,27 +814,41 @@ export class BeansService {
       return this.cachedConfig;
     }
 
-    // Try to read from .beans.yml via the shared manager instance
-    const yamlConfig = await this.configManager.read();
+    // Deduplicate concurrent callers: if a refresh is already in-flight, reuse it.
+    // Without this, all tree providers refreshing simultaneously after TTL expiry
+    // would each trigger a separate filesystem lookup (the thundering herd).
+    if (this.configRefreshPromise) {
+      return this.configRefreshPromise;
+    }
 
-    // Default configuration values
-    const defaults: BeansConfig = {
-      path: '.beans',
-      prefix: 'bean',
-      id_length: 4,
-      default_status: 'draft',
-      default_type: 'task',
-      statuses: ['todo', 'in-progress', 'completed', 'scrapped', 'draft'],
-      types: ['milestone', 'epic', 'feature', 'task', 'bug'],
-      priorities: ['critical', 'high', 'normal', 'low', 'deferred'],
-    };
+    this.configRefreshPromise = (async () => {
+      // Try to read from .beans.yml via the shared manager instance
+      const yamlConfig = await this.configManager.read();
 
-    // Merge YAML config with defaults
-    const merged = yamlConfig ? { ...defaults, ...yamlConfig } : defaults;
-    // Update short-lived cache so hot paths don't re-read within the TTL window
-    this.cachedConfig = merged;
-    this.configCacheTs = Date.now();
-    return merged;
+      // Default configuration values
+      const defaults: BeansConfig = {
+        path: '.beans',
+        prefix: 'bean',
+        id_length: 4,
+        default_status: 'draft',
+        default_type: 'task',
+        statuses: ['todo', 'in-progress', 'completed', 'scrapped', 'draft'],
+        types: ['milestone', 'epic', 'feature', 'task', 'bug'],
+        priorities: ['critical', 'high', 'normal', 'low', 'deferred'],
+      };
+
+      // Merge YAML config with defaults
+      const merged = yamlConfig ? { ...defaults, ...yamlConfig } : defaults;
+      this.cachedConfig = merged;
+      this.configCacheTs = Date.now();
+      return merged;
+    })();
+
+    try {
+      return await this.configRefreshPromise;
+    } finally {
+      this.configRefreshPromise = null;
+    }
   }
 
   /**
@@ -610,6 +856,26 @@ export class BeansService {
    * Supports offline mode with cached data fallback
    */
   async listBeans(
+    options?: { status?: string[]; type?: string[]; search?: string; parent?: string },
+    recoveryAttempted = false
+  ): Promise<Bean[]> {
+    if (!this.requiresCliFilteredFetch(options) && (await this.canServeFromFullCache())) {
+      this.offlineMode = false;
+      return this.filterBeans(this.cachedBeans ?? [], options);
+    }
+
+    if (!this.requiresCliFilteredFetch(options)) {
+      const beans = await this.refreshFullBeansCacheFromCli(recoveryAttempted);
+      return this.filterBeans(beans, options);
+    }
+
+    return this.fetchBeansFromCli(options, recoveryAttempted);
+  }
+
+  /**
+   * Fetch beans through the CLI/GraphQL path.
+   */
+  private async fetchBeansFromCli(
     options?: { status?: string[]; type?: string[]; search?: string; parent?: string },
     recoveryAttempted = false
   ): Promise<Bean[]> {
@@ -629,7 +895,7 @@ export class BeansService {
       }
 
       if (options?.parent) {
-        filter.parent = options.parent;
+        filter.parentId = options.parent;
       }
 
       const { data, errors } = await this.executeGraphQL<{ beans: RawBeanFromCLI[] }>(graphql.LIST_BEANS_QUERY, {
@@ -692,7 +958,9 @@ export class BeansService {
         // Orphan children of every quarantined bean by clearing their parent field.
         await this.clearDanglingParentReferences(normalizedBeans);
 
-        // Update cache on successful fetch
+        // Update cache on successful full fetch. Filtered queries are served from
+        // the full-cache path where possible, but keep this fallback for search
+        // queries and callers that explicitly requested a filtered CLI fetch.
         this.updateCache(normalizedBeans);
       }
       this.offlineMode = false;
@@ -728,7 +996,7 @@ export class BeansService {
 
       if (!recoveryAttempted && (await this.tryRecoverFromMalformedListError(error))) {
         this.logger.info('Recovered from malformed bean list error by quarantining the reported file; retrying list');
-        return this.listBeans(options, true);
+        return this.fetchBeansFromCli(options, true);
       }
 
       // For other errors, just throw
@@ -778,7 +1046,7 @@ export class BeansService {
     // Typical CLI diagnostics include either absolute paths or workspace-relative
     // paths under .beans. Extract and resolve whichever variant appears.
     const pathMatch =
-      /((?:[A-Za-z]:\\[^\s:'"\n]+\.md)|(?:\/?[^\s:'"\n]*\.beans[/\\][^\s:'"\n]+\.md)|(?:\.beans[/\\][^\s:'"\n]+\.md))/.exec(
+      /((?:[A-Za-z]:\\[^\s:'"]+\.md)|(?:\/?[^\s:'"]*\.beans[/\\][^\s:'"]+\.md)|(?:\.beans[/\\][^\s:'"]+\.md))/.exec(
         combined
       );
 
@@ -828,8 +1096,7 @@ export class BeansService {
    *
    * YAML requires quoting when a plain scalar starts with or contains characters
    * that have special meaning: `:`, `#`, `[`, `]`, `{`, `}`, `&`, `*`, `!`,
-   * `|`, `>`, `'`, `"`, `%`, `@`, `` ` ``.  A colon followed by a space (`: `)
-   * anywhere in the string is the most common real-world trigger.
+   * `|`, `>`, `'`, `"`, `%`, `@`, `` ` ``.
    */
   private static titleNeedsYamlQuoting(title: string): boolean {
     // Colon followed by space is the canonical YAML key-value separator
@@ -854,14 +1121,6 @@ export class BeansService {
   /**
    * After the CLI writes a bean file, check whether the `title:` frontmatter
    * line needs YAML quoting and, if so, rewrite it in place.
-   *
-   * The beans CLI does not quote title values, so any title that contains a
-   * colon (e.g. "Command palette: Reinitialize") results in a malformed
-   * frontmatter block that breaks every subsequent `beans graphql` call.
-   *
-   * This method is deliberately lenient: if the file cannot be read or written
-   * (e.g. the CLI did not return a path) it logs a warning and returns without
-   * throwing, so that the caller still returns the created bean to the user.
    */
   private async repairBeanFrontmatter(beanPath: string): Promise<void> {
     let absPath: string;
@@ -880,7 +1139,6 @@ export class BeansService {
     }
 
     // Match the `title:` line inside the YAML frontmatter block.
-    // The frontmatter is bounded by leading `---` and a closing `---` or `...`.
     const titleLineRe = /^(title:\s*)(.+)$/m;
     const match = titleLineRe.exec(content);
     if (!match) {
@@ -926,8 +1184,6 @@ export class BeansService {
       return path.resolve(this.workspaceRoot, normalized);
     }
 
-    // Malformed/partial payloads can include filename-only paths. Those files
-    // still live under the beans directory, so default to `.beans/<filename>`.
     return path.resolve(this.workspaceRoot, '.beans', path.basename(normalized));
   }
 
@@ -935,11 +1191,6 @@ export class BeansService {
 
   /**
    * Attempt to recover missing required bean fields from the file's git history.
-   * Walks backwards through up to MAX_GIT_HISTORY_COMMITS commits to find the most
-   * recent version that has all four required fields (id, title, status, type).
-   * Falls back to the best partial recovery if no single commit has all fields.
-   * Runs `git log` then `git show` via execFile argument arrays (no shell interpolation).
-   * Resolves with an empty object when git is unavailable, the file has no history, or parsing fails.
    */
   private async recoverFieldsFromGitHistory(
     filePath: string
@@ -1002,7 +1253,6 @@ export class BeansService {
             bestFieldCount = requiredCount;
           }
         } catch {
-          // Individual commit may have been deleted or file didn't exist — skip it
           continue;
         }
       }
@@ -1015,15 +1265,12 @@ export class BeansService {
 
       return bestRecovered;
     } catch {
-      // git unavailable, not a git repo, or file has no history — all expected
       return {};
     }
   }
 
   /**
    * Attempt to repair malformed bean metadata and persist a corrected markdown frontmatter.
-   * Returns a repaired bean payload if enough fields can be recovered.
-   * Checks git history first before falling back to filename inference.
    */
   private async tryRepairMalformedBean(rawBean: RawBeanFromCLI): Promise<RawBeanFromCLI | null> {
     const filePath = rawBean.path ? this.resolveBeanFilePath(rawBean.path) : undefined;
@@ -1042,8 +1289,6 @@ export class BeansService {
       // Ignore config read failures and keep hard defaults for repair fallback.
     }
 
-    // Recover fields from git history before falling back to filename inference.
-    // This preserves the correct values (e.g. original status/type) rather than guessing.
     const historical = filePath ? await this.recoverFieldsFromGitHistory(filePath) : {};
     const beanWithHistory: RawBeanFromCLI = { ...rawBean, ...historical };
 
@@ -1074,8 +1319,6 @@ export class BeansService {
       try {
         await this.repairBeanMarkdownFrontmatter(filePath, repaired);
       } catch (error) {
-        // Persist failed: do not keep an in-memory repaired bean that points to a
-        // still-broken file. Force quarantine+notification through caller flow.
         this.logger.warn(
           `Failed to persist repaired frontmatter for ${path.basename(filePath)}: ${(error as Error).message}; escalating to quarantine`
         );
@@ -1153,7 +1396,6 @@ export class BeansService {
     for (const [key, value] of requiredEntries) {
       const keyLineRegex = new RegExp(`^[ \\t]*${key}[ \\t]*:.*$`, 'm');
       if (keyLineRegex.test(frontmatter)) {
-        // Overwrite the existing line so that recovered/repaired values take precedence.
         frontmatter = frontmatter.replace(keyLineRegex, `${key}: ${value}`);
       } else {
         frontmatter = `${frontmatter}${frontmatter.trimEnd() ? '\n' : ''}${key}: ${value}`;
@@ -1165,17 +1407,7 @@ export class BeansService {
   }
 
   /**
-   * Produce a YAML scalar that matches the beans CLI's own formatting:
-   * - Empty string     → ''  (single-quoted empty)
-   * - Needs quoting    → 'value' with internal apostrophes doubled as ''
-   * - Plain scalar     → value (no quotes)
-   *
-   * A value needs quoting when it:
-   *   - is empty
-   *   - starts with a YAML indicator char (-, ?, :, {, }, [, ], #, &, *, !, |, >, ', ", %, @, `)
-   *   - contains `: ` (colon-space, which would start a mapping)
-   *   - contains ` #` (space-hash, which would start a comment)
-   *   - contains a newline or tab
+   * Produce a YAML scalar that matches the beans CLI's own formatting.
    */
   private yamlQuote(value: string): string {
     const v = value ?? '';
@@ -1191,16 +1423,16 @@ export class BeansService {
 
   /**
    * For every bean in the list whose parent ID is not present in the list,
-   * clear the parent reference. A bean is only "orphaned" if it has a parent
-   * field set to an ID that does not exist anywhere in the current bean set
-   * (because the parent was deleted, quarantined, or otherwise removed).
+   * clear the parent reference.
    */
   private async clearDanglingParentReferences(normalizedBeans: Bean[]): Promise<void> {
     const knownIds = new Set(normalizedBeans.map(b => b.id));
-    // Track per-missing-parent results so we can report accurately to the user.
     const resultsByMissingParent = new Map<
       string,
-      { successes: Array<{ id: string; code: string }>; failures: Array<{ id: string; error: Error }> }
+      {
+        successes: Array<{ id: string; code: string }>;
+        failures: Array<{ id: string; error: Error }>;
+      }
     >();
 
     for (const bean of normalizedBeans) {
@@ -1240,22 +1472,17 @@ export class BeansService {
       }
     }
 
-    // Aggregate user-facing notifications per missing parent. If any failures
-    // occurred for a given parent, downgrade the message to indicate we only
-    // attempted to orphan children and list succeeded/failed counts.
     for (const [missingParentId, { successes, failures }] of resultsByMissingParent.entries()) {
       if (successes.length === 0 && failures.length === 0) {
         continue;
       }
 
       if (failures.length === 0) {
-        // All child updates succeeded: report as orphaned
         const list = successes.map(s => s.code).join(', ');
         void vscode.window.showWarningMessage(
           `Bean(s) ${list} have been orphaned because their parent (${missingParentId}) no longer exists.`
         );
       } else {
-        // Partial or complete failure: inform the user we attempted to orphan
         const succeededCount = successes.length;
         const failedCount = failures.length;
         void vscode.window.showWarningMessage(
@@ -1267,9 +1494,7 @@ export class BeansService {
 
   /**
    * Detect `.md` files in the beans directory that the CLI silently excluded
-   * from its response (e.g. corrupted frontmatter that causes the CLI to skip
-   * the file without an error). For each orphaned file, attempt repair and
-   * quarantine using the same pipeline as explicitly malformed beans.
+   * from its response.
    */
   private async detectOrphanedBeanFiles(
     normalizedBeans: Bean[],
@@ -1295,13 +1520,8 @@ export class BeansService {
       return;
     }
 
-    // Primary: match by bean ID (reliable — always present on normalized beans).
-    // bean.path can be empty when allowPartial normalization is used, so path-based
-    // matching alone would incorrectly flag known beans as orphaned.
     const knownIds = new Set(normalizedBeans.map(b => b.id));
 
-    // Secondary fallback: match by resolved absolute path for files whose ID
-    // can't be derived from the filename pattern.
     const knownPaths = new Set<string>();
     for (const bean of normalizedBeans) {
       if (bean.path) {
@@ -1317,25 +1537,21 @@ export class BeansService {
     for (const filename of mdFiles) {
       const absolutePath = path.join(beansDir, filename);
 
-      // Check by ID first (handles empty bean.path from partial normalization).
       const derivedId = this.deriveIdFromPath(absolutePath);
       if (derivedId && knownIds.has(derivedId)) {
         continue;
       }
 
-      // Fallback: check by resolved path.
       if (knownPaths.has(absolutePath)) {
         continue;
       }
 
-      // Also skip quarantined paths by ID.
       if (derivedId && quarantinedPaths.has(derivedId)) {
         continue;
       }
 
       this.logger.warn(`Detected orphaned bean file not returned by CLI: ${filename}`);
 
-      // Try to read and repair the file the same way tryRepairMalformedBean works.
       const orphanHint: RawBeanFromCLI = {
         id: '',
         title: '',
@@ -1389,9 +1605,6 @@ export class BeansService {
    * Notify the user once per malformed quarantined file.
    */
   private notifyMalformedBeanQuarantined(rawBean: RawBeanFromCLI, quarantinedPath?: string): void {
-    // Always key on the original bean identity so concurrent provider refreshes
-    // that encounter the same malformed bean (after it's already quarantined) don't
-    // fire duplicate notifications.
     const warningKey = rawBean.path || rawBean.id;
     if (this.malformedWarningPaths.has(warningKey)) {
       return;
@@ -1425,8 +1638,6 @@ export class BeansService {
 
   /**
    * Normalize bean data from GraphQL/CLI to ensure required fields exist.
-   * GraphQL responses use camelCase for fields (createdAt, updatedAt, parentId, blockingIds, blockedByIds, etc.).
-   * We map these response fields to the application Bean model (also camelCase) and derive the short 'code' from the ID.
    * @throws BeansJSONParseError if bean is missing required fields
    */
   private normalizeBean(rawBean: RawBeanFromCLI, options?: { allowPartial?: boolean }): Bean {
@@ -1441,10 +1652,6 @@ export class BeansService {
 
     const allowPartial = options?.allowPartial ?? false;
 
-    // Validate additional required fields for full Bean interface payloads.
-    // Some Beans CLI responses (notably the `beans` query) can omit content-heavy
-    // fields like `body` and metadata fields like `etag`, so list normalization
-    // supports partial payloads and supplies safe fallbacks.
     if (
       !allowPartial &&
       (rawBean.slug === undefined ||
@@ -1463,10 +1670,8 @@ export class BeansService {
       );
     }
 
-    // Derive short code from ID: last segment after final hyphen
     const code = rawBean.code || (rawBean.id ? rawBean.id.split('-').pop() : '') || '';
 
-    // Parse and validate dates
     const createdAt = this.parseDate(rawBean.createdAt, 'createdAt', rawBean.id);
     const updatedAt = this.parseDate(rawBean.updatedAt, 'updatedAt', rawBean.id);
 
@@ -1526,9 +1731,6 @@ export class BeansService {
     try {
       return this.normalizeBean(beanData);
     } catch (error) {
-      // Some Beans CLI versions can return partial payloads for GraphQL queries.
-      // (omitting fields like slug/path/body/etag). Keep strict validation for
-      // core identity fields, but gracefully accept partial metadata.
       if (error instanceof BeansJSONParseError) {
         this.logger.warn(`Partial bean payload received from show for ${id}; using safe defaults for missing fields.`);
         return this.normalizeBean(beanData, { allowPartial: true });
@@ -1553,9 +1755,6 @@ export class BeansService {
 
   /**
    * Validate bean type against workspace configuration
-   * @param type - Type to validate
-   * @param validTypes - Valid types from workspace config
-   * @throws Error if type is invalid
    */
   private validateType(type: string, validTypes: BeanType[]): void {
     if (!validTypes.includes(type as BeanType)) {
@@ -1565,9 +1764,6 @@ export class BeansService {
 
   /**
    * Validate bean status against workspace configuration
-   * @param status - Status to validate
-   * @param validStatuses - Valid statuses from workspace config
-   * @throws Error if status is invalid
    */
   private validateStatus(status: string, validStatuses: BeanStatus[]): void {
     if (!validStatuses.includes(status as BeanStatus)) {
@@ -1577,9 +1773,6 @@ export class BeansService {
 
   /**
    * Validate bean priority against workspace configuration
-   * @param priority - Priority to validate
-   * @param validPriorities - Valid priorities from workspace config
-   * @throws Error if priority is invalid
    */
   private validatePriority(priority: string, validPriorities: BeanPriority[]): void {
     if (!validPriorities.includes(priority as BeanPriority)) {
@@ -1618,7 +1811,6 @@ export class BeansService {
     },
     config: BeansConfig
   ): Promise<Bean> {
-    // Validate inputs
     this.validateTitle(data.title);
     this.validateType(data.type, config.types ?? []);
     if (data.status) {
@@ -1648,12 +1840,11 @@ export class BeansService {
 
     const bean = this.normalizeBean(resp.createBean);
 
-    // The beans CLI does not quote YAML frontmatter values, so a title containing
-    // a colon (e.g. "Command palette: Foo") will produce invalid frontmatter that
-    // breaks every subsequent `beans graphql` call. Repair the file proactively.
     if (bean.path) {
       await this.repairBeanFrontmatter(bean.path);
     }
+
+    this.clearCache();
 
     return bean;
   }
@@ -1695,7 +1886,6 @@ export class BeansService {
     },
     config: BeansConfig
   ): Promise<Bean> {
-    // Validate inputs
     if (updates.status) {
       this.validateStatus(updates.status, config.statuses ?? []);
     }
@@ -1746,8 +1936,6 @@ export class BeansService {
     try {
       updatedBean = this.normalizeBean(resp.updateBean);
     } catch (error) {
-      // Some Beans CLI update responses may be partial (for example, only returning
-      // changed fields). In that case, fetch the full bean as a resilience fallback.
       if (error instanceof BeansJSONParseError) {
         this.logger.warn(`Partial bean payload received from update for ${id}; fetching full bean as fallback.`);
         updatedBean = await this.showBean(id);
@@ -1756,14 +1944,11 @@ export class BeansService {
       }
     }
 
-    // Recursively update children if status has changed
     if (updates.status) {
       try {
         const children = await this.listBeans({ parent: id });
         for (const child of children) {
           if (child.status !== updates.status) {
-            // Propagate if moving to terminal status, or if child is not terminal,
-            // or if parent is being reopened (simplified to 'propagating always' to fulfill 'full equality' requirement).
             this.logger.info(
               `Parent ${id} status changed to ${updates.status}; recursively updating child ${child.id}`
             );
@@ -1771,10 +1956,11 @@ export class BeansService {
           }
         }
       } catch (childError) {
-        // Log but don't fail the primary update if child update fails
         this.logger.error(`Failed to recursively update children for ${id}: ${childError}`);
       }
     }
+
+    this.clearCache();
 
     return updatedBean;
   }
@@ -1788,13 +1974,12 @@ export class BeansService {
     if (errors && errors.length > 0) {
       throw new Error(`GraphQL error: ${errors.map(e => e.message).join(', ')}`);
     }
+
+    this.clearCache();
   }
 
   /**
    * Batch create multiple beans in parallel
-   * Returns array of results with success/failure status for each operation
-   * @param batchData Array of bean creation data
-   * @returns Array of results with bean or error for each operation
    */
   async batchCreateBeans(
     batchData: Array<{
@@ -1810,7 +1995,6 @@ export class BeansService {
       return [];
     }
 
-    // Build batch mutation with aliases
     const aliases: string[] = [];
     const variables: Record<string, unknown> = {};
     const mutationParts: string[] = [];
@@ -1854,33 +2038,34 @@ export class BeansService {
 
         const beanData = resp[alias];
         if (!beanData) {
-          return { success: false, error: new Error('Internal error: Mutation results missing for alias'), data };
+          return {
+            success: false,
+            error: new Error('Internal error: Mutation results missing for alias'),
+            data,
+          };
         }
 
         return { success: true, bean: this.normalizeBean(beanData) };
       });
 
-      // Repair frontmatter for all successfully created beans. The beans CLI does
-      // not quote YAML title values, so titles containing colons produce invalid
-      // frontmatter that breaks subsequent `beans graphql` calls.
       await Promise.all(
         results.map(result =>
           result.success && result.bean.path ? this.repairBeanFrontmatter(result.bean.path) : Promise.resolve()
         )
       );
 
+      if (results.some(result => result.success)) {
+        this.clearCache();
+      }
+
       return results;
     } catch (error) {
-      // Entire batch failed
       return batchData.map(data => ({ success: false, error: error as Error, data }));
     }
   }
 
   /**
    * Batch update multiple beans in parallel
-   * Returns array of results with success/failure status for each operation
-   * @param batchUpdates Array of bean ID and update data pairs
-   * @returns Array of results with bean or error for each operation
    */
   async batchUpdateBeans(
     batchUpdates: Array<{
@@ -1900,7 +2085,6 @@ export class BeansService {
       return [];
     }
 
-    // Build batch mutation with aliases
     const aliases: string[] = [];
     const variables: Record<string, unknown> = {};
     const mutationParts: string[] = [];
@@ -1946,32 +2130,39 @@ export class BeansService {
     try {
       const { data: resp, errors } = await this.executeGraphQL<Record<string, RawBeanFromCLI>>(mutation, variables);
 
-      return batchUpdates.map(({ id }, i) => {
-        const alias = aliases[i];
-        const error = errors?.find(e => e.path?.includes(alias));
+      const results: Array<{ success: true; bean: Bean } | { success: false; error: Error; id: string }> =
+        batchUpdates.map(({ id }, i) => {
+          const alias = aliases[i];
+          const error = errors?.find(e => e.path?.includes(alias));
 
-        if (error) {
-          return { success: false, error: new Error(error.message), id };
-        }
+          if (error) {
+            return { success: false, error: new Error(error.message), id };
+          }
 
-        const beanData = resp[alias];
-        if (!beanData) {
-          return { success: false, error: new Error('Internal error: Mutation results missing for alias'), id };
-        }
+          const beanData = resp[alias];
+          if (!beanData) {
+            return {
+              success: false,
+              error: new Error('Internal error: Mutation results missing for alias'),
+              id,
+            };
+          }
 
-        return { success: true, bean: this.normalizeBean(beanData) };
-      });
+          return { success: true, bean: this.normalizeBean(beanData) };
+        });
+
+      if (results.some(result => result.success)) {
+        this.clearCache();
+      }
+
+      return results;
     } catch (error) {
-      // Entire batch failed
       return batchUpdates.map(({ id }) => ({ success: false, error: error as Error, id }));
     }
   }
 
   /**
    * Batch delete multiple beans in parallel
-   * Returns array of results with success/failure status for each operation
-   * @param ids Array of bean IDs to delete
-   * @returns Array of results with success/failure status for each deletion
    */
   async batchDeleteBeans(
     ids: string[]
@@ -1993,18 +2184,25 @@ export class BeansService {
     try {
       const { errors } = await this.executeGraphQL<Record<string, boolean>>(mutation, variables);
 
-      return ids.map((id, i) => {
-        const alias = `d${i}`;
-        const error = errors?.find(e => e.path?.includes(alias));
+      const results: Array<{ success: true; id: string } | { success: false; error: Error; id: string }> = ids.map(
+        (id, i) => {
+          const alias = `d${i}`;
+          const error = errors?.find(e => e.path?.includes(alias));
 
-        if (error) {
-          return { success: false, error: new Error(error.message), id };
+          if (error) {
+            return { success: false, error: new Error(error.message), id };
+          }
+
+          return { success: true, id };
         }
+      );
 
-        return { success: true, id };
-      });
+      if (results.some(result => result.success)) {
+        this.clearCache();
+      }
+
+      return results;
     } catch (error) {
-      // Entire batch failed
       return ids.map(id => ({ success: false, error: error as Error, id }));
     }
   }

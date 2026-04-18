@@ -34,13 +34,17 @@ export class BeansConfigManager {
    */
   async read(): Promise<BeansConfig | null> {
     try {
-      const configFile = await vscode.workspace.findFiles('.beans.yml', null, 1);
-      if (configFile.length === 0) {
-        return null;
+      // Read directly from the known absolute path to avoid triggering a
+      // workspace-wide ripgrep search (vscode.workspace.findFiles) on every call.
+      let content: string;
+      try {
+        content = await fs.readFile(this.configPath, 'utf-8');
+      } catch (readError) {
+        if ((readError as NodeJS.ErrnoException).code === 'ENOENT') {
+          return null;
+        }
+        throw readError;
       }
-
-      const document = await vscode.workspace.openTextDocument(configFile[0]);
-      const content = document.getText();
 
       // Parse YAML using js-yaml v4's safe default schema.
       // SAFE_SCHEMA was removed in v4; DEFAULT_SCHEMA is now the default safe baseline

@@ -17,5 +17,8 @@ describe('buildBeansChatSystemPrompt', () => {
     expect(prompt).toContain('Requested slash command: summary');
     expect(prompt).toContain('bean-1234');
     expect(prompt).toContain('Implement chat integration');
+    expect(prompt).toContain('beans_bulk_create');
+    expect(prompt).toContain('beans_bulk_update');
+    expect(prompt).toContain('description is only a deprecated alias');
   });
 });

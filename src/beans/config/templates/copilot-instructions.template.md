@@ -127,10 +127,19 @@ Use these as authoritative guidance for Beans workflows in this repository.
 
 ## MCP workflow
 
-1. **Read/context first**: `beans_query` with `operation: "llm_context"`, then view/search/filter/sort as needed.
-2. **Mutate only with explicit intent**: create, edit, set status/type/priority, manage relationships.
+1. **Read/context first**: prefer `beans_query` with `operation: "llm_context"`, `refresh`, `filter`, `search`, `sort`, `ready`, or `open_config`; use `beans_view` when you need full bean details.
+2. **Mutate only with explicit intent**: prefer `beans_update` for metadata/body changes, `beans_create` for single-bean creation, and `beans_bulk_create` / `beans_bulk_update` when creating or updating batches.
 3. **Destructive actions** (delete, archive) require explicit user confirmation unless the user already requested it.
-4. MCP is the preferred programmatic interface when the extension UI is not in focus.
+4. Use `beans_bean_file` for direct `.beans` file reads/edits and `beans_output` for logs/troubleshooting instead of ad-hoc file access.
+5. MCP is the preferred programmatic interface when the extension UI is not in focus.
+
+### MCP public tool notes
+
+- `beans_update` is the main mutation tool. It supports `status`, `type`, `priority`, `parent`, `clearParent`, `blocking`, `blockedBy`, `body`, `bodyAppend`, `bodyReplace`, and optional optimistic concurrency via `ifMatch`.
+- `beans_create` prefers `body`; `description` is accepted only as a deprecated alias.
+- `beans_bulk_create` and `beans_bulk_update` are best-effort batch tools: expect per-item success/error results instead of one atomic success/failure.
+- `beans_query` can generate Copilot instructions via `llm_context`; when it writes an instructions artifact itself, the upstream MCP server uses `.github/instructions/beans-prime.instructions.md`.
+- `beans_bean_file` accepts either `some-bean.md` or `.beans/some-bean.md`; the `.beans/` prefix is normalized automatically.
 
 ## Planning mode for epic decomposition
 
