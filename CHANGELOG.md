@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-04-18
+
+## What's Changed
+* chore(deps)(deps-dev): bump vite from 8.0.5 to 8.0.6 by @dependabot[bot] in https://github.com/selfagency/beans-vscode/pull/131
+* fix(webview): escape raw HTML paths and harden webview sanitization by @selfagency in https://github.com/selfagency/beans-vscode/pull/141
+
+
+**Full Changelog**: https://github.com/selfagency/beans-vscode/compare/v1.7.1...v1.7.2
+
+_Source: changes from v1.7.1 to v1.7.2._
+
+
 ## [1.7.1] - 2026-04-07
 
 ## What's Changed
