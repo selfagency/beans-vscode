@@ -1,0 +1,14 @@
+package.json
+  h_5cf1e2c1161853 694
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "308065f7090b766c8584ab2e417f200ec70e0dd9",
+  "prompts": {},
+  "humans": {
+    "h_5cf1e2c1161853": {
+      "author": "Daniel Sieradski"
+    }
+  }
+}
