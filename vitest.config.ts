@@ -23,15 +23,23 @@ function ensureBeansMcpSourceMap(): void {
     const mcpEntryPath = require.resolve("@selfagency/beans-mcp");
     const sourceMapPath = `${mcpEntryPath}.map`;
 
-    if (!fs.existsSync(sourceMapPath)) {
-      const sourceMap = {
-        version: 3,
-        file: path.basename(mcpEntryPath),
-        sources: [path.basename(mcpEntryPath)],
-        names: [],
-        mappings: "",
-      };
-      fs.writeFileSync(sourceMapPath, JSON.stringify(sourceMap), "utf8");
+    const sourceMap = {
+      version: 3,
+      file: path.basename(mcpEntryPath),
+      sources: [path.basename(mcpEntryPath)],
+      names: [],
+      mappings: "",
+    };
+
+    try {
+      fs.writeFileSync(sourceMapPath, JSON.stringify(sourceMap), {
+        encoding: "utf8",
+        flag: "wx",
+      });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+        throw error;
+      }
     }
   } catch {
     // Optional dependency lookup; ignore when unavailable in minimal test environments.
