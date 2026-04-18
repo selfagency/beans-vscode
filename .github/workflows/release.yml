@@ -34,7 +34,7 @@ jobs:
     steps:
       - name: Resolve tag from successful workflow runs
         id: tag
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -159,7 +159,7 @@ jobs:
 
       - name: Generate release notes for changelog
         id: changelog_notes
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -241,7 +241,7 @@ jobs:
       - name: Create VS Code Marketplace deployment
         id: deploy_vsce
         if: "!contains(needs.detect-tag.outputs.release_tag, '-')"
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -266,7 +266,7 @@ jobs:
 
       - name: Update VS Code Marketplace deployment status
         if: "always() && !contains(needs.detect-tag.outputs.release_tag, '-') && steps.deploy_vsce.outputs.deployment_id != ''"
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -284,7 +284,7 @@ jobs:
       - name: Create Open VSX deployment
         id: deploy_ovsx
         if: "!contains(needs.detect-tag.outputs.release_tag, '-')"
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -309,7 +309,7 @@ jobs:
 
       - name: Update Open VSX deployment status
         if: "always() && !contains(needs.detect-tag.outputs.release_tag, '-') && steps.deploy_ovsx.outputs.deployment_id != ''"
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
