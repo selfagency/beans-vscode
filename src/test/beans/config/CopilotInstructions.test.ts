@@ -19,15 +19,21 @@ describe('buildBeansCopilotInstructions', () => {
     expect(content).not.toContain('Template: copilot-instructions.template.md');
     expect(content).toContain('<CRITICALLY_IMPORTANT>');
     expect(content).toContain('# Beans Task Management Rules');
-    expect(content).toContain('# Beans Usage Guide for Agents (Extension-First)');
+    expect(content).toContain('## Beans Usage Guide for Agents (Extension-First)');
     expect(content).toContain('## Interface priority (highest → lowest)');
     expect(content).toContain('## Planning mode for epic decomposition');
     expect(content).toContain('## CLI fallback (only when extension, chat, and MCP are all unavailable)');
     expect(content).toContain('If the issue does not already have a branch, create one when you begin work');
     expect(content).toContain('If you are resuming work, checkout the existing branch for that issue first');
-    expect(content).toContain('Branch names must follow: `[type]/[issue-number-without-prefix]-[short-title]`');
-    expect(content).toContain('Examples: `feat/1234-add-search`, `fix/987-crash-on-init`');
+    expect(content).toContain(
+      'Branch names must follow Git Flow topic branch conventions aligned to bean type and urgency'
+    );
+    expect(content).toContain(
+      'Examples: `feature/beans-vscode-1234-add-search`, `bugfix/beans-vscode-987-fix-init-crash`, `hotfix/beans-vscode-321-patch-login-outage`'
+    );
     expect(content).toContain('Push the branch and record it in the bean frontmatter as soon as it exists');
+    expect(content).toContain('.agents/skills/beans-vscode/SKILL.md');
+    expect(content).toContain('Always use beans instead of TodoWrite');
     expect(content).toContain('`beans_query` with `operation: "llm_context"`');
     expect(content).not.toContain('beans_vscode_llm_context');
   });

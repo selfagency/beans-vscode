@@ -43,7 +43,7 @@ This document provides step-by-step instructions for testing the Beans VS Code e
 - [ ] Can create/edit/view beans via commands
 - [ ] MCP server starts if AI features enabled
 - [ ] Chat participant (`@beans`) responds to commands
-- [ ] Generated files (`.github/skills/beans/SKILL.md`) saved to remote filesystem
+- [ ] Generated files (`.agents/skills/beans-vscode/SKILL.md`) saved to remote filesystem
 - [ ] Output channel logs correctly
 
 #### Expected Behavior

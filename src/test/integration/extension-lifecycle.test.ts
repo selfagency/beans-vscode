@@ -63,7 +63,7 @@ const configFns = vi.hoisted(() => ({
   buildBeansCopilotInstructions: vi.fn((graphqlSchema: string) => `instructions:${graphqlSchema}`),
   writeBeansCopilotInstructions: vi.fn(async () => '/ws/.github/instructions/tasks.instructions.md'),
   buildBeansCopilotSkill: vi.fn((graphqlSchema: string) => `skill:${graphqlSchema}`),
-  writeBeansCopilotSkill: vi.fn(async () => '/ws/.github/skills/beans/SKILL.md'),
+  writeBeansCopilotSkill: vi.fn(async () => '/ws/.agents/skills/beans-vscode/SKILL.md'),
   removeBeansCopilotSkill: vi.fn(async () => undefined),
 }));
 
@@ -85,7 +85,7 @@ vi.mock('../../beans/config', () => ({
     async open(): Promise<void> {}
   },
   COPILOT_INSTRUCTIONS_RELATIVE_PATH: '.github/instructions/tasks.instructions.md',
-  COPILOT_SKILL_RELATIVE_PATH: '.github/skills/beans/SKILL.md',
+  COPILOT_SKILL_RELATIVE_PATH: '.agents/skills/beans-vscode/SKILL.md',
   ...configFns,
 }));
 
@@ -283,7 +283,12 @@ describe('Extension lifecycle coverage', () => {
     state.treeViews = new Map();
     state.watcherCallbacks = [];
     state.configChangeHandler = undefined;
-    state.providerInstances = { active: undefined, completed: undefined, draft: undefined, scrapped: undefined };
+    state.providerInstances = {
+      active: undefined,
+      completed: undefined,
+      draft: undefined,
+      scrapped: undefined,
+    };
     state.searchProvider = undefined;
 
     vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue([
@@ -374,7 +379,9 @@ describe('Extension lifecycle coverage', () => {
       return { dispose: vi.fn() } as any;
     });
 
-    vi.spyOn(vscode.workspace, 'registerTextDocumentContentProvider').mockReturnValue({ dispose: vi.fn() } as any);
+    vi.spyOn(vscode.workspace, 'registerTextDocumentContentProvider').mockReturnValue({
+      dispose: vi.fn(),
+    } as any);
     vi.spyOn(vscode.env, 'openExternal').mockResolvedValue(true);
 
     (vscode.workspace as any).openTextDocument = vi.fn(async (uri: string) => ({ uri }));
@@ -428,10 +435,14 @@ describe('Extension lifecycle coverage', () => {
     state.configChangeHandler?.({ affectsConfiguration: (key: string) => key === 'beans' });
     expect(logger.refreshConfig).toHaveBeenCalled();
 
-    state.configChangeHandler?.({ affectsConfiguration: (key: string) => key === 'beans.ai.enabled' });
+    state.configChangeHandler?.({
+      affectsConfiguration: (key: string) => key === 'beans.ai.enabled',
+    });
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith('setContext', 'beans.aiEnabled', true);
 
-    state.configChangeHandler?.({ affectsConfiguration: (key: string) => key === 'beans.view.showCounts' });
+    state.configChangeHandler?.({
+      affectsConfiguration: (key: string) => key === 'beans.view.showCounts',
+    });
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith('beans.refreshAll');
     expect(logger.info).toHaveBeenCalledWith(
       'beans.view.showCounts changed; header formatting will update on next tree refresh'
@@ -479,7 +490,10 @@ describe('Extension lifecycle coverage', () => {
   it('applies search filter when filter UI returns a value', async () => {
     await activate(makeContext());
 
-    searchFilterFns.showSearchFilterUI.mockResolvedValueOnce({ text: 'needle', statuses: ['todo'] });
+    searchFilterFns.showSearchFilterUI.mockResolvedValueOnce({
+      text: 'needle',
+      statuses: ['todo'],
+    });
 
     await state.registeredCommands.get('beans.searchView.filter')?.();
 

@@ -1,72 +1,101 @@
 ---
 name: beans
 title: Beans Skill
-description: 'Use for Beans issue tracker workflows in this workspace: planning and decomposing epics, listing issues, finding top-priority or stale work, starting work on a bean, creating/updating issues via extension commands or MCP tools, managing status/type/priority/parent/blocking relationships, and suggesting issue-related branch, commit, and PR workflows. Triggers on: "create a bean", "what should I work on", "plan this epic", "decompose this feature", "find stale issues", "set priority", "start work", "what beans are in progress", "commit this work".'
+description: "Primary Beans VS Code workspace skill. Use for Beans issue tracker workflows in this workspace: finding or creating beans, updating status/type/priority/parent/blocking relationships, maintaining bean todo checklists, choosing the right Git Flow branch name for a bean, decomposing epics, and using the VS Code extension commands or MCP tools instead of ad-hoc todo lists or generic issue workflows."
 ---
+
+<!-- markdownlint-disable MD025 MD060 -->
 
 # Beans Skill
 
-This skill drives all Beans issue tracker operations in this workspace using the VS Code extension and MCP server as the primary interfaces. The CLI is a last-resort fallback only.
+This skill is the primary Beans VS Code skill for this workspace. It is generated into `.agents/skills/beans-vscode/SKILL.md` and should be treated as the main source of Beans workflow guidance for Copilot in this repository.
+
+## Extremely important
+
+- **Always use beans instead of TodoWrite to manage your work and tasks.**
+- **Always use beans instead of writing ad-hoc todo lists in chat, notes, or scratch files.**
+- **Before starting work, first check whether a relevant bean already exists. If not, create one and set it to `in-progress`.**
+- **Keep the bean body current while you work, especially the `## Todo` checklist.**
+- **When committing, include both code changes and bean changes when they changed together.**
 
 ## Interface priority
 
 **Always use the highest available interface. Never skip levels for convenience.**
 
-1. **Beans MCP tools** — preferred programmatic interface when the UI is not in focus
-2. **VS Code extension commands** (`beans.*`) — invoke via command palette or sidebar UI
+1. **Beans VS Code extension commands/UI** (`beans.*`) — preferred whenever the IDE is available
+2. **Beans MCP tools** — preferred for programmatic workflows when the UI is not in focus
 3. **`@beans` chat participant** — for guidance, summaries, and structured workflows
 4. **CLI** — only when extension, chat, and MCP are all genuinely unavailable; see CLI constraints
 
 ## Core rules (always enforced)
 
 - **Never start work without a bean.** Find a relevant bean or create one first. No exceptions.
-- **Prefer MCP tools, then extension commands.** Do not reach for the CLI unless all other interfaces are unavailable.
+- **Prefer extension commands/UI first, then MCP tools.** Do not reach for the CLI unless all other interfaces are unavailable.
 - **The bean is the source of truth.** Keep status, type, priority, parent, blocking, and body current.
-- **Create a branch before writing code.** Name it `feature/<bean-id>-<slug>` or `fix/<bean-id>-<slug>`.
+- **Create a branch before writing code.** Use a Git Flow topic prefix aligned to the bean type and urgency.
 - **Record branch and PR in bean frontmatter.** Add `branch:` and `pr:` as soon as they exist; commit immediately.
 - **Commit beans promptly.** Commit after create/edit unless building an epic hierarchy (batch commit everything together).
 - **Track todos in the bean body.** Maintain a `## Todo` checklist; update and commit after every completed step.
 
+## Git Flow branch mapping
+
+Use standard Git Flow topic prefixes and align them to the bean type:
+
+- **`feature/`** — default for `feature`, `task`, and most implementation work under an `epic`
+- **`bugfix/`** — default for `bug` beans that are not urgent production fixes
+- **`hotfix/`** — only for urgent production or release-blocking `bug` beans that must ship immediately
+- **`support/`** — for `milestone`-driven maintenance, release-support work, or cross-cutting operational follow-up where `feature/` is not a fit
+- **`develop`** — integration base branch, **not** a topic-branch prefix to create per bean
+
+Recommended mapping by bean type:
+
+- `feature` → `feature/<bean-id>-<slug>`
+- `task` → `feature/<bean-id>-<slug>` unless the task is clearly a bug fix or support-line maintenance
+- `bug` → `bugfix/<bean-id>-<slug>` by default, or `hotfix/<bean-id>-<slug>` for urgent production fixes
+- `epic` → usually **do not work directly on the epic**; create child beans and branch from the child bean type instead
+- `milestone` → usually coordination-only; if direct branch work is required, prefer `support/<bean-id>-<slug>`
+
 ## Agent constraints (must-follow)
 
 - **Always create or switch to the bean's branch before editing code or files.**
-  - If a branch exists for the bean, checkout it first. If not, create and push a new branch following the repository branch naming rules.
+  - If a branch exists for the bean, checkout it first. If not, create and push a new branch following the Git Flow mapping above.
   - Record the branch in the bean frontmatter immediately after creating or checking out the branch.
 
 - **Do not keep an internal agent todo list.**
-  - All task state and subtasks must live in the bean's `## Todo` checklist in the bean body. The agent must update the bean `## Todo` via MCP or extension commands and commit the bean to persist progress.
+  - All task state and subtasks must live in the bean's `## Todo` checklist in the bean body.
+  - The agent must update the bean `## Todo` via extension commands or MCP tools and commit the bean to persist progress.
 
 - **Do not create or edit bean files by hand.**
-  - Use the MCP or extension commands for bean creation and edits; never write `.md` bean files directly to the repository.
-  - The agent must not add custom frontmatter keys except `branch` and `pr` (PR number). Adding other custom fields is forbidden.
+  - Use the extension commands or MCP tools for bean creation and edits; never write `.md` bean files directly to the repository.
+  - The agent must not add custom frontmatter keys except `branch` and `pr`.
 
 ## Starting work on a bean
 
-1. Orient yourself first: `@beans /next` (what should I work on?) or `@beans /search <keywords>` (does a bean already exist?). Use `beans.search` if you know what you are looking for.
-2. If none found, create one: `beans.create` → fill title, type, priority, description.
-3. Set status to `in-progress`: `beans.setStatus`.
-4. Create a branch named `feature/<bean-id>-<slug>` and push it.
-5. Edit the bean to add `branch: <name>` to its frontmatter: `beans.edit`.
+1. Orient yourself first: use `beans.search`, the search view, or `@beans /next` / `@beans /search <keywords>` to find existing work.
+2. If none found, create one with the extension or MCP: set title, type, priority, and body/description.
+3. Set status to `in-progress`.
+4. Create a Git Flow topic branch aligned to the bean type and urgency.
+5. Edit the bean to add `branch: <name>` to its frontmatter.
 6. Commit the bean file with message: `chore(beans): start <bean-id> — set branch`.
 
 ## During work
 
 - Add a `## Todo` checklist to the bean body on first edit.
-- After each completed step: check off the item, `beans.edit` to save, commit bean with related code.
-- If scope grows, create child beans with `beans.create` → `beans.setParent` to link them.
+- After each completed step: check off the item, save the bean, and commit the bean with related code changes.
+- If scope grows, create child beans and link them with parent relationships instead of overloading one bean.
 
 ## Completing or scrapping a bean
 
 **Complete:**
 
-1. Add `## Summary of Changes` section to bean body via `beans.edit`.
-2. `beans.setStatus` → `completed`.
+1. Add `## Summary of Changes` to the bean body.
+2. Set status to `completed`.
 3. Commit: `chore(beans): complete <bean-id>`.
 
 **Scrap:**
 
-1. Add `## Reasons for Scrapping` section via `beans.edit`.
-2. `beans.setStatus` → `scrapped`.
+1. Add `## Reasons for Scrapping` to the bean body.
+2. Set status to `scrapped`.
 3. Commit: `chore(beans): scrap <bean-id>`.
 
 ## VS Code extension command reference
@@ -91,15 +120,15 @@ This skill drives all Beans issue tracker operations in this workspace using the
 
 ### Search and navigation
 
-| Command                   | Purpose                                        |
-| ------------------------- | ---------------------------------------------- |
-| `beans.search`            | Full-text search across all beans              |
-| `beans.filter`            | Filter tree by status/type/priority/tag        |
-| `beans.sort`              | Change tree sort mode                          |
-| `beans.refresh`           | Force reload from disk                         |
-| `beans.searchView.filter` | Filter search results                          |
-| `beans.searchView.clear`  | Clear search filters and query                 |
-| `beans.details.back`      | Navigate back in Details view browsing history |
+| Command                   | Purpose                                 |
+| ------------------------- | --------------------------------------- |
+| `beans.search`            | Full-text search across all beans       |
+| `beans.filter`            | Filter tree by status/type/priority/tag |
+| `beans.sort`              | Change tree sort mode                   |
+| `beans.refresh`           | Force reload from disk                  |
+| `beans.searchView.filter` | Filter search results                   |
+| `beans.searchView.clear`  | Clear search filters and query          |
+| `beans.details.back`      | Navigate back in Details view history   |
 
 ### AI and workflow
 
@@ -107,62 +136,86 @@ This skill drives all Beans issue tracker operations in this workspace using the
 | ------------------------ | ----------------------------------------------- |
 | `beans.copilotStartWork` | Open Copilot Chat with a bean workflow template |
 
-**`beans.copilotStartWork` templates:** assess status, remaining steps, close/commit, export to GitHub issue, set in-progress, flesh out specs.
-
 ### Configuration and help
 
-| Command                        | Purpose                                              |
-| ------------------------------ | ---------------------------------------------------- |
-| `beans.init`                   | Initialize Beans in an uninitialized workspace       |
-| `beans.openConfig`             | Open `.beans.yml` configuration file                 |
-| `beans.openExtensionSettings`  | Open VS Code extension settings for Beans            |
-| `beans.showOutput`             | Show the Beans extension output/log channel          |
-| `beans.openUserGuide`          | Open user guide documentation                        |
-| `beans.openAiFeaturesGuide`    | Open AI features documentation                       |
-| `beans.openFirstMalformedBean` | Navigate to first malformed bean file for correction |
+| Command                        | Purpose                                        |
+| ------------------------------ | ---------------------------------------------- |
+| `beans.init`                   | Initialize Beans in an uninitialized workspace |
+| `beans.openConfig`             | Open `.beans.yml` configuration file           |
+| `beans.openExtensionSettings`  | Open VS Code extension settings                |
+| `beans.showOutput`             | Show the Beans extension output/log channel    |
+| `beans.openUserGuide`          | Open user guide documentation                  |
+| `beans.openAiFeaturesGuide`    | Open AI features documentation                 |
+| `beans.openFirstMalformedBean` | Navigate to first malformed bean file          |
+
+## Available MCP tools
+
+Use MCP when automating outside the VS Code UI. Prefer these tool groups in this order: discover → inspect → mutate.
+
+| Tool                   | Purpose                                                            |
+| ---------------------- | ------------------------------------------------------------------ |
+| `beans_query`          | Query/list/filter/search/sort/ready/graphql/llm-context operations |
+| `beans_view`           | View one or more beans with full details                           |
+| `beans_create`         | Create one bean                                                    |
+| `beans_bulk_create`    | Create multiple beans, optionally under a shared parent            |
+| `beans_update`         | Update metadata, relationships, or body                            |
+| `beans_bulk_update`    | Update multiple beans in one workflow                              |
+| `beans_edit`           | Metadata-only helper                                               |
+| `beans_complete_tasks` | Complete checklist items in the bean body                          |
+| `beans_reopen`         | Reopen completed/scrapped beans                                    |
+| `beans_archive`        | Archive completed/scrapped beans when explicitly requested         |
+| `beans_delete`         | Delete draft/scrapped beans                                        |
+| `beans_bean_file`      | Supported `.beans` file read/edit helpers                          |
+| `beans_output`         | Read Beans extension logs                                          |
 
 ## Chat participant (`@beans`) guidance
 
-`@beans` is the human-facing conversational interface. Use it for orientation, guidance, and structured workflows — especially when you need to reason about what to work on next, confirm an epic plan before acting, or draft a commit message. It reads beans and returns natural-language responses; it does **not** mutate state. To create, edit, or change status, use extension commands or MCP tools.
+`@beans` is the human-facing conversational interface. Use it for orientation, guidance, and structured workflows. It reads beans and returns natural-language responses; it does **not** mutate state.
 
-**When to reach for `@beans`:**
+Useful slash commands:
 
-- Before starting work: `/next` or `/priority` to orient yourself
-- Before creating an epic: use it to propose the issue map (step 3 of planning mode) and confirm with the user before creating anything
-- After finishing a step: `/commit` to draft a conventional commit message with the right bean reference
-- At any time: `/summary` or `/stale` for a workspace health check
-
-**Slash commands:**
-
-| Command           | When to use                                                                                 | What it returns                                              |
-| ----------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `/summary`        | Start of session or sprint; workspace health check                                          | Count by status + list of up to 10 in-progress beans         |
-| `/priority`       | Before picking up new work; see what matters most                                           | Up to 8 active beans sorted by status then priority          |
-| `/stale`          | Triage/cleanup; find forgotten work                                                         | Beans not updated in 21+ days, sorted oldest-first           |
-| `/next`           | Deciding what to start; replaces manually scanning the tree                                 | Up to 8 todo/in-progress beans ranked by status + priority   |
-| `/create`         | When you want guided prompting for all fields before calling `beans.create`                 | Field checklist (title, type, priority, description, parent) |
-| `/search <query>` | Finding a bean by keyword before starting work or linking a parent                          | Up to 20 matching beans with id, title, status, type         |
-| `/commit`         | After completing a step; drafts a conventional commit referencing the most relevant bean(s) | Likely bean IDs in context + example commit subject line     |
-
-**Follow-up suggestions** — after any `@beans` response, VS Code surfaces quick-pick follow-ups for `/summary`, `/priority`, `/stale`, `/create`, and `/commit`. Use them to stay in flow without typing commands.
+- `/summary`
+- `/priority`
+- `/stale`
+- `/next`
+- `/create`
+- `/search <query>`
+- `/commit`
 
 ## MCP tool guidance
 
 Use MCP tools when automation is needed outside the VS Code UI:
 
-1. **Read context first** — prefer `beans_query` for `llm_context`, `refresh`, `filter`, `search`, `sort`, `ready`, and `open_config`; use `beans_view` when you need full bean payloads.
-2. **Mutate with explicit intent** — prefer `beans_update` for most metadata/body changes; use `beans_create` for single items and `beans_bulk_create` / `beans_bulk_update` when decomposing epics or moving batches.
-3. **Use file/log helpers intentionally** — `beans_bean_file` is the supported path for `.beans` file access, and `beans_output` is the supported path for log access.
-4. **Destructive actions** — `beans_delete` (and any archive-style action outside MCP) require explicit user confirmation.
-5. Prefer MCP over the CLI for any scripted or agent-driven operation.
+1. **Default workflow** — discover with `beans_query` (`ready`, `refresh`, `filter`, `search`, `sort`, `llm_context`), inspect with `beans_view`, mutate with `beans_update`, use `beans_complete_tasks` for checklist work, then archive only when explicitly requested.
+2. **Read context first** — prefer `beans_query` for `llm_context`, `refresh`, `filter`, `search`, `sort`, `ready`, and GraphQL operations; use `beans_view` when you need full bean payloads.
+3. **Mutate with explicit intent** — prefer `beans_update` for most metadata/body changes; use `beans_create` for single items and `beans_bulk_create` / `beans_bulk_update` when decomposing epics or moving batches.
+4. **Use file/log helpers intentionally** — `beans_bean_file` is the supported path for `.beans` file access, and `beans_output` is the supported path for log access.
+5. **Destructive actions** — `beans_delete` and `beans_archive` require explicit user confirmation unless the user already requested them.
+6. Prefer MCP over the CLI for any scripted or agent-driven operation.
 
-### Revised MCP surface highlights
+### MCP gotchas and field guidance
 
-- `beans_update` supports body-safe incremental edits via `bodyAppend` and `bodyReplace`, plus `ifMatch` for optimistic concurrency.
+- `beans_update` supports `status`, `type`, `priority`, `parent`, `clearParent`, `blocking`, `blockedBy`, `body`, `bodyAppend`, `bodyReplace`, and optional optimistic concurrency via `ifMatch`.
+- `beans_update` cannot combine `body` with `bodyAppend` or `bodyReplace` in the same request.
 - `beans_create` prefers `body`; `description` remains only a deprecated alias.
-- Batch tools are **best-effort**, so callers must inspect the per-item result array instead of assuming atomic success.
-- `beans_query` is intentionally broad and should be your first stop for read/query workflows.
-- When `beans_query` writes instructions from MCP `llm_context`, the upstream MCP server writes `.github/instructions/beans-prime.instructions.md`; this is separate from extension-generated `tasks.instructions.md` artifacts.
+- Batch tools are **best-effort**, so callers must inspect per-item results instead of assuming atomic success.
+- `beans_delete` only allows `draft` or `scrapped` beans unless force-delete is explicitly intended.
+- `beans_reopen` requires the current status to match the reopen target (`completed` or `scrapped`).
+- Prefer `beanId` (not `id`) for MCP updates.
+- Use `ifMatch` with the bean `etag` from `beans_view` when concurrent edits are possible.
+
+### Relationship semantics
+
+- **Parent** — hierarchy (`milestone → epic → feature → task/bug`)
+- **Blocking** — this bean blocks another bean
+- **BlockedBy** — this bean depends on another bean; prefer this when modeling new dependencies
+
+### Query and GraphQL examples
+
+- Actionable work: `beans_query` with `operation: "ready"`
+- Full refresh: `beans_query` with `operation: "refresh"`
+- Search by text: `beans_query` with `operation: "search"`
+- Advanced queries/mutations: `beans_query` with `operation: "graphql"`
 
 ## Planning mode: epic decomposition
 
@@ -173,70 +226,39 @@ When the user asks to plan an epic or decompose a feature:
 Ask (or confirm from context):
 
 - What is the end goal?
-- Are there known constraints (deadline, stack, scope limits)?
+- Are there known constraints?
 - What is the definition of done?
-- Does an epic/milestone bean already exist, or should one be created?
+- Does an epic/milestone bean already exist?
 
 ### Step 2 — Create the epic bean (if needed)
 
-Use `beans.create`:
-
-- Type: `milestone`
-- Status: `todo`
-- Title: concise epic name
-- Body: goal statement + constraints + definition of done
+Use the extension or MCP to create the parent bean first.
 
 ### Step 3 — Propose the issue map
 
-Group proposed child issues by outcome phase. Present a compact checklist for user approval before creating anything:
+Present a compact checklist for approval before creating anything:
 
 ```text
 - [ ] <title> — type=<task|feature|bug>, priority=<①–⑤>, depends_on=<bean-ids or none>
 ```
 
-Child beans for an epic typically use `task`, `feature`, or `bug` types. `epic` and `milestone` are valid bean types in Beans, but reserve them for higher-level work or nested structures when the user explicitly asks for additional epics or milestones.
+Do not create any beans until the user approves the plan.
 
-Example phases: **Foundation**, **Implementation**, **Validation**, **Documentation**, **Deployment**.
+### Step 4 — Create child beans
 
-For each child issue include:
+Create approved child beans with the extension or MCP and link them to the parent.
 
-- Concise title (action-oriented)
-- Type and priority
-- One-line rationale
-- Dependency chain (what must be done first)
+### Step 5 — Return a summary
 
-### Step 4 — Get approval
+Reply with the created IDs and recommend the best bean to start first.
 
-Do not create any beans until the user approves the plan. Present the issue map as a chat reply (this is an `@beans` conversation step, not a mutation). Ask for a quick pass:
-
-- "Does the issue map look right? Any changes before I create these?"
-
-### Step 5 — Create child beans
-
-For each approved child issue:
-
-1. `beans.create` — set title, type, priority, and description.
-2. `beans.setParent` — link to the epic bean.
-3. `beans.setStatus` — set to `todo` (or `in-progress` for the first one the user wants to start immediately).
-
-### Step 6 — Commit the hierarchy
-
-Commit the epic bean and all child bean files together:
-
-```text
-chore(beans): plan <epic-bean-id> — <N> child issues
-```
-
-### Step 7 — Return a summary
-
-Reply with:
+Example summary format:
 
 ```text
 Epic:    <epic-id> <epic-title>
 Created: <id> <title> [depends_on: <ids>]
          <id> <title>
-         ...
-Start with: <id> <title> — <one-line reason why>
+Start with: <id> <title> — <one-line reason>
 ```
 
 ## CLI fallback (last resort only)
@@ -248,11 +270,7 @@ Use CLI only when extension, `@beans`, and MCP tools are all unavailable.
 - Always use `--json`; never parse plain-text output.
 - Never pass large body text as a shell argument; use GraphQL variables or pipe the query into `beans graphql`.
 - One operation at a time; no chained destructive commands.
-
-**Allowed CLI command:**
-
-- `beans graphql --json "<query>" [--variables <json>]` (strictly use the GraphQL API for all data operations)
-- `beans archive <id>` — only with explicit user request
+- Before using the CLI at all, verify the extension, chat participant, and MCP tooling are genuinely unavailable.
 
 ## Beans baseline
 

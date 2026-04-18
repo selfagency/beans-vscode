@@ -178,7 +178,7 @@ The Beans VS Code extension follows a layered architecture with clear separation
 - **Modules**:
   - `BeansConfigManager`: Read/write `.beans.yml` workspace config
   - `CopilotInstructions`: Generate `.github/copilot-instructions.md`
-  - `CopilotSkill`: Generate `.github/skills/beans/SKILL.md`
+  - `CopilotSkill`: Generate `.agents/skills/beans-vscode/SKILL.md`
 - **Responsibility**: Manage workspace configuration and AI integration files
 - **Auto-Generation**: When `beans.ai.enabled=true`, generates skill and instructions
 - **Auto-Cleanup**: When `beans.ai.enabled=false`, removes generated files
@@ -415,7 +415,7 @@ Copilot displays formatted summary
 
 ### 7. Why Generate Copilot Skill File?
 
-**Decision**: Dynamically generate `.github/skills/beans/SKILL.md` when AI features enabled.
+**Decision**: Dynamically generate `.agents/skills/beans-vscode/SKILL.md` when AI features enabled.
 
 **Rationale**:
 
