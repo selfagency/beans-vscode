@@ -5,10 +5,11 @@ import { BeansHelpViewProvider } from '../../beans/help/BeansHelpViewProvider';
 describe('BeansHelpViewProvider', () => {
   it('produces HTML containing expected sections', () => {
     const provider = new BeansHelpViewProvider(vscode.Uri.file('/tmp/'));
-    const html = (provider as any).getHtml();
+    const html = (provider as any).getHtml({ cspSource: 'vscode-resource:' } as any);
     expect(html).toContain('Beans Help');
     expect(html).toContain('Documentation');
     expect(html).toContain('Support');
     expect(html).toContain('About Beans');
+    expect(html).toContain('img-src vscode-resource: data:');
   });
 });

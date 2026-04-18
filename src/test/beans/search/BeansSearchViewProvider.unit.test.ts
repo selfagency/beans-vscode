@@ -76,5 +76,6 @@ describe('BeansSearchViewProvider', () => {
     expect(html).toContain('Search beans');
     expect(html).toContain('searchInput');
     expect(html).toContain('resultsContainer');
+    expect(html).toContain(".replace(/&/g, '&amp;')");
   });
 });

@@ -1,4 +1,6 @@
 import * as path from 'node:path';
+import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import { defineConfig } from 'vitest/config';
 import type { Plugin } from 'vite';
 
@@ -13,6 +15,30 @@ const mdTextPlugin: Plugin = {
     }
   }
 };
+
+const require = createRequire(import.meta.url);
+
+function ensureBeansMcpSourceMap(): void {
+  try {
+    const mcpEntryPath = require.resolve('@selfagency/beans-mcp');
+    const sourceMapPath = `${mcpEntryPath}.map`;
+
+    if (!fs.existsSync(sourceMapPath)) {
+      const sourceMap = {
+        version: 3,
+        file: path.basename(mcpEntryPath),
+        sources: [path.basename(mcpEntryPath)],
+        names: [],
+        mappings: '',
+      };
+      fs.writeFileSync(sourceMapPath, JSON.stringify(sourceMap), 'utf8');
+    }
+  } catch {
+    // Optional dependency lookup; ignore when unavailable in minimal test environments.
+  }
+}
+
+ensureBeansMcpSourceMap();
 
 export default defineConfig({
   plugins: [mdTextPlugin],
