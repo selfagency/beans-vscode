@@ -58,7 +58,7 @@ brew install hmans/beans/beans
 #### Linux, MacOs, Windows (Requires Go)
 
 ```bash
-go install github.com/hmans/beans@latest
+go install github.com/hmans/beans@v0.4.2
 ```
 
 ### Install the Beans extension

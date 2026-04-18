@@ -61,7 +61,7 @@ jobs:
       - name: Install Beans CLI
         if: steps.check-permission.outputs.has-permission == 'true'
         run: |
-          go install github.com/hmans/beans@latest
+          go install github.com/hmans/beans@v0.4.2
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
           "$(go env GOPATH)/bin/beans" version
 

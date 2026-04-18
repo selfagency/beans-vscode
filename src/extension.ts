@@ -85,12 +85,12 @@ const CLI_INSTALL_OPTIONS: CliInstallOption[] = [
   },
   {
     platform: 'linux',
-    label: 'Install Linux (go install github.com/hmans/beans@latest)',
+    label: 'Install Linux (go install github.com/hmans/beans@v0.4.2)',
     url: 'https://github.com/hmans/beans#installation',
   },
   {
     platform: 'win32',
-    label: 'Install Windows (go install github.com/hmans/beans@latest)',
+    label: 'Install Windows (go install github.com/hmans/beans@v0.4.2)',
     url: 'https://github.com/hmans/beans#installation',
   },
 ];
@@ -539,7 +539,7 @@ export async function checkForBeansCliUpdateAndPrompt(
     if (installMethod === 'go') {
       const terminal = vscode.window.createTerminal({ name: 'Beans Upgrade' });
       terminal.show();
-      terminal.sendText('go install github.com/hmans/beans@latest', true);
+      terminal.sendText('go install github.com/hmans/beans@v0.4.2', true);
       await context.workspaceState.update(BEANS_CLI_UPGRADE_PROMPT_STATE_KEY, promptPair);
       return;
     }

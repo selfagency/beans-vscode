@@ -95,7 +95,7 @@ jobs:
           vsce package --no-dependencies --out beans-vscode-test.vsix
 
       - name: Install beans CLI
-        run: go install github.com/hmans/beans@latest
+        run: go install github.com/hmans/beans@v0.4.2
 
       - name: Run remote compatibility tests
         shell: bash
@@ -240,10 +240,10 @@ jobs:
 
             if ! command -v beans >/dev/null 2>&1; then
               echo "=== Installing beans CLI (proxy-first, non-interactive) ==="
-              if ! go install github.com/hmans/beans@latest; then
+              if ! go install github.com/hmans/beans@v0.4.2; then
                 echo "Primary install failed; retrying with proxy-only mode"
                 export GOPROXY=https://proxy.golang.org
-                go install github.com/hmans/beans@latest
+                go install github.com/hmans/beans@v0.4.2
               fi
             fi
 
@@ -287,10 +287,10 @@ jobs:
 
             if ! command -v beans >/dev/null 2>&1; then
               echo "=== Installing beans CLI (proxy-first, non-interactive) ==="
-              if ! go install github.com/hmans/beans@latest; then
+              if ! go install github.com/hmans/beans@v0.4.2; then
                 echo "Primary install failed; retrying with proxy-only mode"
                 export GOPROXY=https://proxy.golang.org
-                go install github.com/hmans/beans@latest
+                go install github.com/hmans/beans@v0.4.2
               fi
             fi
 

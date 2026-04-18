@@ -604,7 +604,7 @@ describe('Extension lifecycle coverage', () => {
 
   it('handles BeansCLINotFoundError in activation catch and opens install URL', async () => {
     state.checkCliThrows = new BeansCLINotFoundError('missing');
-    state.showErrorQueue.push('Install Linux (go install github.com/hmans/beans@latest)');
+    state.showErrorQueue.push('Install Linux (go install github.com/hmans/beans@v0.4.2)');
 
     await activate(makeContext());
 
@@ -615,7 +615,7 @@ describe('Extension lifecycle coverage', () => {
     state.initialized = false;
     state.initThrows = new BeansCLINotFoundError('missing');
     state.showInfoQueue.push('Initialize');
-    state.showErrorQueue.push('Install Linux (go install github.com/hmans/beans@latest)');
+    state.showErrorQueue.push('Install Linux (go install github.com/hmans/beans@v0.4.2)');
 
     await activate(makeContext());
 
@@ -626,7 +626,7 @@ describe('Extension lifecycle coverage', () => {
     await activate(makeContext());
 
     state.initThrows = new BeansCLINotFoundError('missing');
-    state.showErrorQueue.push('Install Linux (go install github.com/hmans/beans@latest)');
+    state.showErrorQueue.push('Install Linux (go install github.com/hmans/beans@v0.4.2)');
 
     await state.registeredCommands.get('beans.init')?.();
 
